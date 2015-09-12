@@ -1,0 +1,58 @@
+/* THIS FILE WILL BE OVERWRITTEN BY DEV-C++ */
+/* DO NOT EDIT! */
+
+#include <windows.h> // include for version info constants
+
+
+A ICON MOVEABLE PURE LOADONCALL DISCARDABLE "lisaem.ico"
+
+//
+// SUPPORT FOR WINDOWS XP THEMES:
+// THIS WILL MAKE THE PROGRAM USE THE COMMON CONTROLS
+// LIBRARY VERSION 6.0 (IF IT IS AVAILABLE)
+//
+1 24 "lisaem.exe.Manifest"
+
+//
+// TO CHANGE VERSION INFORMATION, EDIT PROJECT OPTIONS...
+//
+1 VERSIONINFO
+FILEVERSION 0,9,1,1
+PRODUCTVERSION 0,9,1,1
+FILETYPE VFT_APP
+{
+  BLOCK "StringFileInfo"
+	 {
+		 BLOCK "040904E4"
+		 {
+			 VALUE "CompanyName", "Sunder.NET"
+                         VALUE "FileVersion", "1.0.0 Beta 2"
+			 VALUE "FileDescription", "The Original Lisa Emulator!"
+			 VALUE "InternalName", "http://lisaem.sunder.net"
+                         VALUE "LegalCopyright", "Copyright (C) 2007 Ray A. Arachelian, Released under the terms of the GNU GPL 2.0"
+			 VALUE "LegalTrademarks", ""
+			 VALUE "OriginalFilename", "LisaEm"
+                         VALUE "ProductName", "LisaEm"
+                         VALUE "ProductVersion", "1.0.0 Beta 2"
+		 }
+	 }
+  BLOCK "VarFileInfo"
+	 {
+		 VALUE "Translation", 0x0409, 1252
+	 }
+}
+
+lisa2icon ICON "lisa2icon.ico"
+floppy0   BITMAP "floppy0.bmp"
+floppy1   BITMAP "floppy1.bmp"
+floppy2   BITMAP "floppy2.bmp"
+floppy3   BITMAP "floppy3.bmp"
+floppyN   BITMAP "floppyN.bmp"
+lisaface0 BITMAP "lisaface0.bmp"
+lisaface1 BITMAP "lisaface1.bmp"
+lisaface2 BITMAP "lisaface2.bmp"
+lisaface3 BITMAP "lisaface3.bmp"
+power_off BITMAP "power_off.bmp"
+power_on  BITMAP "power_on.bmp"
+
+#include <wx/msw/wx.rc>

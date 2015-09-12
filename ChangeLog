@@ -1,0 +1,413 @@
+------------------------------------------------------------------------------
+Lisa Emulator Change History                         http://lisaem.sunder.net/
+------------------------------------------------------------------------------
+--- 1.2.6 Released on 
+
+2007.12.03 - fixed win32 rawbitmap issues, this should speed up the display
+             quite a bit.  Linux rawbitmaps don't work yet, just show a blank
+             white display.
+
+2007.12.01 - fixed bugs on skinless on OS X.  Issue with wxBitmap, it needed
+             to be filled in before using.  Some update to wxWidgets changed
+             the default from the default being white, to an alpha background
+             causing the whole display to fail to update at all since the
+             data inside the wxBitmap was invisible.
+
+           - bug report - libexpat was accidentally turned on in the OS X 
+             version of LisaEm, this is not needed by LisaEm's use of 
+             wxWidgets, it will be removed via  --without-expat in 
+             wxWidgets' configure script.
+
+--- 1.2.5 Released on 2007.11.25
+
+2007.11.22 - imagewriter - fixed page size - at least for LisaWrite 
+
+2007.11.21 - imagewriter lowercase letter "t" was broken
+
+           - imagewriter page size tweaking
+
+2007.11.18 - found way to make graphics smoother, added menu options to 
+             throttle menu to define balance between animation and CPU time.
+
+--- 1.2.2 Released on 2007.11.11
+
+2007.11.08 - fixed slot preferences - browse buttons between high/low ports
+             were swapped.
+
+           - fixed parallel port u/l assignments - opposite from what LOS uses
+
+2007.11.02 - more via6522.c cleanup/fixes.
+
+2007.10.18 - Renamed Profile menu to Parallel Port as it's more accurate
+
+2007.10.15 - cleaning up Generator code so as to build it as its own library
+
+2007.10.01 - looking into cleaning up unicode incompatibility bugs, rewrote
+             bunches and bunches of string routines and fixed up some idiotic
+             char * <-> wxString gymnastics.
+
+2007.09.25 - Looking into via6522 bugs for MacWorks and Xenix, 
+             no luck there yet
+
+--- 1.2.0 Release 
+
+2007.09.19 - fixed romless floppy boot to always boot from floppy and not
+             switch to Profile.
+
+2007.09.15 - debugging ROMless boot.
+             new bug: when trying to boot from floppy, if a profile exists
+             and is bootable, LOS starts up from the Profile instead of the
+             floppy.
+
+2007.09.09 - David Cecchin's XPM icon in unix
+
+2007.09.07 - added Save/Load PRAM to Preferences
+
+           - Quit now closes any open Preference window as well
+
+2007.08.29 - libdc42 macbinii encoded dart to dc42 conversion bugfix
+
+2007.08.16 - added LOS error codes to ROMless error handler
+		   - fix raw screenshot crash
+
+2007.08.13 - got both ROMless boot and ROMless dual parallel card to work
+
+2007.08.06 - individual profile power controls + create new profile inside
+             a new menu named profile.
+
+2007.07.28 - replaced all exit() and EXIT() calls with messages before
+             quitting emulator so at least we know what crashed.
+
+2007.07.27 - ROMless works with both profile and floppy now.
+
+           - Fixed a bug with configuration saving.
+
+2007.07.26 - Tracelog checkmark correction
+
+2007.07.25 - added Zap PRAM button in main Preferences panel
+
+2007.07.23 - ROMLess booting - floppy works
+
+2007.07.19 - ROMLess booting start
+
+2007.07.12 - RESET opcode supervisor mode bug fix.
+
+2007.07.10 - CPU core tests
+
+
+--- 1.0.0 Release
+
+2007.07.06 - Display color balancing to remove fuzziness.
+
+2007.07.05 - LisaConfig bugs found - overwriting date information with
+             garbage on save of preferences.
+
+           - corrected a bug preventing the grabbing of the host time and
+             date.  Found that MacWorks locks up when date is invalid.
+
+2007.07.04 - LisaEm documentation completion
+
+2007.07.03 - Testing various opcodes to locate scroll bar arrow bug in LOS
+	     not found, but eliminated shift/rotate opcodes.
+
+2007.07.01 - regression testing to locate MacWorks bug - not found yet, high
+             probability that it lives somewhere inside the C++ code.
+
+2007.06.30 - added Mac OS trap symbol printing for A-Line traps for tracelog
+
+2007.06.29 - fixed inability to detect no-floppy from Lisa boot ROM
+           - fixed entry to Service mode - not perfect, need to attempt 
+	     to boot from bad profile.
+	   - fixed tracelog bugs (hardcoded /log/lisaem-output)
+
+--- RC2 
+2007.06.26 - fixes to build.sh for differences between platforms.
+
+2007.06.22 - floppy de-serialization routines.
+
+2007.06.20 - rawbmp.h code finally works - except crashes on win32. :-(
+
+2007.06.13 - rawbmp.h code works, much, much faster!
+
+2007.06.12 - wxImage::SetRGB works - faster than old blit code
+
+2007.05.01 - integrating new wxui code is taking me too long becaue of a lack
+             of free time, so I'm going to go the other way so as to be able
+	     to make a release soon.
+
+2007.04.24 - Dual Parallel ROM cheat
+
+2007.04.15 - Found OS X display slowdown issues
+	
+	   - Fixed display sizing issues when skinless.
+
+2007.04.14 - Fixed skins on/off switch on OS X
+
+2007.04.13 - Debugging video system on OS X
+
+2007.04.11 - Added Disk Copy 6.x detection to libdc42 open.  This allows
+	     better error messages to be returned.
+
+2007.04.10 - Added MacBinII stripper to libdc42 auto_open
+
+2007.04.09 - finalized buffered raw keycodes to compensate for repeats
+
+	   - decoupled the COPS 1/10th second timer from Lisa CPU and tied
+	     it to the host clock, clock is now accurate regardless of CPU
+	     speed.
+
+2007.04.08 - added Unthrottled menu option for those who want to melt their
+	     host computer. :-)
+
+	   - added buffered raw keycodes to compensate for repeats.
+
+2007.04.07 - bug with raw keycodes that prevents updates found and fixed.
+
+2007.04.06 - Changes for OS X issues (might roll these back since Jerome
+	     Vernet found that the slowdown issues go away with wxWidgets
+	     2.7.2, will test on all platforms before committing to either
+	     path.)
+		- reworked display to draw directly to dc and skip full blit
+		  only done for AntiAlias mode, need to redo for all others.
+		- reworked timing loop to no longer need wxMilliSleep
+
+--------- RC 1 2007.04.04 
+
+2007.04.04 - fixes to initial video position on skinless mode.
+
+	   - added 8Hz display refresh rate for slow hosts.
+
+	   - on shutdown throttle is removed + display refresh forced to 8Hz
+	     to compensate for ~Imagewriter slowdowns.
+
+2007.04.02 - changes to build.sh to incorporate version #'s via #define
+	     and also modify Info.plist and _private.res inclusion on
+	     OS X and Win32.
+
+2007.04.01 - Added Reset button
+
+	   - messing around with the VIA timing in hopes of fixing the
+	     extra-fast clock.  Helps, but still a bit too fast.
+
+	   - fixing OS X issues
+
+		   - switching skins is really broken on OS X, so switched it
+	     	     to will be done next time you run LisaEm.  This sucks,
+	     	     but it sucks less than having a broken display.
+
+		   - Printing on OS X works, but sometimes locks up LisaEm
+		     on shutdown.
+
+
+	   - windows now save their positions and restore on next boot
+
+2007.03.30 - more printer work
+
+	   - timing correction: catch up on lost cycles if cpu<clock
+
+2007.03.28 - some light via work - attempting to fix any discrepancies
+	     between via1/via2 (cops.c also contains via1_[i|o]ra().
+
+2007.03.27 - printer work: changed printer wire plots to be rounder.
+	   	           got rid of horizontal gaps, but it turns out
+			   that there are protocol errors which cause two
+			   more bugs: pages are pre-maturely FF'ed, and
+			   horizontal data lines are lost on some lines.
+
+2007.03.26 - with skins off, blacken whole screen instead to prevent artifacts
+	     except for OS X.
+
+	   - added option to completely hide the host mouse cursor.  It 
+	     surprisingly works better than I expected.
+
+	   - added Flush Printers menu item to force printouts to end
+	     once they're done.  Should also speed up shutdown since this
+	     happens there too.
+
+2007.03.24 - James Savage of the Retro Mac Cast found these two bugs:
+
+	 	- saving PNG screenshots are always grayscale.  Should be
+		  color for full screenshots.
+
+		- power button on skin is triggered by just moving the
+		  mouse over the power button.  Fixed so click is required.
+
+	   - fixed some issues with switching between skins on/off.
+
+2007.03.20 - pauses reported by Kallikak fixed, throttle mechanism rewritten
+
+	   - printing: added scale as some printerDC's are 600dpi and we
+	     work at 300dpi.
+
+2007.03.18 - printing: fixing half page issues
+
+	   - fixed memory clobbering bug in printing code - caused profile
+	     corruption on linux since dc42's are mmap'ed, would have caused
+	     random issues elsewhere.
+
+2007.03.17 - printing: fixed png background color issue
+
+	   - printing: pages were halved vertically, fixing this now but
+	               not quite right yet, only half a page makes it out
+	               now but it is the correct aspect ratio. 
+
+2007.03.16 - added Refresh Rate to display menu: 60,20,12Hz. (Needs to be
+	     in odd multiplier of refresh rate, otherwise cursor in text
+	     fields will stop flashing)
+
+	   - Printing: tweaking color table in BMP generation as PNG's show 
+	     up with a gray background. (BMP's show up properly.)
+
+2007.03.15 - fixed mouse/skin issues.
+
+	   - fixed some serial port issues, but still crashes emulator.   
+
+2007.03.14 - skins initialization issues with skins on. caused mouse issues
+	     on startup.
+
+	   - skinless size increased as edges were getting cut off.
+
+	   - some z8530 fixes, but still does not properly work, causes LisaEm
+	     to quit.
+
+
+------------------------------------------------------------------------------
+2007.03.13 - found a fixed config bug: serial b options copied from port a.
+
+	   - added a switch to turn off power to the virtual Profile before
+	     power on.  This allows you to prevent the boot ROM's Power on
+	     self test to automatically boot from the Profile.  It's useful
+	     when you need to repair the Profile since it allows you to
+	     boot from "Lisa Office System 1/5" and then power on the
+	     Profile drive to repair the file system.
+
+2007.03.11 - Proper BMP's are now generated for printing, conversion to PNG
+	     format works, but is a little bit off - background is gray,
+	     should be white as in paper white.
+
+	   - added command line ability to load preferences file when
+	     launching. i.e. ./lisaem ~ray/macworks.lisaem will open the
+	     macworks.lisaem preferences file from user ray's home.
+
+2007.03.10 - getting closer on proper BMP generation for printing
+	
+	   - added throttle setting to global preferences.
+	
+	   - added ROM checksum failure warning on power on.  If the ROM is 
+	     broken, it can crash the emulator. 
+
+2007.03.09 - skins on/off added to Display menu.
+
+	   - found IW linefeed pixel bug (lack of initialization)
+
+2007.03.08 - video modes are a bit smarter - if display size is too small, 
+             will refuse to change video modes and will instead switch to 
+             lower mode, or shut off skins.
+
+	   - re-enaled 2Y and 2X3Y video modes (skinless of course.) with 
+             checks for display size.
+
+	   - skin/less mode switch no longer requires restart of emulator.  
+             Extra space past display region is blackened to ameliorate window
+             sizing bugs.
+
+	   - Preferences "Apply" button (was save in preview versions) closes
+             Preferences window.
+
+
+2007.03.06 - added skinless option (bug: size of window is too small/off). One 
+             blit less during skinless mode so it's a bit faster on older 
+             machines.
+
+	   - NMI key can be forced now.
+
+
+2007.03.02 - Video mode, sound effects, asciikeyboard as globally saved prefs.
+
+	   - added Sound Effects checkbox.
+
+	   - debugging printing - somehow all pages show up black.
+
+
+2007.03.01 - added NMI key to keyboard menu.
+
+
+2007.02.28 - new IW code printouts sort of works.
+
+
+2007.02.21 - Added Preferences panel for printer settings.
+
+
+2007.02.20 - added size dialog box when creating profile (5/10MB, etc)
+
+
+2007.02.18 - unified build.sh
+
+
+2007.02.05 - I/O ROM version was getting clobbered by code in floppy.c to 
+             0xA8 via a #define.
+
+
+2007.02.03 - cheat_ram_test now a preference.
+
+           - if starting without ROM, dialogbox is shown, then preferences are
+             shown asking for config.
+
+	   - bug fix: after closing preferences, re-opening caused segfault.
+
+	   - finer speed control - much closer.
+	
+
+2007.02.02 - fixed floppy insert on power off
+
+	   - fixed floppy trapping on insert of non-DC42/bad disk image.
+
+	   - fixed "Clock is not set" dialog box
+
+ 	   - fixed ContrastTrails (linx/win32)
+
+
+2007.02.01 - fixed raw kb entry - but CPU clock is still too fast.
+
+
+2007.01.31 - fixed bug causing random crashes, mostly during LOS install.  Was
+             off-by-one array overflow related to ReDraw_* fn's.
+
+
+2007/01/28 Preview Release 2
+============================
+
+Fixes:
+* Fixes to libdc42 for profile access. Should be able to read and write to
+  ProFile images to install Lisa Office System on a new disc.
+
+* Split ROM images are now supported - it will automatically merge them and
+  save as *.ROM
+
+* Double-clicking on the mouse is now recognised in Lisa OS. This fix is a
+  hack, and will need to be fixed properly in the future.
+
+* When quitting LisaEm on Mac OS X, the Preview Release used to crash. This
+  has been fixed.
+
+* Crash on Restart from Lisa Office System Installer fixed.
+
+* Missing horizontal scrollbar on OS X seems to be fixed, but not sure why or
+  how.
+
+* The duration of the click sound during the Lisa ROM tests was far too long,
+  it now clicks rather than beeping.
+
+Known bugs:
+* Floppy animation does not work on OS X due to double buffering.
+
+* Floppy motor sounds and some other sounds do not work on OS X
+
+* Some light gray screen artifacts in the Windows build.
+
+* Still no documentation at all.
+
+
+2007/01/24 Preview Release
+==========================
+No change notes, first release.

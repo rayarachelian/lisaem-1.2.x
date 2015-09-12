@@ -1,0 +1,28 @@
+#!/bin/bash
+
+# This is a fake ./configure which generates a wrapper Makefile
+# to call build.sh.   Sneaky!
+
+for i in $@
+do
+
+ case "$i" in
+
+ --with*)          OPTS="$OPTS $i" ;;
+
+ --help)   ./build.sh --help
+	    exit
+                   ;;
+
+ esac
+done
+
+
+echo "build:   lisa/lisaem_wx.cpp" >Makefile
+echo "	./build.sh build $OPTS" >>Makefile
+echo "" >>Makefile
+echo "clean:   lisa/lisaem_wx.cpp" >>Makefile
+echo "	./build.sh clean" >>Makefile
+echo "" >>Makefile
+echo "install: lisa/lisaem_wx.cpp" >>Makefile
+echo "	./build.sh build $OPTS --install" >>Makefile
