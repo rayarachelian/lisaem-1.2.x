@@ -1280,8 +1280,8 @@ void LisaEmFrame::OnEmulationTimer(wxTimerEvent& WXUNUSED(event))
 
 	 if (cpu68k_clocks<10 && floppy_to_insert.Len())         // deferred floppy insert.
 	 {
-           const char *s = floppy_to_insert.fn_str();
-           int i=floppy_insert((char *)s);
+           const wxCharBuffer s = floppy_to_insert.fn_str();
+           int i=floppy_insert((char *)(const char *)s);
            floppy_to_insert=_T("");
            if (i) eject_floppy_animation();
 	 }
@@ -4651,10 +4651,10 @@ void LisaEmFrame::OnxFLOPPY(void)
 
 
     if (!openfile.Len()) return;
-    const char *s = openfile.fn_str();
+    const wxCharBuffer s = openfile.fn_str();
 
     if (my_lisaframe->running) {
-        if (floppy_insert((char *)s)) return;
+        if (floppy_insert((char *)(const char *)s)) return;
     } else {
         floppy_to_insert = openfile;
     }
@@ -4698,14 +4698,14 @@ void LisaEmFrame::OnxNewFLOPPY(void)
 
 
 
-    const char *s = openfile.fn_str();
-    int i = dc42_create((char *)s,"-not a Macintosh disk-", 400*512*2,400*2*12);
+    const wxCharBuffer s = openfile.fn_str();
+    int i = dc42_create((char *)(const char *)s,"-not a Macintosh disk-", 400*512*2,400*2*12);
     if (i)  {
         wxMessageBox(_T("Could not create the diskette"),
             _T("Sorry"), wxICON_INFORMATION | wxOK);
         return;
     } else {
-        floppy_insert((char *)s);
+        floppy_insert((char *)(const char *)s);
     }
 
 
@@ -5533,16 +5533,15 @@ int romlessboot_pick(void)
  else r=1;  // if not a profile, just boot from the floppy drive.
 
  if (r==1)   // if there's no floppy inserted, ask for one.
-    {
-	  const char *s;
-	  if (!my_lisaframe->floppy_to_insert.Len()) my_lisaframe->OnxFLOPPY();
-	  if (!my_lisaframe->floppy_to_insert.Len()) return -1;  // if the user hasn't picked a floppy, abort.
-      s = my_lisaframe->floppy_to_insert.fn_str();
-      int i=floppy_insert((char *)s);
+ {
+      if (!my_lisaframe->floppy_to_insert.Len()) my_lisaframe->OnxFLOPPY();
+      if (!my_lisaframe->floppy_to_insert.Len()) return -1;  // if the user hasn't picked a floppy, abort.
+      const wxCharBuffer s = my_lisaframe->floppy_to_insert.fn_str();
+      int i=floppy_insert((char *)(const char *)s);
       wxMilliSleep(100);  // wait for insert sound to complete to prevent crash.
       if (i) { eject_floppy_animation(); return -1;}
       my_lisaframe->floppy_to_insert=_T("");
-   	}
+ }
 
  delete d;
  return r;
