@@ -1479,15 +1479,15 @@ LisaWin::LisaWin(wxWindow *parent)
 
 #ifdef __WXOSX__
        /* LSB (0x01) is leftmost. First byte is top row. 1 is black/visible*/
-       char cursor_bits[] = {0x00, 0x0e, 0x0e, 0x0e, 0x00};
-       char mask_bits[]   = {0x1f, 0x1f, 0x1f, 0x1f, 0x1f};
+       const unsigned char  cursor_bits[] = {0x00, 0x0e, 0x0e, 0x0e, 0x00};
+       const unsigned char  mask_bits[]   = {0x1f, 0x1f, 0x1f, 0x1f, 0x1f};
 #else
-       char cursor_bits[] = {0xe0, 0xee, 0xee, 0xee, 0xe0};
-       char mask_bits[]   = {0xe0, 0xe0, 0xe0, 0xe0, 0xe0};
+       const unsigned char  cursor_bits[] = {0xe0, 0xee, 0xee, 0xee, 0xe0};
+       const unsigned char  mask_bits[]   = {0xe0, 0xe0, 0xe0, 0xe0, 0xe0};
 #endif
 
-       wxBitmap bmp = wxBitmap(cursor_bits, 8, 5);
-       bmp.SetMask(new wxMask(wxBitmap(mask_bits, 8, 5)));
+       wxBitmap bmp = wxBitmap((const char *)cursor_bits, 8, 5);
+       bmp.SetMask(new wxMask(wxBitmap((const char *)mask_bits, 8, 5)));
 
        wxImage img = bmp.ConvertToImage();
        img.SetOption(wxIMAGE_OPTION_CUR_HOTSPOT_X, _T("2"));
