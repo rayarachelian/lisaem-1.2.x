@@ -35,17 +35,17 @@
 
 
 uint8 ishex(char c)
-{	if (c>='0' && c<='9') return 1;
-	if (c>='a' && c<='f') return 1;
-	if (c>='A' && c<='F') return 1;
-	return 0;
+{    if (c>='0' && c<='9') return 1;
+    if (c>='a' && c<='f') return 1;
+    if (c>='A' && c<='F') return 1;
+    return 0;
 }
 
 uint8 gethex(char c)
-{	if (c>='0' && c<='9') return c-'0';
-	if (c>='a' && c<='f') return c-'a'+10;
-	if (c>='A' && c<='F') return c-'A'+10;
-	return 0;
+{    if (c>='0' && c<='9') return c-'0';
+    if (c>='a' && c<='f') return c-'a'+10;
+    if (c>='A' && c<='F') return c-'A'+10;
+    return 0;
 }
 
 
@@ -57,46 +57,46 @@ uint32 lrol(uint32 outdata, uint8 loop)
 {
     uint32 cflag=0;
 
-	while(loop) {
+    while(loop) {
         cflag = outdata & 1<<31 ? 1 : 0;
-		outdata<<= 1;
-		if (cflag)
-			outdata |= 1;
-		loop--;
-	}
+        outdata<<= 1;
+        if (cflag)
+            outdata |= 1;
+        loop--;
+    }
 
-	return outdata;
+    return outdata;
 }
 
 
 uint16 wrol(uint16 outdata, uint8 loop)
 {
-	uint16 cflag=0;
+    uint16 cflag=0;
 
-	while(loop) {
-		cflag = outdata & 1<<15 ? 1 : 0;
-		outdata<<= 1;
-		if (cflag)
-			outdata |= 1;
-		loop--;
-	}
+    while(loop) {
+        cflag = outdata & 1<<15 ? 1 : 0;
+        outdata<<= 1;
+        if (cflag)
+            outdata |= 1;
+        loop--;
+    }
 
-	return outdata;
+    return outdata;
 }
 
 uint8 brol(uint8 outdata, uint8 loop)
 {
     uint8 cflag=0;
 
-	while(loop) {
+    while(loop) {
         cflag = outdata & 1<<7 ? 1 : 0;
-		outdata<<= 1;
-		if (cflag)
-			outdata |= 1;
-		loop--;
-	}
+        outdata<<= 1;
+        if (cflag)
+            outdata |= 1;
+        loop--;
+    }
 
-	return outdata;
+    return outdata;
 }
 
 
@@ -107,7 +107,9 @@ void vidfixromchk(uint8 *s)
  s[0]=0xff; s[7]=0xff;
  chksum=(s[24]*100) + (s[25]*10) + s[26];
 
- for (sum=0,i=0; i<24; i++) sum+=(s[i]>>4)+(s[i]&15); sum+=s[27]; sum-=60;
+ for (sum=0,i=0; i<24; i++) sum+=(s[i]>>4)+(s[i]&15); 
+ sum+=s[27]; 
+ sum-=60;
 
 // DEBUG_LOG(0,"serno:checksum I calculated: %04x, checksum stored: %04x lisa calculated 0x82",sum,chksum);
 
@@ -131,23 +133,23 @@ uint16 chksum_a_rom_range(uint8 *rom, uint32 a0, uint32 a1)
     uint16 d0=0;
 
     do                                      //DOSUM
-	{
+    {
         d0+=(rom[a0]<<8)+rom[a0+1];         //ADD(A0)+,D0
-		a0+=2;
-		d0=wrol(d0,1);						//ROL #1,D0
-	}										//CMPA.L A0,A1
-	while (a0!=a1);							//BNE.S DOSUM
+        a0+=2;
+        d0=wrol(d0,1);                        //ROL #1,D0
+    }                                        //CMPA.L A0,A1
+    while (a0!=a1);                            //BNE.S DOSUM
 
     return d0;
 }
 
 void fixromchk(void)
 {
-	
-	/* C ROM */ if (lisarom[0x3ffc]==0x02 && lisarom[0x3ffd]==0x11) ALERT_LOG(0,"C ROM 0x275:%02x",lisarom[0x0275]);
     
-	
-	
+    /* C ROM */ if (lisarom[0x3ffc]==0x02 && lisarom[0x3ffd]==0x11) ALERT_LOG(0,"C ROM 0x275:%02x",lisarom[0x0275]);
+    
+    
+    
     // don't touch any ROM except H
     if (lisarom[0x3ffc] != 0x02 || lisarom[0x3ffd] != 'H')  return;
 
@@ -175,19 +177,19 @@ void fixromchk(void)
     uint16 d0;
     uint32 a0,a1;
 
-	d0=0;									// CLR.L D0
-	a0=0;									// LEA BASE,A0
-	a1=0x3ffe;								// LEA LAST,A1
+    d0=0;                                    // CLR.L D0
+    a0=0;                                    // LEA BASE,A0
+    a1=0x3ffe;                                // LEA LAST,A1
 
     d0=chksum_a_rom_range(lisarom,a0,a1);
 
 //    ALERT_LOG(1,"Lisa ROM Checksum is %04x,negated it's %04x, zero=%04x",d0,(~d0)+1,d0+(~d0)+1);
 
-	/* negate checksum so when lisa rom adds it, it will be zero. */
-	d0=(~d0)+1;
+    /* negate checksum so when lisa rom adds it, it will be zero. */
+    d0=(~d0)+1;
 
-	lisarom[0x3ffe]=(d0>>8);
-	lisarom[0x3fff]=(d0 & 0xff);
+    lisarom[0x3ffe]=(d0>>8);
+    lisarom[0x3fff]=(d0 & 0xff);
 }
 
 // not sure if this will work with non 2.x ROMs (i.e. Lisa 1 or 3A), worst case
@@ -195,11 +197,11 @@ void fixromchk(void)
 int checkromchksum(void)
 {
     /* Simulate all including final add of the ROM checksum routine */
-	uint16 d0;
-	uint32 a0,a1;
+    uint16 d0;
+    uint32 a0,a1;
 
-	d0=0;									// CLR.L D0
-	a0=0;									// LEA BASE,A0
+    d0=0;                                    // CLR.L D0
+    a0=0;                                    // LEA BASE,A0
     a1=0x4000;                              // LEA LAST,A1
 
     d0=chksum_a_rom_range(lisarom,a0,a1);
@@ -207,7 +209,7 @@ int checkromchksum(void)
 //    ALERT_LOG(1,"Original Lisa ROM CHKSUM is %02x%02x",lisarom[0x3ffe],lisarom[0x3fff]);
 //    ALERT_LOG(1,"Lisa ROM Checksum is %04x,negated it's %04x, zero=%04x",d0,(~d0)+1,d0+(~d0)+1);
 
-	/* negate checksum so when lisa rom adds it, it will be zero. */
+    /* negate checksum so when lisa rom adds it, it will be zero. */
     return (~d0)+1;
 }
 
@@ -252,16 +254,16 @@ int16 read_dtc_rom(char *filename, uint8 *ROM)
  rom_source_file=fopen(filename,"rt");
  if (!rom_source_file) return -1;
 
- line=(char *)malloc(1024); if (!line) return -2;
+ line=(char *)calloc(1,1024); if (!line) return -2;
 
  if (rom_source_file)
  {
 #ifdef DEBUG
-	dtc_rom_fseeks=(long *)malloc(sizeof(long)*0x4000); // fseeks for source code.
-	if (!dtc_rom_fseeks)
-	{
-		EXITR(5,0,"Couldn't allocate enough memory for ROM source pointers!\n");
-	}
+    dtc_rom_fseeks=(long *)calloc(sizeof(long),0x4000); // fseeks for source code.
+    if (!dtc_rom_fseeks)
+    {
+        EXITR(5,0,"Couldn't allocate enough memory for ROM source pointers!\n");
+    }
     memset(dtc_rom_fseeks,0,sizeof(long)*0x4000);
 #endif
 
@@ -275,37 +277,39 @@ int16 read_dtc_rom(char *filename, uint8 *ROM)
 
     DEBUG_LOG(0,"Reading source assembled ROM\n");
 
-	while (!feof(rom_source_file))
-	{
-		fileposition=ftell(rom_source_file);
-		fgets(line,1024,rom_source_file);
-		if (ishex(line[0]) && ishex(line[1]) && ishex(line[2]) && ishex(line[3]) && line[4]=='|' && line[5]==' ')
+    while (!feof(rom_source_file))
+    {
+        char *v=NULL;
+        fileposition=ftell(rom_source_file);
+        v=fgets(line,1024,rom_source_file);
+        if (!v) ALERT_LOG(0,"fgets returned NULL when reading from rom source file!");
+        if (ishex(line[0]) && ishex(line[1]) && ishex(line[2]) && ishex(line[3]) && line[4]=='|' && line[5]==' ')
         {   address=(gethex(line[0])<<12) + (gethex(line[1])<<8 ) +  (gethex(line[2])<<4 ) + gethex(line[3]);
             //DEBUG_LOG(0,("%04x:",address);
             for (i=6; i<29; i++)
-				if (ishex(line[i]) && ishex(line[i+1]))
-				{	data=(gethex(line[i])<<4)+gethex(line[i+1]);
+                if (ishex(line[i]) && ishex(line[i+1]))
+                {    data=(gethex(line[i])<<4)+gethex(line[i+1]);
                     //DEBUG_LOG(0,("%02x ",data);
-					if (address<0x4000)
-					{
-						ROM[address]=data; ok=1;
+                    if (address<0x4000)
+                    {
+                        ROM[address]=data; ok=1;
 #ifdef DEBUG
-						if (dtc_rom_fseeks) dtc_rom_fseeks[address]=fileposition;
+                        if (dtc_rom_fseeks) dtc_rom_fseeks[address]=fileposition;
 #endif
-					}
-					i++;       // since we read another in line(i+1)
-					address++; // since this could be a word, or long
-				}
-		} // If hex data on line
-		//printf("\n");
-	} // file reading while loop
+                    }
+                    i++;       // since we read another in line(i+1)
+                    address++; // since this could be a word, or long
+                }
+        } // If hex data on line
+        //printf("\n");
+    } // file reading while loop
 
 
 
 #ifdef DEBUG
     fseek(rom_source_file,0L,SEEK_SET);
 #else
-    if (rom_source_file)	fclose(rom_source_file);
+    if (rom_source_file)    fclose(rom_source_file);
 #endif
  }
 // See if we have the object file.
@@ -350,11 +354,12 @@ int16 read_dtc_rom(char *filename, uint8 *ROM)
 
     while ( !feof(rom_source_file))
     {
+      char *z=NULL;
       //   01234567890123456789012345678901234567890123456789
       //             1         2         3         4
       //   00aaaa: xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx [................]
 
-      fgets(line,1024,rom_source_file);
+      z=fgets(line,1024,rom_source_file); if (!z) {ALERT_LOG(0,"Error reading line from %s",filename);}
 
       if ( line[7]==' ' && line[6]==':' && line[0]=='0' && line[1]=='0' && ishex(line[2]) && ishex(line[3]) && ishex(line[4]) && ishex(line[5]) )
        {
@@ -405,16 +410,16 @@ int16 read_split_rom(char *filename, uint8 *ROMMX)
     char *s;
     uint8 *ROMLO, *ROMHI;
     FILE  *low,   *high, *out;
+    size_t c;
 
-
-	if (!filename || !ROMMX) return -3;
+    if (!filename || !ROMMX) return -3;
     strncpy(infilename,filename,FILENAME_MAX);         // copy the original file name
 
     s=strstr(infilename,".lo");  if (s) *s=0;  // strip off any possible .lo
     s=strstr(infilename,".hi");  if (s) *s=0;  // strip off any possible .hi
 
-    ROMLO=(uint8 *) malloc(8194); if (!ROMLO) {return -2;}
-    ROMHI=(uint8 *) malloc(8194); if (!ROMHI) {free(ROMLO); return -2;}
+    ROMLO=(uint8 *) calloc(1,8194); if (!ROMLO) {return -2;}
+    ROMHI=(uint8 *) calloc(1,8194); if (!ROMHI) {free(ROMLO); return -2;}
 
     snprintf(myfilename,FILENAME_MAX,"%s.lo",infilename);
     low=fopen(myfilename,"rb");
@@ -427,9 +432,8 @@ int16 read_split_rom(char *filename, uint8 *ROMMX)
     if (!high) {fclose(low); free(ROMHI); free(ROMLO); return -1;}
     DEBUG_LOG(0,"Opened %s\n",myfilename);
 
-
-    fread(ROMLO,8192,1,low);
-    fread(ROMHI,8192,1,high);
+    c=fread(ROMLO,8192,1,low);   if (c!=1) {ALERT_LOG(0,"Error reading  LOW bytes from %s",myfilename);}
+    c=fread(ROMHI,8192,1,high);  if (c!=1) {ALERT_LOG(0,"Error reading HIGH bytes from %s",myfilename);}
 
     fclose(low);
     fclose(high);
@@ -467,11 +471,17 @@ int16 read_split_rom(char *filename, uint8 *ROMMX)
 \**************************************************************************************/
 
 int16 read_rom(char *filename, uint8 *ROMMX)
-{	FILE *rom;
-	if (!filename || !ROMMX) return -3;
-	rom=fopen(filename,"rb"); if (!rom) {return -1;}
-	fread(ROMMX,16384,1,rom); fclose(rom);
-
+{
+    FILE *rom;
+    int c;
+    if (!filename || !ROMMX) return -3;
+    rom=fopen(filename,"rb"); if (!rom) {return -1;}
+    c=fread(ROMMX,16384,1,rom); fclose(rom);
+    if (c!=1) 
+       {
+           ALERT_LOG(0,"fread returned %d count instead of 1",c);
+           return -1;
+       }
     #ifdef DEBUG
     DEBUG_LOG(0,"Checking for screenmod:%02x subver %02x",ROMMX[0x3ffc],ROMMX[0x3ffd]);
     if (has_xl_screenmod()) DEBUG_LOG(0,"Is screenmod ROM");
@@ -480,8 +490,8 @@ int16 read_rom(char *filename, uint8 *ROMMX)
     ALERT_LOG(0,"Lisa ROM CHKSUM is %02x%02x version:%02x.%c (%02x)",ROMMX[0x3ffe],ROMMX[0x3fff],ROMMX[0x3ffc],ROMMX[0x3ffd],ROMMX[0x3ffd]);
 #ifdef DEBUG
     if (lisarom[0x3ffd]<'F') debug_on("C-ROM");
-#endif	
-	return 0;
+#endif    
+    return 0;
 
 }
 
@@ -539,7 +549,7 @@ int read_parallel_card_rom(char *filename)
     }
 
 
-	if (!ret) return romless_dualparallel();
+    if (!ret) return romless_dualparallel();
 
     return (ret!=1);
 }

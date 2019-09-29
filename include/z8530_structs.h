@@ -204,7 +204,7 @@ typedef union
                 DTR:1;                  //128
    #else
    uint8
-		        DTR:1,                  //128
+                DTR:1,                  //128
                 txbitsperchar:2,        //32+64
                 sendbreak:1,            //16
                 txenable:1,             // 8
@@ -1046,6 +1046,7 @@ typedef struct
  wr14_t wr14;
  wr15_t wr15;
  uint8  placeholder16;
+ uint8  placeholder16b;
 
 #ifdef ESCC
  wr7prime_t wr7prime;
@@ -1109,18 +1110,18 @@ typedef struct
 
 #ifdef LISAEMSCCZ8530
 
-union {uint8 r[16];                     // access will be scc_r[port].r[reg] or scc_r[port].s.rr0
+union {uint8 r[18];                     // access will be scc_r[port].r[reg] or scc_r[port].s.rr0
        rr_t  s;} scc_r[2];
 
-union {uint8 w[17];                     // access will be scc_w[port].w[reg] or scc_w[port].s.wr0
+union {uint8 w[18];                     // access will be scc_w[port].w[reg] or scc_w[port].s.wr0
        wr_t  s;} scc_w[2];
 
 #else
 
-extern union {uint8 r[16];                     // access will be scc_r[port].r[reg] or scc_r[port].s.rr0
+extern union {uint8 r[18];              // access will be scc_r[port].r[reg] or scc_r[port].s.rr0
        rr_t  s;} scc_r[2];
 
-extern union {uint8 w[17];                     // access will be scc_w[port].w[reg] or scc_w[port].s.wr0
+extern union {uint8 w[18];              // access will be scc_w[port].w[reg] or scc_w[port].s.wr0
        wr_t  s;} scc_w[2];
 
 

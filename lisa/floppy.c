@@ -262,8 +262,8 @@ void floppy_return(DC42ImageType *F, uint8 boot, uint8 status);
 DC42ImageType Floppy_u,                 // Lisa1 had two twiggy floppies, Lisa2 has only 1
               Floppy_l;
 
-		static uint8 queuedfn=0xff;
-		DC42ImageType *FQ=NULL;
+        static uint8 queuedfn=0xff;
+        DC42ImageType *FQ=NULL;
 
 
 long getsectornum(DC42ImageType *F, uint8 side, uint8 track, uint8 sec);
@@ -368,7 +368,7 @@ int getmaxsector(int type, int track)
 {
 
     if (type==SONY400KFLOPPY || SONY800KFLOPPY)
-	{
+    {
        if (track<0) return -1;
        if (track>-1 && track<16) return 12;  // tracks  0-15
        if (track>15 && track<32) return 11;  // tracks 16-31
@@ -376,23 +376,23 @@ int getmaxsector(int type, int track)
        if (track>47 && track<64) return 9;   // tracks 48-63
        if (track>63 && track<80) return 8;   // tracks 64-79
        return -1;
-	}
+    }
 
-	if (type==TWIGGYFLOPPY)
-	{
-		if (track<0) return -1;
-		if (track>-1 && track< 4) return 23;
-		if (track> 3 && track<10) return 22;
-		if (track> 9 && track<17) return 21;
-		if (track>16 && track<23) return 20;
-		if (track>22 && track<29) return 19;
-		if (track>28 && track<33) return 18;
-		if (track>32 && track<39) return 17;
-		if (track>38 && track<46) return 16;
+    if (type==TWIGGYFLOPPY)
+    {
+        if (track<0) return -1;
+        if (track>-1 && track< 4) return 23;
+        if (track> 3 && track<10) return 22;
+        if (track> 9 && track<17) return 21;
+        if (track>16 && track<23) return 20;
+        if (track>22 && track<29) return 19;
+        if (track>28 && track<33) return 18;
+        if (track>32 && track<39) return 17;
+        if (track>38 && track<46) return 16;
         return -2;
-	}
+    }
 
-	return -2;
+    return -2;
 }
 
 /*
@@ -481,8 +481,8 @@ long getsectornum(DC42ImageType *F, uint8 side, uint8 track, uint8 sec)
     if (!F) F=&Floppy_u;                // default
 
 
-	switch(F->ftype)
-	{
+    switch(F->ftype)
+    {
         case TWIGGYFLOPPY:    if ( track>46 || sec>23 || side>2 ) return -1;
                               return floppy_twiggy(side, track, sec);
 
@@ -495,7 +495,7 @@ long getsectornum(DC42ImageType *F, uint8 side, uint8 track, uint8 sec)
         // Fake SuperFloppy - if possible -- for future use.
         case 3 :              if (track>F->maxtrk || sec>F->maxsec || side>F->maxside ) return -1;
                               return side*(F->maxtrk*F->maxsec)+(track*F->maxsec)+sec;
-	}
+    }
     return -1;
 }
 
@@ -708,11 +708,11 @@ static void do_floppy_read(DC42ImageType *F)
 
 
         // convert unbootable fake dual parallel card to have the proper ID.
-   	    if (!sectornumber && (pc24 & 0x00ff0000)==0x00fe0000 && !romless && dualparallelrom[0x30]==0xff && dualparallelrom[0x31]==0xff)
+           if (!sectornumber && (pc24 & 0x00ff0000)==0x00fe0000 && !romless && dualparallelrom[0x30]==0xff && dualparallelrom[0x31]==0xff)
         {
-		  if (lisa_ram_safe_getbyte(1,0x299)==0x02) {lisa_ram_safe_setbyte(1,0x298,0xe0); }
-		  if (lisa_ram_safe_getbyte(1,0x29b)==0x02) {lisa_ram_safe_setbyte(1,0x29a,0xe0); }
-		  if (lisa_ram_safe_getbyte(1,0x29d)==0x02) {lisa_ram_safe_setbyte(1,0x29c,0xe0); }
+          if (lisa_ram_safe_getbyte(1,0x299)==0x02) {lisa_ram_safe_setbyte(1,0x298,0xe0); }
+          if (lisa_ram_safe_getbyte(1,0x29b)==0x02) {lisa_ram_safe_setbyte(1,0x29a,0xe0); }
+          if (lisa_ram_safe_getbyte(1,0x29d)==0x02) {lisa_ram_safe_setbyte(1,0x29c,0xe0); }
         }
 
 
@@ -828,7 +828,7 @@ void floppy_go6504(void)
     //char *DTCImage1Sig="SIGNATURE: DISK IMAGE FILE      VERSION: 1  ";
  // //                012345678901234567890123456789012345678901234
  //                           1         2         3         4
-	int i,j,k;
+    int i,j,k;
 
     flop_cmd_text(buglog);
     if ( floppy_6504_wait==255) {//fprintf(buglog,"floppy controller in jail until reset\n");
@@ -847,11 +847,11 @@ void floppy_go6504(void)
 
     // If we're formatting and confirmation isn't set, ignore it and don't say Ok by zeroing the go byte.
     if (k==FLOP_CTRLR_RWTS)  {
-	                           if ((j==FLOP_CMD_FMTTRK||j==FLOP_CMD_FORMAT)&&i!=0xff) 
-	                               {
-		                            ALERT_LOG(0,"Format Track reply 0xff not received yet, got %02x",i);
-		                            return;
-		                           }
+                               if ((j==FLOP_CMD_FMTTRK||j==FLOP_CMD_FORMAT)&&i!=0xff) 
+                                   {
+                                    ALERT_LOG(0,"Format Track reply 0xff not received yet, got %02x",i);
+                                    return;
+                                   }
                              }
 
     if (floppy_6504_wait<250)
@@ -864,8 +864,8 @@ void floppy_go6504(void)
       if (slowdown) {floppy_6504_wait=1;return;}
     }
 
-	if ( floppy_6504_wait==254)                  // floppy controller is sleeping -
-	{
+    if ( floppy_6504_wait==254)                  // floppy controller is sleeping -
+    {
     //fprintf(buglog,"floppy: in wait loop jail\n");
  // since the docs weren't too clear where 69 96 gets stored, I'm putting in several ways to bail
  // out of ROMWAIT...  whichever it turns out is correct will remain in the final code......
@@ -886,7 +886,7 @@ void floppy_go6504(void)
 
         floppy_last_macro=k;                    // copy the new gobyte over the last one;
         return;
-	}
+    }
 
 
     floppy_ram[GOBYTE]=0;                   // signal the command as taken
@@ -948,7 +948,7 @@ void floppy_go6504(void)
             );
 
     if ( floppy_ram[DRIVE]==0x80)      F=&Floppy_u;
-	else if ( floppy_ram[DRIVE]==0x80) F=&Floppy_l;
+    else if ( floppy_ram[DRIVE]==0x80) F=&Floppy_l;
     else { //fprintf(buglog,"floppy: invalid drive:%02x!\n",floppy_ram[DRIVE]);
            F=&Floppy_u;}
 
@@ -966,8 +966,8 @@ void floppy_go6504(void)
     //floppy_ram[DISKID]=1;                  // 0=duo 1=lisa disk, 2=mac
 
 
-	switch ( floppy_last_macro )
-	{
+    switch ( floppy_last_macro )
+    {
         case  0 :                return;               // no command
 
         case  FLOP_CTRLR_SHAKE:  floppy_ram[STATUS]=0; /* floppy_FDIR=0; removing 2004.08.12 3:40am */ return;
@@ -989,8 +989,9 @@ void floppy_go6504(void)
 
 
             switch(floppy_ram[FUNCTION])
-			{
+            {
                 case FLOP_CMD_READX : DEBUG_LOG(0,"brute force: "); floppy_ram[0x68]=0xff;    // enable brute force flag
+                                      /* FALLTHRU */
                 case FLOP_CMD_READ  :
 
                        if (F->fd<0 && F->fh==NULL)       { DEBUG_LOG(0,"SRC:null fhandle\n"); RWTS_IRQ_SIGNAL(FLOP_STAT_NODISK); floppy_FDIR=1;return;}
@@ -1048,7 +1049,7 @@ void floppy_go6504(void)
 
                        return;
 
-                case FLOP_CMD_WRITX : fprintf(buglog,"brute force: "); floppy_ram[0x68]=0xff;
+                case FLOP_CMD_WRITX : fprintf(buglog,"brute force: "); floppy_ram[0x68]=0xff; /* FALLTHRU */
                 case FLOP_CMD_WRITE :
                        DEBUG_LOG(0,"SRC:Write\n");
                        if (F->fd<0)                      { DEBUG_LOG(0,"SRC:null fhandle\n"); RWTS_IRQ_SIGNAL(FLOP_STAT_DRVNOT);return;  }
@@ -1100,7 +1101,7 @@ void floppy_go6504(void)
                     return;
 
 
-				case FLOP_CMD_CLAMP :          // mount/open disk image
+                case FLOP_CMD_CLAMP :          // mount/open disk image
                         //fprintf(buglog,"SRC:Floppy Clamp\n");
                         RWTS_IRQ_SIGNAL(0);
                         return;
@@ -1143,15 +1144,15 @@ void floppy_go6504(void)
 
                     return;
 
-                case FLOP_CMD_FMTTRK: ALERT_LOG(0,"Format track."); // ignore the rest o'this
-				case FLOP_CMD_FORMAT: ALERT_LOG(0,"Format whole disk.");// format a track (erase all it's sectors!)
+                case FLOP_CMD_FMTTRK: ALERT_LOG(0,"Format track."); /* FALLTHRU */      // ignore the rest o'this
+                case FLOP_CMD_FORMAT: ALERT_LOG(0,"Format whole disk."); /* FALLTHRU */ // format a track (erase all it's sectors!)
 
-				case FLOP_CMD_VERIFY:
-				case FLOP_CMD_VFYTRK: floppy_FDIR=1;  // was missing from pre RC2!
+                case FLOP_CMD_VERIFY:                                    /* FALLTHRU */
+                case FLOP_CMD_VFYTRK: floppy_FDIR=1;  // was missing from pre RC2!
                                       RWTS_IRQ_SIGNAL(0);
-									  ALERT_LOG(0,"...")
+                                      ALERT_LOG(0,"...")
                                       return;
-			}
+            }
 
         case  FLOP_CTRLR_SEEK:
             //fprintf(buglog,"SRC:seek\n");
@@ -1161,7 +1162,7 @@ void floppy_go6504(void)
 
             return;  // NO FDIR here charlie!
 
-		case  FLOP_CTRLR_JSR :  // trap these and complain loudly of 6504 usage. //
+        case  FLOP_CTRLR_JSR :  // trap these and complain loudly of 6504 usage. //
             //fprintf(buglog,"SRC:The Lisa is trying to tell the 6504 floppy controller to execute code.  This is not supported by the emulator!\n");
                                                      // hack to allow MacWorks XL 3.0 code to run - think that this reads the
                                                      // write protect tab of the current floppy, not 100% sure.
@@ -1245,9 +1246,9 @@ void floppy_go6504(void)
             floppy_6504_wait=0;
 
             if (!floppy_ram[FLOP_INT_STAT]) {floppy_FDIR=0;fdir_timer=-1;}  /* keeping this one 2004.08.12 3:40am */
-			return;
+            return;
 
-		case  FLOP_CTRLR_STIM: //86                                        // drive enable interrupt
+        case  FLOP_CTRLR_STIM: //86                                        // drive enable interrupt
             floppy_ram[FLOP_INT_MASK] |= (floppy_ram[FUNCTION]);
             floppy_ram[FLOP_PENDING_IRQ_FLAG]=0;
             floppy_irq_top=((floppy_ram[FUNCTION] & 0x80) ? 1:0);
@@ -1259,7 +1260,7 @@ void floppy_go6504(void)
             floppy_6504_wait=0;
             //if (!floppy_ram[FLOP_INT_STAT]) floppy_FDIR=0;
             floppy_FDIR=0; fdir_timer=-1;             /* keeping 2004.08.12 3:40am */
-			return;
+            return;
 
         case  FLOP_CTRLR_CLIS:
 
@@ -1278,28 +1279,28 @@ void floppy_go6504(void)
             floppy_6504_wait=0;
             //if (!floppy_ram[FLOP_INT_STAT]) floppy_FDIR=0;  //commented out 20060607 21:28
             floppy_FDIR=0; fdir_timer=-1;
-			return;
+            return;
 
         case  FLOP_CTRLR_WAIT: // 88  Wait in ROM until cold start
             DEBUG_LOG(0,"Floppy controller in 6996 wait jail");
-			floppy_6504_wait=254;
+            floppy_6504_wait=254;
             floppy_return(F,0,0);
-			return;
+            return;
 
         case  FLOP_CTRLR_LOOP:  //89    Loop in ROM forever
             fflush(buglog);
-			floppy_6504_wait=255;
+            floppy_6504_wait=255;
             DEBUG_LOG(0,"Floppy controller in RESET wait jail");
             floppy_return(F,0,0);
 
             DEBUG_LOG(0,"Lisa is about to power off - floppy controller told to go away");
 
 
-			return;
-		default:
+            return;
+        default:
             ALERT_LOG(0,"SRC:unrecognized command GOBYTE:%08x, FUNCTION:%08x\n",floppy_last_macro,floppy_ram[FUNCTION]);
             RWTS_IRQ_SIGNAL(FLOP_STAT_INVCMD);
-	}
+    }
 }
 
 void hexprint(char *x, int size, int ascii_print)
@@ -1311,19 +1312,19 @@ half=(size/2) -1;
    if (size>128) {fprintf(buglog,"SRC:hexprintf given illegal size %d\n",size); return;};
    memset(ascii,0,130);
    for (i=0; i<size; i++)
-	{
-	 c=x[i];
+    {
+     c=x[i];
 
-	 if (i==half) printf("%02x . ",c);
-	 else printf("%02x ",c);
+     if (i==half) printf("%02x . ",c);
+     else printf("%02x ",c);
 
-	 if (ascii_print)
+     if (ascii_print)
           {
-	    if (c>126) c &=127;
-	    if (c<31)     c |= 32;
-	    ascii[i]=c;
-	  }
-	}
+        if (c>126) c &=127;
+        if (c<31)     c |= 32;
+        ascii[i]=c;
+      }
+    }
    if (size<16) while(16-size) {printf("   "); size++;}
    if (ascii_print) printf("  |  %s\n",ascii);
 }
@@ -1354,16 +1355,16 @@ void floppy_return(DC42ImageType *F, uint8 boot, uint8 status)
 //            default: floppy_ram[TYPE]=1;  // lie.
 //        }
 
-	if ( boot )
-	{
-		floppy_ram[GOBYTE    ]=0x00;
-		floppy_ram[FUNCTION  ]=0x88;
-		floppy_ram[DRIVE     ]=0x80;
-		floppy_ram[SIDE      ]=0x00;
-		floppy_ram[SECTOR    ]=0x00;
-		floppy_ram[TRACK     ]=0x01;
-		floppy_ram[SPEED     ]=0x00;
-		floppy_ram[CONFIRM   ]=0x00;
+    if ( boot )
+    {
+        floppy_ram[GOBYTE    ]=0x00;
+        floppy_ram[FUNCTION  ]=0x88;
+        floppy_ram[DRIVE     ]=0x80;
+        floppy_ram[SIDE      ]=0x00;
+        floppy_ram[SECTOR    ]=0x00;
+        floppy_ram[TRACK     ]=0x01;
+        floppy_ram[SPEED     ]=0x00;
+        floppy_ram[CONFIRM   ]=0x00;
 
         // which one of these is correct?????
         //floppy_ram[FLOP_STAT ]=status;
@@ -1371,10 +1372,10 @@ void floppy_return(DC42ImageType *F, uint8 boot, uint8 status)
         floppy_ram[STATUS    ]=status;
 
         floppy_ram[DISKID    ]=0x00;
-		floppy_ram[INTERLEAVE]=0x01;
+        floppy_ram[INTERLEAVE]=0x01;
         floppy_ram[TYPE      ]=SONY400_TYPE;
-		floppy_ram[STST      ]=0x00;
-		floppy_ram[INTSTATUS ]=0;
+        floppy_ram[STST      ]=0x00;
+        floppy_ram[INTSTATUS ]=0;
 
         floppy_ram[DRIVE_ENABLED]=0x80;
 
@@ -1382,21 +1383,21 @@ void floppy_return(DC42ImageType *F, uint8 boot, uint8 status)
   // since this is an emulator and everything is virtual, there won't be any errors at all
   // if only real life were so perfect, "But then again, as you said, it's an imperfect universe, Mr. Bester"
 
-		floppy_ram[FLOPPY_dat_bitslip1 ]=0;
-		floppy_ram[FLOPPY_dat_bitslip2 ]=0;
-		floppy_ram[FLOPPY_dat_chksum   ]=0;
-		floppy_ram[FLOPPY_adr_bitslip1 ]=0;
-		floppy_ram[FLOPPY_adr_bitslip2 ]=0;
-		floppy_ram[FLOPPY_wrong_sec    ]=0;
-		floppy_ram[FLOPPY_wrong_trk    ]=0;
-		floppy_ram[FLOPPY_adr_chksum   ]=0;
-		floppy_ram[FLOPPY_usr_cksum1   ]=0;
-		floppy_ram[FLOPPY_usr_cksum2   ]=0;
-		floppy_ram[FLOPPY_usr_cksum3   ]=0;
-		floppy_ram[FLOPPY_bad_sec_total]=0;
-		floppy_ram[FLOPPY_err_track_num]=0;
-		floppy_ram[FLOPPY_err_side_num ]=0;
-		floppy_ram[FLOPPY_bad_sect_map ]=0;
+        floppy_ram[FLOPPY_dat_bitslip1 ]=0;
+        floppy_ram[FLOPPY_dat_bitslip2 ]=0;
+        floppy_ram[FLOPPY_dat_chksum   ]=0;
+        floppy_ram[FLOPPY_adr_bitslip1 ]=0;
+        floppy_ram[FLOPPY_adr_bitslip2 ]=0;
+        floppy_ram[FLOPPY_wrong_sec    ]=0;
+        floppy_ram[FLOPPY_wrong_trk    ]=0;
+        floppy_ram[FLOPPY_adr_chksum   ]=0;
+        floppy_ram[FLOPPY_usr_cksum1   ]=0;
+        floppy_ram[FLOPPY_usr_cksum2   ]=0;
+        floppy_ram[FLOPPY_usr_cksum3   ]=0;
+        floppy_ram[FLOPPY_bad_sec_total]=0;
+        floppy_ram[FLOPPY_err_track_num]=0;
+        floppy_ram[FLOPPY_err_side_num ]=0;
+        floppy_ram[FLOPPY_bad_sect_map ]=0;
 
         floppy_ram[0x15]=0x1e;
         floppy_ram[0x16]=4;
@@ -1418,7 +1419,7 @@ void floppy_return(DC42ImageType *F, uint8 boot, uint8 status)
     }
 
 
-	floppy_ram[GOBYTE]=0;
+    floppy_ram[GOBYTE]=0;
     floppy_ram[STATUS]=status;          // it passed the self tests.
     //floppy_ram[ROMVER]=FLOPPY_ROM_VERSION;  // handled in the C++ code now!
 
@@ -1438,124 +1439,227 @@ void floppy_return(DC42ImageType *F, uint8 boot, uint8 status)
     floppy_ram[0x26]=0;
     floppy_ram[0x27]=0;
 
-	return;
+    return;
 }
 
 
+void get_lisa_serialnumber(uint32 *plant, uint32 *year, uint32 *day, uint32 *sn, uint32 *prefix, uint32 *net)
+{
+  /*
+https://www.applefritter.com/content/apple-lisa-serial-number-info
+First remove every other nibble like this:
+00000240: 0F0F 0002 0802 0002 0000 0400 0300 0F0F
+240: F F 0 2 8 2 0 2 0 0 4 0 3 0 F F
+
+Then group the numbers as follows:
+Number of the Nibble in Hex 01 23 45 678 9ABC D EF
+
++         +0+1 +2+3 +4+5 +6+7 +8+9 +a+b +c+d +e+f
+00000240: 0F0F 0002 0802 0002 0000 0400 0300 0F0F
+          XXXX XPXP XYXY XDXD XDXS XSXS XSXX XXXX
+
+
+Address 240: FF 02 82 020 0403 0 FF
+             XX PP YY DDD SSSS X XX
+
+Extract the serial number from this group of 16 nibbles as follows:
+
+a. Ignore nibbles 0,1,D,E and F, marked as XX or X above.
+b. Nibbles 2 and 3 are the two digit plant code (PP).
+c. Nibbles 4 and 5 are the two digit year code (YY).
+d. Nibbles 6, 7 and 8 are the day of the year code (DDD).
+e. Nibbles 9 thru C are the 4 digit serial number (SSSS).
+
+The Applenet Number is similarly embedded in the first 8 bytes of the next
+line of the memory dump. So, using the same method as step 4 above, we get:
+
++        +0+1 +2+3 +4+5 +6+7 +8+9 +a+b +c+d +e+f
+00000250 0000|0100|0004|0102|0002|0900|0000|0000
+     250: 0 0| 1 0| 0 4| 1 2| 0 2| 9 0| 0 0|0 0
+          P P  P N  N N  N N
+Number of the Nibble in Hex 012 34567 89ABCDEF
+
+Address 250: 001 00412 02900000
+             PPP NNNNN XXXXXXXX
+             123 12345
+
+7. To extract the Applenet Number:
+
+a. Ignore nibbles 8 through F, marked as XXXXXXXX above.
+b. Nibbles 0, 1 and 2 are the AppleNet prefix (PPP).
+c. Nibbles 3 thru 7 are the AppleNet number (NNNNN).
+
+          ff02 8308 1040 50ff 0010 1635 0470 0000
+          XXXX XPXP XYXY XDXD XDXS XSXS XSXX XXXX
+                              vvvv
+mine:     ff028308104050ff0010163504700000
+theirs:   ff02080202004030ff00100412029000
+                              ^^^^
+    0x0f,0x0f,0x00,0x02,0x08,0x03,0x00,0x08,0x01,0x00,0x04,0x00,0x05,0x00,0x0f,0x0f,  // 250 
+    0x00,0x00,0x01,0x00,0x01,0x06,0x03,0x05,0x00,0x04,0x07,0x00,0x00,0x00,0x00,0x00,  // 260 
+
+
+plant 38 year 00 day 0f0 0654
+ff028308104050ff0010163504700000 <<- mine
+ff028308104050ff0010163504700000
+XXXXXPXPXYXYXDXDXDXSXSXSXSXXXXXX
+     3 8|0 0|0 f 0|0 6 5 4     sn=654 -> 1620 dec.
+FF028202004030FF <<- example
+plant 38, year 0 (1983), day 240, sn 0654
+
+this is all wrong I think:
+Your Lisa's serial number was built
+in Apple Plant #02 on the 081st day of 1983
+with serial #0405 (1029)
+It has the applenet id: 001:01635
+
+floppy.c:get_lisa_serialnumber:1532:serial240: ff 02 83 08 10 40 50 ff 00 10 16 35 04 70 00 00
+                                               XX XX XP XP XY XY XD XD XD XS XS XS XS XX XX XX
+                                                      3  8 |0  0 |0  f  0| 0  6  5  4 |
+
+floppy.c:get_lisa_serialnumber:1538:serial250: 00 00 00 00 00 00 00 00 00 05 08 00 00 00 00 00
+floppy.c:get_lisa_serialnumber:1541:Lisa SN: plant:38 born on year:0x0 (0) day:0xf0 (240) sn:0x604 (1540) applenet 0-0
+floppy.c:deserialize:1581:Disk signed by Lisa SN: 10663
+
+
+
+*/
+        *plant  =                                       ((serialnum240[0x02] & 0x0f)<< 4) | ( serialnum240[0x03] & 0x0f);
+        *year   =                                       ((serialnum240[0x04] & 0x0f)<< 4) | ( serialnum240[0x05] & 0x0f);
+        *day    =   ((serialnum240[0x06] & 0x0f)<< 8) | ((serialnum240[0x07] & 0x0f)<< 4) | ( serialnum240[0x08] & 0x0f);
+
+        *sn     =   ((serialnum240[0x09] & 0x0f)<<12) | ((serialnum240[0x0a] & 0x0f)<< 8) | ((serialnum240[0x0b]<<4) & 0x0f) |
+                                                                                             (serialnum240[0x0c]     & 0x0f);
+// applenet
+        *prefix =   ((serialnum240[0x10] & 0x0f)<< 8) | ((serialnum240[0x11] & 0x0f)<< 4) |  (serialnum240[0x12] & 0x0f);
+        *net    =   ((serialnum240[0x13] & 0x0f)<<16) | ((serialnum240[0x14] & 0x0f)<<12) | ((serialnum240[0x15] & 0x0f)<<8) |
+                                                        ((serialnum240[0x16] & 0x0f)<< 4) |  (serialnum240[0x17] & 0x0f);
+
+
+         ALERT_LOG(0,"serial240: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+                     serialnum240[ 0], serialnum240[ 1], serialnum240[ 2], serialnum240[ 3],
+                     serialnum240[ 4], serialnum240[ 5], serialnum240[ 6], serialnum240[ 7],
+                     serialnum240[ 8], serialnum240[ 9], serialnum240[10], serialnum240[11],
+                     serialnum240[12], serialnum240[13], serialnum240[14], serialnum240[15]
+                  );
+         ALERT_LOG(0,"serial250: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+                     serialnum240[16], serialnum240[17], serialnum240[18], serialnum240[19],
+                     serialnum240[20], serialnum240[21], serialnum240[22], serialnum240[23],
+                     serialnum240[24], serialnum240[25], serialnum240[26], serialnum240[27],
+                     serialnum240[28], serialnum240[29], serialnum240[30], serialnum240[31]
+                  );
+
+         ALERT_LOG(0,"Lisa SN: plant:%x born on year:0x%x (%d) day:0x%x (%d) sn:0x%x (%d) applenet %x-%x",
+                   *plant, *year, *year, *day, *day, 
+                   *sn, *sn, *prefix, *net);
+
+}
+
 void deserialize(DC42ImageType *F)
 {
-		 uint8 *mddftag=dc42_read_sector_tags(F,28);
-	     uint8 *mddfsec=dc42_read_sector_data(F,28);
+         uint32 plant, year, day, sn, prefix, net;
+         get_lisa_serialnumber(&plant, &year, &day, &sn, &prefix, &net);
+
+         uint8 *mddftag=dc42_read_sector_tags(F,28);
+         uint8 *mddfsec=dc42_read_sector_data(F,28);
+
+
 
 //         ALERT_LOG(0,"Disk Serial #%02x%02x%02x%02x Lisa Serial#%02x%02x%02x%02x",
 //             mddfsec[0xcc], mddfsec[0xcd], mddfsec[0xce], mddfsec[0xcf],
-//			 serialnum240[8],serialnum240[9],serialnum240[10],serialnum240[11]);
+//             serialnum240[8],serialnum240[9],serialnum240[10],serialnum240[11]);
         
-	     // Remove Lisa signature on previously used Serialized Master Disks //////////////////////////////////////////////
-	     if (mddftag[4]==0 && mddftag[5]==1 &&  // MDDF Signature
-	         mddfsec[0x0d]=='O' &&
-	         mddfsec[0x0e]=='f' &&
-	         mddfsec[0x0f]=='f' &&
-	         mddfsec[0x10]=='i' &&
-	         mddfsec[0x11]=='c' &&
-	         mddfsec[0x12]=='e' &&
-	         mddfsec[0x13]==' ' &&
-	         mddfsec[0x14]=='S' &&
-	         mddfsec[0x15]=='y' &&
-	         mddfsec[0x16]=='s' &&
-	         mddfsec[0x17]=='t' &&
-	         mddfsec[0x18]=='e' &&
-	         mddfsec[0x19]=='m'    )
-	      {
+         // Remove Lisa signature on previously used Serialized Master Disks //////////////////////////////////////////////
+         if (mddftag[4]==0 && mddftag[5]==1 &&  // MDDF Signature
+             mddfsec[0x0d]=='O' &&
+             mddfsec[0x0e]=='f' &&
+             mddfsec[0x0f]=='f' &&
+             mddfsec[0x10]=='i' &&
+             mddfsec[0x11]=='c' &&
+             mddfsec[0x12]=='e' &&
+             mddfsec[0x13]==' ' &&
+             mddfsec[0x14]=='S' &&
+             mddfsec[0x15]=='y' &&
+             mddfsec[0x16]=='s' &&
+             mddfsec[0x17]=='t' &&
+             mddfsec[0x18]=='e' &&
+             mddfsec[0x19]=='m'    )
+          {
 
+         uint32 disk_sn=(mddfsec[0xcc]<<24) | (mddfsec[0xcd]<<16) | (mddfsec[0xce]<<8) | (mddfsec[0xcf]);
 
+         ALERT_LOG(0,"Disk signed by Lisa SN: %08x (%d)",disk_sn,disk_sn);
 
-             if ( (serialnum240[8] !=mddfsec[0xcc] ||                           // If the signature on the disk does not match
-                   serialnum240[9] !=mddfsec[0xcd] ||                           // the serial number of the virtual Lisa
-                   serialnum240[10]!=mddfsec[0xce] ||                           // and the Disk's signature isn't all zeroes
-                   serialnum240[11]!=mddfsec[0xcf]   ) &&                       // we may have trouble installing LOS, so offer 
-                  (mddfsec[0xcc]|mddfsec[0xcd]|mddfsec[0xce]|mddfsec[0xcf])     // to deserialize.
-                )
+         if (disk_sn != sn && disk_sn!=0)
                 {
-		            char message[256];
-	                snprintf(message,256,
-	                         "This Master Lisa Office System Disk was signed by Lisa #%02x%02x%02x%02x%02x.  "
-	                         "Your virtual Lisa is #%02x%02x%02x%02x, which may prevent installation.  De-Serialize this disk?",
-	                         mddfsec[0xcc], mddfsec[0xcd], mddfsec[0xce], mddfsec[0xcf],mddfsec[0xd0],
-			 				 serialnum240[8],
-			 				 serialnum240[9],
-			 				 serialnum240[10],
-			 				 serialnum240[11]);
-			 				ALERT_LOG(0,message);
-	                if (yesnomessagebox(message,"De-Serialize Master Office Disk?") )
-		     	    {
-			 		   uint8 buf[512];
-			 		   memcpy(buf,mddfsec,512);
-			 		   buf[0xcc]=buf[0xcd]=buf[0xce]=buf[0xcf]=0;
-			 		   dc42_write_sector_data(F,28,buf);
-		     	    }
-	 
+                  //char message[256];
+                  //snprintf(message,256,
+                  //         "This Master Lisa Office System Disk was signed by Lisa #%x"
+                  //         "Your virtual Lisa is #%x, which may prevent installation.  De-Serialize this disk?",
+                  //         disk_sn, sn);
+                  //         ALERT_LOG(0,message);
+                  //if (yesnomessagebox(message,"De-Serialize Master Office Disk?") )
+                     {
+                        uint8 buf[512];
+                        memcpy(buf,mddfsec,512);
+                        buf[0xcc]=buf[0xcd]=buf[0xce]=buf[0xcf]=0;
+                        dc42_write_sector_data(F,28,buf);
+                     }
+     
                 }
            }
 
-	     ////   Deserialize tools on diskettes //////////////////////////////////////////////////////////////////////////////////////
-		 uint8 *ftag; //=dc42_read_sector_tags(F,28);
-	     uint8 *fsec; //=dc42_read_sector_data(F,28);
+         ////   Deserialize tools on diskettes //////////////////////////////////////////////////////////////////////////////////////
+         uint8 *ftag; //=dc42_read_sector_tags(F,28);
+         uint8 *fsec; //=dc42_read_sector_data(F,28);
          int sec;
-         for (sec=39; sec<60; sec++)
+         for (sec=32; sec<128; sec++)
              {
-	           char name[64];
-	           ftag=dc42_read_sector_tags(F,sec);
+               char name[64];
+               ftag=dc42_read_sector_tags(F,sec);
 //               ALERT_LOG(0,"Checking sector:%d fileid4=%02x",sec,ftag[4]);
 
-			   if (ftag[4]==0xff)                  // tool entry tags have tag 4 as ff, others do as well, but it's a good indicator
+               if (ftag[4]==0xff)                  // tool entry tags have tag 4 as ff, others do as well, but it's a good indicator
                {
-	              fsec=dc42_read_sector_data(F,sec);
-	              int s=fsec[0];                   // size of string (pascal string)
-	              // possible file name, very likely to be the right size.  
-	              // Look for {T*}obj.  i.e. {T5}obj is LisaList, but could have {T9999}obj but very unlikely
-	              // also check the friendly tool name size at offset 0x182.
-	
-		
-	              if (s>6 && s<10 && fsec[1]=='{' && fsec[2]=='T' && fsec[3]>='0' && fsec[3]<='9'  &&
-	                     fsec[s-3]=='}' && fsec[s-2]=='o' && fsec[s-1]=='b' && fsec[s]=='j' && fsec[0x182]<64 )
-	              {
-				
-		
-		           if (  (serialnum240[8] !=fsec[0x42] ||                           // If the signature on the disk does not match
-		                  serialnum240[9] !=fsec[0x43] ||                           // the serial number of the virtual Lisa
-		                  serialnum240[10]!=fsec[0x44] ||                           // and the Disk's signature isn't all zeroes
-		                  serialnum240[11]!=fsec[0x45]   ) &&                       // we may have trouble installing LOS, so offer 
-		                 (fsec[0x42]|fsec[0x43]|fsec[0x44]|fsec[0x45])              // to deserialize.
-		               )	                
-	                  {
-		                s=fsec[0x182];               // Size of tool name
-			            memcpy(name,&fsec[0x183],s);  // copy it over.
-		                name[s]=0;                   // string terminator.
+                  fsec=dc42_read_sector_data(F,sec);
+                  int s=fsec[0];                   // size of string (pascal string)
+                  // possible file name, very likely to be the right size.  
+                  // Look for {T*}obj.  i.e. {T5}obj is LisaList, but could have {T9999}obj but very unlikely
+                  // also check the friendly tool name size at offset 0x182.
+    
+                  if (s>6 && s<32 && fsec[1]=='{' && fsec[2]=='T' && fsec[3]>='0' && fsec[3]<='9'  &&
+                         fsec[s-3]=='}' && tolower(fsec[s-2])=='o' && tolower(fsec[s-1])=='b' && tolower(fsec[s])=='j' && fsec[0x182]<64 )
+                  {
+                    uint32 toolsn=(fsec[0x42]<<24) | (fsec[0x43]<<16) | (fsec[0x44]<<8) | fsec[0x45];
+                    if (  toolsn != sn )     
+                       {
+                        s=fsec[0x182];               // Size of tool name
+                        memcpy(name,&fsec[0x183],s);  // copy it over.
+                        name[s]=0;                   // string terminator.
 
-	                    char message[256];
-	                    snprintf(message,256,
-	                         "Found Office System tool %s serialized for Lisa #%02x%02x%02x%02x.  Your virtual Lisa is #%02x%02x%02x%02x, which may prevent installation.  De-Serialize this tool?",
+                        char message[256];
+                        snprintf(message,256,
+                             "Found Office System tool %s serialized for Lisa #%02x%02x%02x%02x.  Your virtual Lisa is #%02x%02x%02x%02x, which may prevent installation.  De-Serialize this tool?",
                              name,
-	                         fsec[0x42], fsec[0x43], fsec[0x44], fsec[0x45],
-			 				 serialnum240[8],
-			 				 serialnum240[9],
-			 				 serialnum240[10],
-			 				 serialnum240[11]);
-			 				
-	                    if (yesnomessagebox(message,"De-Serialize this Tool?") )
-	                       {
-					 		   uint8 buf[512];
-					 		   memcpy(buf,fsec,512);
-					 		   buf[0x42]=buf[0x43]=buf[0x44]=buf[0x45]=0;
-					 		   dc42_write_sector_data(F,sec,buf);
-	                       }
-                      }		
+                             fsec[0x42], fsec[0x43], fsec[0x44], fsec[0x45],
+                              serialnum240[8],
+                              serialnum240[9],
+                              serialnum240[10],
+                              serialnum240[11]);
+                             
+                        if (yesnomessagebox(message,"De-Serialize this Tool?") )
+                           {
+                                uint8 buf[512];
+                                memcpy(buf,fsec,512);
+                                buf[0x42]=buf[0x43]=buf[0x44]=buf[0x45]=0;
+                                dc42_write_sector_data(F,sec,buf);
+                           }
+                      }        
                   }
                }
-	           
-	
-	
+               
+    
+    
              }
  }
 
@@ -1568,26 +1672,10 @@ void deserialize(DC42ImageType *F)
 int floppy_insert(char *Image)     // emulator should call this when user decides to open disk image...
 {
     DC42ImageType *F;
-   //unused// char *tempbuf;
-   //unused//  int i,j;
-   //unused// uint32 datasize;
     int err=0;
     int floppynum=1;
 
-
-
-
-    // hack
-    //TWOMEGMLIM=0x003fffff;
-
-    //lisaram[0x2a4]=0x00; lisaram[0x2a5]=0x00; lisaram[0x2a6]=0x42; lisaram[0x2a7]=0x00;
-
-    //storelong(0x2a4,0x4200);            // attempt to fix bootup bug.  // hack
-
-
-
     floppy_picked=1;
-
 
     DEBUG_LOG(0,"Inserting [%s] floppy",Image);
     DEBUG_LOG(0,"MAX RAM:%08x MINRAM:%08x TOTRAM:%08X BADRAMID:%02x SYSTEMTYPE:%02x 0=lisa1, 1=lisa2, 2=lisa2+profile 3=lisa2+widget ramchkbitmap:%04x",
@@ -1605,31 +1693,17 @@ int floppy_insert(char *Image)     // emulator should call this when user decide
 
     if ( floppynum)
     {
-  //    floppy_ram[INTSTAT] |=(0x01);  fix_intstat();  IRQRingBufferAdd(IRQ_FLOPPY, 0L); floppy_FDIR=1;
-
-      //Floppy_u.fhandle=NULL;
-      //Floppy_u.readonly=1;
-
       strncpy(Floppy_u.fname,Image,255);
 
       F=&Floppy_u;
       floppy_ram[INTSTAT]|=(FLOP_IRQ_SRC_DSKIN2|FLOP_IRQ_SRC_DRV2);  fix_intstat(0);
-    //  floppy_ram[INTSTAT]|=FLOP_STAT_IRQPND;
-
-
     }
     else
     {
-      //floppy_ram[INTSTAT] |=(0x10); fix_intstat();  IRQRingBufferAdd(IRQ_FLOPPY, 0L); floppy_FDIR=1;
-
-      //Floppy_l.ramdisk_enable=1;
-      //Floppy_l.fhandle=NULL;
-      //Floppy_l.readonly=1;
       strncpy(Floppy_u.fname,Image,255);
 
       F=&Floppy_l;
 
-      //floppy_ram[INTSTAT]|=(FLOP_STAT_IRQPND)<<4;
       floppy_ram[INTSTAT]|=(FLOP_IRQ_SRC_DSKIN1|FLOP_IRQ_SRC_DRV1);  fix_intstat(0);
     }
 
@@ -1637,12 +1711,12 @@ int floppy_insert(char *Image)     // emulator should call this when user decide
     errno=0;
 
     dc42_close_image(F);                        // close any previously opened disk image
-    err=dc42_auto_open(F,Image,"wb");                 // for testing the emulator, open images as private  *CODEKARMA* *CODE DEBT * FIXME BUGBUG*
+    err=dc42_auto_open(F,Image,"wb");           // for testing the emulator, open images as private  *CODEKARMA* *CODE DEBT * FIXME BUGBUG*
     if (err)
        {
           floppy_return(F,0,FLOP_STAT_NOCLMP);  // return failed clamp status
           FloppyIRQ(1);
-          ALERT_LOG(0,"could not open: %s because:%s",Image,F->errormsg);
+          ALERT_LOG(0,"could not open: %s because:%s",Image );
           messagebox(F->errormsg, "Could not open this Floppy! Sorry!");
           append_floppy_log("Could not open floppy");
           perror("error");

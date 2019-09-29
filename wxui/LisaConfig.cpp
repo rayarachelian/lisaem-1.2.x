@@ -34,6 +34,7 @@
 #include <machine.h>
 #include <LisaConfig.h>
 
+
 extern "C"
 {
  typedef struct _lisa_clock
@@ -49,6 +50,10 @@ extern "C"
  extern t_lisa_clock lisa_clock;
 
  extern int cheat_ram_test;
+
+ extern float hidpi_scale;
+
+ extern uint8 floppy_iorom;
 }
 
 extern char *getDocumentsDir(void);
@@ -107,20 +112,16 @@ void LisaConfig::Load(wxFileConfig *config, uint8 *floppy_ram)
    myserial=config->Read(_T("/serialnumber"),_T(LISA_CONFIG_DEFAULTSERIAL));
    cheat_ram_test=(int)config->Read(_T("/cheatromtests"),1);
 
-
-
    serial1_setting = config->Read(_T("/seriala/connecta"));;
    serial1_param   = config->Read(_T("/seriala/parama"));;
    serial2_setting = config->Read(_T("/serialb/connectb"));;
    serial2_param   = config->Read(_T("/serialb/paramb"));;
 
-
-
-
    ioromstr = config->Read(_T("ioromver"));
    ioromstr=_T("0x")+ioromstr;
    if (ioromstr.ToULong(&iorom,16)==false) iorom=0xa8;
    floppy_ram[ROMVER]=(iorom & 0xff);
+   floppy_iorom=(iorom & 0xff);
    ioromstr.sprintf(_T("%02x"),(uint8)iorom);
 
    mymaxlisaram=config->Read(_T("/MemoryKB"),1024l);
@@ -170,19 +171,9 @@ void LisaConfig::Load(wxFileConfig *config, uint8 *floppy_ram)
             floppy_ram[j+30]=(uint8)(l[30]);            floppy_ram[j+31]=(uint8)(l[31]);
     }
    }
-/*
-   lisa_clock.days_h =config->Read(_T("/clock/days_h") ,0L);
-   lisa_clock.days_l =config->Read(_T("/clock/days_l" ),0L);
-   lisa_clock.hours_l=config->Read(_T("/clock/hours_l"),0L);
-   lisa_clock.mins_l =config->Read(_T("/clock/mins_l" ),0L);
-   lisa_clock.secs_l =config->Read(_T("/clock/secs_l" ),0L);
-   lisa_clock.year   =config->Read(_T("/clock/year"   ),0L);
-   lisa_clock.days_h =config->Read(_T("/clock/days_h" ),0L);
-   lisa_clock.hours_h=config->Read(_T("/clock/hours_h"),0L);
-   lisa_clock.mins_h =config->Read(_T("/clock/mins_h" ),0L);
-   lisa_clock.secs_h =config->Read(_T("/clock/secs_h" ),0L);
-   lisa_clock.tenths =config->Read(_T("/clock/tenths" ),0L);
-*/
+
+
+
 }
 
 

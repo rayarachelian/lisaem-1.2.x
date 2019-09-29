@@ -1,8 +1,8 @@
 /**************************************************************************************\
 *                             Apple Lisa 2 Emulator                                    *
 *                                                                                      *
-*              The Lisa Emulator Project  V1.0.0      REL 2007.07.07                   *
-*                  Copyright (C) 2007 Ray A. Arachelian                                *
+*              The Lisa Emulator Project  1.2.7-DEVEL_2019.09.09                  *
+*                  Copyright (C) 2018 Ray A. Arachelian                                *
 *                            All Rights Reserved                                       *
 *                                                                                      *
 *                        Reset Global Variables .c file                                *
@@ -24,7 +24,7 @@ void unvars(void)
 #undef AGLOBAL
 #undef ACGLOBAL
 
-REASSIGN(int,cheat_ram_test,1);
+REASSIGN(int,cheat_ram_test,1);  // careful if we change the type of this: `extern "C" float hidpi_scale;` in LisaConfigFrame.cpp also
 REASSIGN(int,romless,0);
 REASSIGN(int,sound_effects_on,1);
 REASSIGN(int,profile_power,127);
@@ -43,6 +43,7 @@ REASSIGN(uint32,lisa_os_mouse_y_ptr,0x488);
 REASSIGN(uint32,lisa_os_boot_mouse_x_ptr,0x486);
 REASSIGN(uint32,lisa_os_boot_mouse_y_ptr,0x488);
 REASSIGN(int8,floppy_picked,1);                         //2006.06.11 - if 1 enable profile access immediately
+REASSIGN(uint8,floppy_iorom,0);
 REASSIGN(int32,lisa_alarm,0);
 REASSIGN(uint8,lisa_clock_set_idx,0);
 REASSIGN(uint8,lisa_alarm_power,0);
@@ -86,6 +87,8 @@ REASSIGN(int,e_dirty_y_max,0);
 REASSIGN(uint8,contrast,0xff); // 0xff=black 0x80=visible 0x00=all white
 REASSIGN(uint8,volume,4); // 0x0e is the mask for this.
 REASSIGN(int,debug_log_enabled,0);
+REASSIGN(int,debug_log_onclick,0);
+REASSIGN(int,dbx,0);
 REASSIGN(int16,copsqueuelen,0);
 REASSIGN(uint8, NMIKEY,0);
 REASSIGN(uint8, cops_powerset,0);
@@ -100,8 +103,8 @@ REASSIGN(int16, last_mouse_button,0);
 REASSIGN(int16, mousequeuelen,0);
 REASSIGN(uint32,iipct_mallocs ,0);
 REASSIGN(uint32,ipcts_allocated,0);
-REASSIGN(uint32,ipcts_used,0);
-REASSIGN(uint32,ipcts_free,0);
+REASSIGN(int64,ipcts_used,0);
+REASSIGN(int64,ipcts_free,0);
 REASSIGN(uint32,initial_ipcts,4128);
 REASSIGN(XTIMER,lastrefresh,0);
 REASSIGN(XTIMER,virq_start,FULL_FRAME_CYCLES);

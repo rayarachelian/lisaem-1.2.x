@@ -271,7 +271,7 @@ typedef int32 sint32;
 #define IW_BYTES_PER_HLINE (iw_bytes_per_line)
 /*
  if (scalex==0.0 || xlens==NULL || ylens==NULL)
-	{
+    {
      uint16 i;
      // DIW_OUT_WDPI=300 ,H=300.
 
@@ -282,7 +282,7 @@ typedef int32 sint32;
      scaley=((float)(DIW_OUT_HDPI)/(float)(iw_max_hdpi));  // 300/72
 
      if (xlens==NULL) xlens=new uint16[IW_MAX_X];//(uint16 *)malloc(IW_MAX_X*sizeof(uint16));
-		if (ylens==NULL) ylens=new uint16[IW_MAX_Y]; //(uint16 *)malloc(IW_MAX_Y*sizeof(uint16));
+        if (ylens==NULL) ylens=new uint16[IW_MAX_Y]; //(uint16 *)malloc(IW_MAX_Y*sizeof(uint16));
 
      for (i=0; i<IW_MAX_X; i++) xlens[i]=(uint16)(  (float)(i) * scalex );
      for (i=0; i<IW_MAX_Y; i++) ylens[i]=(uint16)(  (float)(i) * scaley );
@@ -361,7 +361,7 @@ uint8 ImageWriter::iw_pixel_color( uint16 x, uint16 y)
 uint8 ImageWriter::iw_pixel_iwcolor(uint16 x, uint16 y)
 {
     uint16 color; //xbit, yline;
-	uint32 pixbyte;
+    uint32 pixbyte;
 
     if (x>=DIW_MAX_OX || y>=DIW_MAX_OY) return 255;
     if (scalex==0.0 || xlens==NULL || ylens==NULL) return 255;
@@ -377,15 +377,15 @@ uint8 ImageWriter::iw_pixel_iwcolor(uint16 x, uint16 y)
 
     pixbyte=(x>>1)+(y*iw_bytes_per_line); // two pixels for each byte, so divide by two.
 
-	if (x&1)
-	{
+    if (x&1)
+    {
         color=(page[pixbyte] & 0x0f);
-	}
-	else
-	{
+    }
+    else
+    {
         color=(page[pixbyte] & 0xf0)>>4;
-	}
-	return color;
+    }
+    return color;
 }
 
 
@@ -426,7 +426,7 @@ void ImageWriter::iw_plot_pin(int16 x, int16 y, int c)
      y=height-y;
 #endif
 
-    pixbyte=(x+(y*width)>>1);
+    pixbyte=(x+((y*width)>>1)); //20190825 was     pixbyte=(x+(y*width)>>1);
     if ((uint32)pixbyte>pagesize || pixbyte<0)
             {
                 fprintf(stderr,"iw_plot_pin: pixbyte out of range or null page:x,y(%d,%d) width,height(%ld,%ld), pixbyte:%ld,pagesize:%ld,page:%p\n",
@@ -437,17 +437,17 @@ void ImageWriter::iw_plot_pin(int16 x, int16 y, int c)
 
     //fprintf(stderr,"iw_plot_pin: x,y:(%d,%d) pixbyte:%d iw_bytes_per_line:%d\n",x,y,pixbyte,iw_bytes_per_line);
 
-	if (x & 1)
-	{
+    if (x & 1)
+    {
         color=(page[pixbyte] & 0x0f)+c; if ( color>15) color=15;
         page[pixbyte]=(page[pixbyte] & 0xf0) | color;
-	}
-	else
-	{
+    }
+    else
+    {
         color=((page[pixbyte] & 0xf0)>>4)+c; if ( color>15) color=15;
         page[pixbyte]=(page[pixbyte] & 0x0f) | (color<<4);
-	}
-	return;
+    }
+    return;
 
 }
 
@@ -457,7 +457,7 @@ void ImageWriter::iw_plot_pin(int16 x, int16 y, int c)
 void ImageWriter::iw_plot_inc(int16 x, int16 y)
 {
 
-	if (y>iwheight) {iw_formfeed(); return;} //20071110 - overflow onto a new page
+    if (y>iwheight) {iw_formfeed(); return;} //20071110 - overflow onto a new page
 
     if (x>iwwidth || y>iwheight || x<0 || y<0)
        {//if (debug)
@@ -541,8 +541,8 @@ void ImageWriter::iw_printbar(uint8 c,uint8 lower)
 
     //if (y>IW_MAX_Y) fprintf(stderr,"crossed over IW_MAX_Y\n");
 
-	if (x>=IW_MAX_X || y>=IW_MAX_Y) return;
-	if (lower>1) return;
+    if (x>=IW_MAX_X || y>=IW_MAX_Y) return;
+    if (lower>1) return;
 
     //for (i=0,j=1; i<8; i++, j=j<<1)  if (c & j) iw_plot_inc(x,y+i+lower);
 
@@ -593,7 +593,7 @@ void ImageWriter::iw_formfeed(void)
     }
     cursor=leftmargin;    // call to iw_cr() also sets this, not sure this is needed???
 
-	iw_reset_page();
+    iw_reset_page();
     return;
 }
 
@@ -604,14 +604,14 @@ void ImageWriter::iw_reset_vtabs(void)
     int8 i,j; //,k;
 
 
-	for (j=0; j<5; j++)
-		for (i=0; i<96; i++)
-		{
+    for (j=0; j<5; j++)
+        for (i=0; i<96; i++)
+        {
             vtabs[j][i][0]=0;  vtabs[j][i][1]=0;  vtabs[j][i][2]=0;  vtabs[j][i][3]=0;  vtabs[j][i][4]=0;  vtabs[j][i][5]=0;
             if ((i % 6)==5) vtabs[j][i][0]=1;  // set B vtab by default every 6 lines.
             if (i==66 && !(dipsw1 & 16)) vtabs[j][i][5]=1;    // set bottom of page for 66 lines
             if (i==72 && (dipsw1 & 16)) vtabs[j][i][5]=1;    // set bottom of page for 72 lines
-		}
+        }
 }
 
 
@@ -619,13 +619,13 @@ void ImageWriter::iw_reset_vtabs(void)
 void ImageWriter::iw_lf(void)
 {
 
-	if (isblank && line==1) return; // can't go backwards when already at the top of the page
+    if (isblank && line==1) return; // can't go backwards when already at the top of the page
 
 
     if (currentVCPIdiv==0) currentVCPIdiv=2;  // avoid divide by zeros
 
     if ( linefeedreverse)             // reverse line feed?
-	{
+    {
         //if (debug) printf("reverse LF!!!\n");
         if (line==0  && !(dipsw1 & 16))
                 {
@@ -637,13 +637,13 @@ void ImageWriter::iw_lf(void)
                  if (debug) fprintf(stderr,"Reverse line feed rolled over 77\n\n");
                  line=77; linepixel=iw_get_ypix(line);
                  return;}
-		else {
+        else {
             linepixel-=(currentVCPI/currentVCPIdiv);
             line--;
-		}
-	}
-	else                                  // normal line feeds.
-	{
+        }
+    }
+    else                                  // normal line feeds.
+    {
         int y;
 
         if (debug) printf("IW-LF %d,%d+%d\n",leftmargin,linepixel,currentVCPI/currentVCPIdiv);
@@ -669,7 +669,7 @@ void ImageWriter::iw_lf(void)
             return;
           }
 
-	}
+    }
 
 
 }
@@ -684,9 +684,9 @@ void ImageWriter::iw_set_vline_pos(uint16 line)
 // Print a character in the current font...
 void ImageWriter::iw_printchar( uint8 c)
 {
-	uint16 i,j,k,l;
+    uint16 i,j,k,l;
 
-	if (c<31) return; // ignore control chars -- if the main loop didn't process'em, we ignore'em.
+    if (c<31) return; // ignore control chars -- if the main loop didn't process'em, we ignore'em.
 
     if (c=='0' && slashzero) c=0; // if Slashed zero use alternate char that lives in zero.
 
@@ -694,26 +694,26 @@ void ImageWriter::iw_printchar( uint8 c)
 
 
     for ( i=0; i<livefntwidth[c];i++)
-	{
+    {
 
         j=livefont[c][i];
 
         if (underline) j=j|128;      // handle underlines.
-		if (j>256) {j=j>>1; k=1;}         // low font chars (y,j,g,q,p, etc.)
-		else k=0;
+        if (j>256) {j=j>>1; k=1;}         // low font chars (y,j,g,q,p, etc.)
+        else k=0;
 
         if (!charwidth) charwidth=1;
 
         for (l=0; l<charwidth; l++)
-		{
+        {
             iw_printbar(j,k);             // plain
             if (bold || headline) {cursor--; iw_printbar(j,k);}  // print over the same spot if bold or headline.
 
          // if headline, we print twice as wide.
             if (headline)             {iw_printbar(j,k); cursor--; iw_printbar(j,k);}
-		}
+        }
 
-	}
+    }
 
 
 // handle spaces around proportional fonts.
@@ -726,20 +726,21 @@ void ImageWriter::iw_printchar( uint8 c)
 
 void ImageWriter::test(void)
 {
-	char buffer[80];
-	int i,l,lines,lasty=0;
+    char buffer[80];
+    int i,l,lines,lasty=0;
 
-	iw_cr();
+    iw_cr();
 
-	for (lines=0; lines<400; lines++)
-	{
-	  snprintf(buffer,80,"yline=%d line #=%d height=%d lineheight=%d",linepixel,lines,iwheight,linepixel-lasty);
-	  l=strlen(buffer);
+    for (lines=0; lines<400; lines++)
+    {
+      snprintf(buffer,80,"yline=%d line #=%d height=%ld lineheight=%ld",linepixel,lines,iwheight,
+                          (long)(linepixel-lasty) );
+      l=strlen(buffer);
       
-	  for (i=0; i<l; i++) iw_printchar(buffer[i]);
-	  lasty=linepixel;
-	  iw_cr(); iw_lf();
-	}
+      for (i=0; i<l; i++) iw_printchar(buffer[i]);
+      lasty=linepixel;
+      iw_cr(); iw_lf();
+    }
 
 }
 
@@ -788,7 +789,7 @@ ImageWriter::ImageWriter(wxWindow *parent, int outputtype, wxString outfname, in
 
     if ((dipsw1 & 16) && !papery) papery=14.0;
     if (!paperx) paperx=8.5;
-	if (!papery) papery=11.0;
+    if (!papery) papery=11.0;
 
     iw_def_dpi        = DIW_DEF_DPI         ;
     iw_max_hdpi       = DIW_MAX_HDPI        ;
@@ -825,7 +826,7 @@ ImageWriter::ImageWriter(wxWindow *parent, int outputtype, wxString outfname, in
 
 void ImageWriter::iw_reset_page(void)
 {
-	iw_clear_page();
+    iw_clear_page();
     line=1;               // current Y cursor pos in lines (depends on font and pitch)
     linepixel=1;          // current Y pos in pixels
 }
@@ -837,7 +838,7 @@ void ImageWriter::iw_initialize(int full)
 
     cursor=0;             // current X cursor position of the print head in pixels.
 
-	if (full) iw_reset_page();
+    if (full) iw_reset_page();
 
     mode=IW_TEXTMODE;
     lastseq=0;
@@ -874,32 +875,32 @@ void ImageWriter::iw_initialize(int full)
 
 
     if ( (fontnumber==3 || fontnumber==7) || propspacing) // proportional?
-	{
-		for (i=0; i<128; i++)
+    {
+        for (i=0; i<128; i++)
         { livefntwidth[i]=iwpropw[fontnumber][i];
             for (j=0; j<19; j++) livefont[i][j]=iwprop[fontnumber][i][j];
-		}
-	}
-	else
-	{
-		for (i=0; i<128; i++)
+        }
+    }
+    else
+    {
+        for (i=0; i<128; i++)
         { livefntwidth[i]=8;
             for (j=0; j<8; j++) {livefont[i][j]=iwfixed[fontnumber][i][j];}
-		}
+        }
 
-	}
+    }
 
     iw_reset_vtabs();
 
     if (scalex==0.0 || xlens==NULL || ylens==NULL)
-	{
+    {
         uint16 i;
         // DIW_OUT_WDPI=300 ,H=300.
         scalex=((float)(DIW_OUT_WDPI)/(float)(iw_max_wdpi));
         scaley=((float)(DIW_OUT_HDPI)/(float)(iw_max_hdpi));
 
         if (xlens==NULL) xlens=new uint16[IW_MAX_X];//(uint16 *)malloc(IW_MAX_X*sizeof(uint16));
-		if (ylens==NULL) ylens=new uint16[IW_MAX_Y]; //(uint16 *)malloc(IW_MAX_Y*sizeof(uint16));
+        if (ylens==NULL) ylens=new uint16[IW_MAX_Y]; //(uint16 *)malloc(IW_MAX_Y*sizeof(uint16));
 
         for (i=0; i<IW_MAX_X; i++) xlens[i]=(uint16)(  (float)(i) * scalex );
         for (i=0; i<IW_MAX_Y; i++) ylens[i]=(uint16)(  (float)(i) * scaley );
@@ -939,108 +940,108 @@ void ImageWriter::ImageWriterLoop( uint8 c)
 //    #endif
 
 
-	char c2;
-	int16 page=0, line=0,i,j;
+    char c2;
+    int16 page=0, line=0,i,j;
 
     if (dipsw1 & 32) {c=c & 0x7f;} // are we filtering the high bit?
 
     //fprintf(stderr,"%02x  ",c);
     switch (mode)
-	{
-		case IW_TEXT_ESC: // Escape Mode Text.
+    {
+        case IW_TEXT_ESC: // Escape Mode Text.
 
             if (debug) printf("in ESCmode c=%c,0x%x LastSeq: %c 0x%2x submodes:%d,%d,%d,%d\n\n",(c>' ' && c<126 ? c : '?'  ),c,lastseq,lastseq, submode1, submode2, submode3, submode4);
 
             if (lastseq) // are we already in the process of handling a long escape code?  If so resume it.
-			{
+            {
                 switch(lastseq)
-				{
+                {
 
-					case 'L': // Set Left Margin.  // here I use c & 15 to get numbers since 0 may be replaced by a space. 32 & 15=0 '0' & 15=0.
+                    case 'L': // Set Left Margin.  // here I use c & 15 to get numbers since 0 may be replaced by a space. 32 & 15=0 '0' & 15=0.
                         if (debug) fprintf(stdout,"ESC L - Set Left Margin %d\n",leftmargin);
                         if (submode1==0) {leftmargin=(c & 15)*100; submode1=1; return;}
                         if (submode1==1) {leftmargin+=(c & 15)*10; submode1=2; return;}
                         if (submode1==2) {leftmargin+=(c & 15);                    return;}
                         mode=IW_TEXTMODE; return;
 
-					case 'F' : // fine position the print head at nnnn from left margin.
+                    case 'F' : // fine position the print head at nnnn from left margin.
 
                         if (submode1<4)
-						{
+                        {
                             submode1++; if (c==' ') c='0';
                             if (c<'0' || c>'9') {mode=IW_TEXTMODE; return;}
                             submode2=(submode2*10)+(c-'0');
                             if (submode1<4) return; // return on n's 0,1,2 only, on 3rd fall through.
-						}
+                        }
                         if (debug) fprintf(stdout,"ESC F %04d\n",submode2);
 
                         cursor=(leftmargin + submode2);
                         mode=IW_TEXTMODE;
-						return;
+                        return;
 
 
-					case 'T' :                      // Set Line spacing.
+                    case 'T' :                      // Set Line spacing.
                                         // 16/144
-						if (c==' ') c='0';
+                        if (c==' ') c='0';
                         if (c<'0' || c>'9')  {mode=IW_TEXTMODE; return;}
                         if (submode1==0) {submode2=c-'0'; submode1++; return;}
                         if (submode1==1)
-						{
+                        {
                             currentVCPI=(c-'0')+(submode2*10)+1;
                             //if (!currentVCPI) currentVCPI=1;
                             //fprintf(stderr,"ESC T:%d\n",currentVCPI);
-						}
+                        }
                         mode=IW_TEXTMODE; return;
 
-					case 'V' :   // print a repeating graphics upto nnnn bars of the same pattern for lines
+                    case 'V' :   // print a repeating graphics upto nnnn bars of the same pattern for lines
 
                         if (submode1<4)
-						{
+                        {
                             submode1++; if (c==' ') c='0';
                             if (c<'0' || c>'9') {mode=IW_TEXTMODE; return;}
                             submode2=(submode2*10)+(c-'0');
                             if (submode1<4) return; // return on n's 0,1,2 on 3rd one fall through.
-						}
+                        }
 
                         if (submode2) for (i=0; i<submode2; i++) iw_printbar(c,0);
                         if (debug) fprintf(stdout,"ESC V - Repeating graphic bar %x times %d\n",c,submode);
 
                         mode=IW_TEXTMODE;
-						return;
+                        return;
 
 
 
-					case 'G' :   // print raw graphics
+                    case 'G' :   // print raw graphics
                         if (submode1<4)
-						{
+                        {
                             submode1++; if (c==' ') c='0';
                             if (c<'0' || c>'9') {if (debug) printf("Exiting Graphics mode due to bad char: sub:%d,char %2x, nnn:%d\n",submode1, c, submode2);
                                 mode=IW_TEXTMODE; return;}
                             submode2=(submode2*10)+(c-'0');
-							return;
-						}
+                            return;
+                        }
 
                         if (submode2)
-						{
+                        {
                             iw_printbar(c,0); submode2--;
                             if (debug) fprintf(stdout,"Graphics Mode: cursor(%d,%d:%d)\n",cursor,linepixel,line);
                             if (!submode2) {if (debug) printf("Normal graphics exit\n");    mode=IW_TEXTMODE; // if we run out of glyphs, bail back to text mode.
-							}
+                            }
 
-						}
+                        }
                         else {mode=IW_TEXTMODE; if (debug) printf("Normal graphics exit\n");}
 
-						return;
+                        return;
 
 
-					case 'g' :   // print graphics
+                    case 'g' :   // print graphics
                         if (submode1<3)
-						{
+                        {
                             submode1++; if (c==' ') c='0';
                             if (c<'0' || c>'9') {mode=IW_TEXTMODE; return;}
                             submode2=(submode2*10)+(c-'0');
                             if (submode1<3)  return; // return on n's 0,1,2, on 3 fall through
-						}
+                        }
                         submode2=submode2<<3;  // multiply by 8 for this mode.
 
                         if (debug) fprintf(stdout,"ESC g - Graphics *8  %d submode2:%d\n",c,submode2);
@@ -1048,118 +1049,118 @@ void ImageWriter::ImageWriterLoop( uint8 c)
 
 
 
-					case 115: // proportional text mode spacing between chars.  (ESC s)
+                    case 115: // proportional text mode spacing between chars.  (ESC s)
                         if (debug) fprintf(stdout,"ESC s  - Proportional Text:%x  \n",c);
-						if (c==' ') c='0';
-						if (c<'0' || c>'9') return;
+                        if (c==' ') c='0';
+                        if (c<'0' || c>'9') return;
                         propspacing=(c - '0');
                         if (debug) fprintf(stdout,"Valid ESC s  - Proportional Text:%x  \n",c);
 
                         mode=IW_TEXTMODE;
-						return;
+                        return;
 
-					case 'I':    // about to load new character set.
+                    case 'I':    // about to load new character set.
                             // first character sent picks ascii of char to replace.
 
                         if (debug) fprintf(stdout,"ESC I  - Load new font (current:%x) char to change:%x Width:%d \n",c,submode1,submode2);
 
-                        if (submode1==0) submode1=c; return;  // submode 1 is which char.
+                        if (submode1==0) {submode1=c; return;}  // submode 1 is which char. -- had a bug here return was not inside {}
                         if (submode2==0)  // next the width of this particular character
-						{
-							if (c>='a' && c<='p')       // bottom
+                        {
+                            if (c>='a' && c<='p')       // bottom
                             {submode2=c-'a'; progfntwidth[submode1]=c-'a'; submode2=1+(progfnoffset=0); return;}
-							else if (c>='A' && c<='P')  // top
+                            else if (c>='A' && c<='P')  // top
                             {submode2=c-'A'; progfntwidth[submode1]=c-'A'; submode2=1+(progfnoffset=1); return;}
                             else {mode=IW_TEXTMODE; return;}
-						}
+                        }
                              // at this point we got ESC I,char,its width.
                              // bit 0 is top wire, bit 7 is bottom.
 
                              // bail out if we already got our bits and a control D.
                         if (c==0x04 && (submode3==progfntwidth[submode1])) {mode=IW_TEXTMODE; return;}
                         else if (submode3==progfntwidth[submode1])
-						{
+                        {
                                       // If not ^D, we're expecting more, so set the char to change to C
                                       // and switch modes back.
                             submode1=c; submode2=0; submode3=0; return;
-						}
+                        }
 
                              //           char          line
 
                         progfont[submode1][submode3++]=c;
                         if (submode3==progfntwidth[submode1]) {submode1=c; submode2=0; submode3=0;}
-						return;
+                        return;
 
 
-					case IW_REPEAT100: // repeat 100's place.
+                    case IW_REPEAT100: // repeat 100's place.
                         if (debug) fprintf(stdout,"Repeat a character 100 place. %x \n",c);
-						if (c==' ') c=0;
+                        if (c==' ') c=0;
                         if (c<'0' || c>'9') {mode=IW_TEXTMODE;return;}
                         repeatchar=0;
                         repeatchar+=(c-'0') * 100;
                         lastseq=IW_REPEAT10;
-						return;
+                        return;
 
-					case IW_REPEAT10: // repeat 100's place.
+                    case IW_REPEAT10: // repeat 100's place.
                         if (debug) fprintf(stdout,"Repeat a character 10 place. %x \n",c);
-						if (c==' ') c=0;
+                        if (c==' ') c=0;
                         if (c<'0' || c>'9') {mode=IW_TEXTMODE;return;}
                         repeatchar+=(c-'0') * 10;
                         lastseq=IW_REPEAT1;
-						return;
+                        return;
 
-					case IW_REPEAT1: // repeat 1's place.
+                    case IW_REPEAT1: // repeat 1's place.
                         if (debug) fprintf(stdout,"Repeat a character 1 place. %x \n",c);
-						if (c==' ') c=0;
+                        if (c==' ') c=0;
                         if (c<'0' || c>'9') {mode=IW_TEXTMODE;return;}
                         repeatchar+=(c-'0');
                         lastseq=0;
-						return;
-					case 'Z':       // ESC Z mode.
+                        return;
+                    case 'Z':       // ESC Z mode.
                         if (debug) fprintf(stdout,"ESC Z mode 8 bit mode if null space, @NUL sets LF to be CR %x \n",c);
                         if (submode1==0)  // ESC Z Control-A
-						{
+                        {
                             if (c==0) submode1=1280; // ESC Z NULL SPACE sets 8 bit on or off!
                             if (c==1) submode1=1;
                             if (c==64) submode1=64; // ESCZ@NUL sets LF,VT,FF to be recognized as CR
                             if (c==' ') submode1=' '; // ESCZ space NUL sets no LineFeed when buffer full (ignored in emulator.)
-							return;
-						}
+                            return;
+                        }
 
                         if (submode1==1)  // ESC Z Control-A,Control@
-							if (c==0)
-							{
+                            if (c==0)
+                            {
                                 if (debug) fprintf(stdout,"ESC Z ^A ^@ - End Slashed Zero  %x \n",c);
                                 submode1=0; lastseq=0;
                                 slashzero=0;
                                 mode=IW_TEXTMODE;
-								return;
-							}
+                                return;
+                            }
 
                         if (submode1==64)  // ESC Z @ NUL
-							if (c==0)
+                            if (c==0)
                             {submode1=0; lastseq=0;
                                 LFVTFFareCR=0;
                                 mode=IW_TEXTMODE;
                                 if (debug) fprintf(stdout,"ESC Z @ NUL - LF,VT,FF-> CR  %x \n",c);
-								return;
-							}
+                                return;
+                            }
                         if (submode1==1280)  // ESC Z  NUL 32
-							if (c==32)
+                            if (c==32)
                             {submode1=0; lastseq=0;
                                 dipsw1=dipsw1 & (255-32); // disable SW1-5 allowing 8 bit data.
                                 mode=IW_TEXTMODE;
                                 if (debug) fprintf(stdout,"ESC Z NUL 32 - Allow 8 bit data %x \n",c);
-								return;
-							}
+                                return;
+                            }
                         if (submode1==' ')  // ESC Z _ NUL
-							if (c==0)
+                            if (c==0)
                             {submode1=0; lastseq=0;
                                 AutoLFonFull=0;
                                 mode=IW_TEXTMODE;
                                 if (debug) fprintf(stdout,"ESC Z _ NUL - Disable Auto LF on buffer full %x \n",c);
-								return;
-							}
+                                return;
+                            }
 
 
                         if (debug) fprintf(stdout,"ESC Z - Disable Auto LF after each CR. %x \n",c);
@@ -1169,54 +1170,54 @@ void ImageWriter::ImageWriterLoop( uint8 c)
                         if (c==128) {submode1=128; return;}
 
                         mode=IW_TEXTMODE;
-						return;
+                        return;
 
-					case 'D':       // ESC D mode.
+                    case 'D':       // ESC D mode.
                         if (submode1==0)  // ESC D Control-A
-						{
+                        {
                             if (c==0) submode1=1280; // ESC Z NULL SPACE sets 8 bit on or off!
                             if (c==1) submode1=1;
                             if (c==64) submode1=64;
                             if (c==' ') submode1=' '; // ESCZ space NUL sets no LineFeed when buffer full (ignored in emulator.)
-							return;
-						}
+                            return;
+                        }
 
                         if (submode1==1)  // ESC D Control-A,Control@
-							if (c==0)
+                            if (c==0)
                             {submode1=0; lastseq=0;
                                 slashzero=1;
                                 mode=IW_TEXTMODE;
                                 if (debug) fprintf(stdout,"ESC D ^A ^@ Slashed Zero on   %x \n",c);
-								return;
-							}
+                                return;
+                            }
 
                         if (submode1==64)  // ESC Z @ NUL
-							if (c==0)
+                            if (c==0)
                             {submode1=0; lastseq=0;
                                 LFVTFFareCR=1;
                                 mode=IW_TEXTMODE;
                                 if (debug) fprintf(stdout,"ESC D @ NUL - LF,VT,FF ->CR on %x  \n",c);
-								return;
-							}
+                                return;
+                            }
 
 
                         if (submode1==' ')  // ESC Z space NUL
-							if (c==0)
+                            if (c==0)
                             {submode1=0; lastseq=0;
                                 AutoLFonFull=1;
                                 mode=IW_TEXTMODE;
                                 if (debug) fprintf(stdout,"ESC D 32 NUL - AutoLF on buffer full on  %x  \n",c);
-								return;
-							}
+                                return;
+                            }
 
                         if (submode1==1280)  // ESC Z  NUL 32
-							if (c==32)
+                            if (c==32)
                             {submode1=0; lastseq=0;
                                 dipsw1 |=32; // enable SW1-5 filtering 8 bit data.
                                 mode=IW_TEXTMODE;
                                 if (debug) fprintf(stdout,"ESC D NUL 32 - Ignore 8th bit on data!   %x  \n",c);
-								return;
-							}
+                                return;
+                            }
                                 //     if (submode1==' ')  // ESC Z _ NUL
                         if (debug) fprintf(stdout,"ESC D _ NUL Auto LF after CR?            %x  \n",c);
 
@@ -1225,55 +1226,57 @@ void ImageWriter::ImageWriterLoop( uint8 c)
                         if (c==128) {submode1=128; return;}
 
                         mode=IW_TEXTMODE;
-						return;
+                        return;
 
-					case 0x6c: // Disable autoCR after LF // ESC l
+                    case 0x6c: // Disable autoCR after LF // ESC l
 
                         if (debug) fprintf(stdout,"ESC l CR before LF?= %x  \n",c);
                         if (c=='1') {autoCRoff=0; lastseq=0; return;}
                         if (c=='0') {autoCRoff=1; lastseq=0; return;}
-
+                        return; // 20190831 return was missing, fallthrough
 /*                           case 0x54: // set line feed pitch.
                                       if (submode1==0) {submode1=1; submode2=((c % 10) *10); return;}
                                       if (submode1==1) {submode1=0; linefeedpitch=submode2+(c % 10); return;}
 */
 
-					case '(':  // set horizontal tabs.
+                    case '(':  // set horizontal tabs.
                         if (debug) fprintf(stdout,"ESC ( Set HTABS...   %x  \n",c);
                         if (c=='.') { mode=IW_TEXTMODE; return;}
-						if ( (c>='0' && c<='9') || c==' ')
-						{ if (c==' ') c='0';
+                        if ( (c>='0' && c<='9') || c==' ')
+                        { if (c==' ') c='0';
                             submode2=(c-'0'+(submode2*10)) & 255;
                             tabs[submode1]=submode2 * currentCPI;
-							return;
-						}
+                            return;
+                        }
                         if (c==',') {submode1++; submode2=0; submode1 &=0x1f; return;}
-                        mode=IW_TEXTMODE; return;
+                        
+                        mode=IW_TEXTMODE; 
+                        return;
 
-					case ')': // clear an individual horizontal tab
+                    case ')': // clear an individual horizontal tab
                         if (debug) fprintf(stdout,"ESC ( Clea an HTABS...   %x  \n",c);
-						if (c==' ') c='0';
+                        if (c==' ') c='0';
                         if (c>='0' && c<='9') submode2=c-'0' + (10*submode2);
                         submode1++;
                         if (submode1>=3)
                         { for (i=0; i<32; i++) if (tabs[i]==submode2) tabs[i]=0; mode=IW_TEXTMODE;}
 
-						return;
+                        return;
 
 
                     default:      mode=IW_TEXTMODE;
                         fprintf(stdout,"** BAD ESC Sequence!!!  %x  \n",c);
-						return;
+                        return;
 
-				}
-			}
+                }
+            }
             lastseq=0;
             submode1=0;
             submode2=0;
             submode3=0;
 
-			switch(c)
-			{
+            switch(c)
+            {
 
          // Monospace font sizes:
                 case 'n': fontnumber=0; mode=IW_TEXTMODE;return;            // 9 cpi    72dpi  576dots per line extended
@@ -1287,9 +1290,9 @@ void ImageWriter::ImageWriterLoop( uint8 c)
                 case 'q': fontnumber=5; mode=IW_TEXTMODE;return;            // 15cpi   120dpi  960dots per line Condensed.
                 case 'Q': fontnumber=6; mode=IW_TEXTMODE;return;            // 17cpi   136dpi 1088dots per line UltraCondensed.
 
-				case 115: // proportional text mode.  Next char is size of dots between chars.
+                case 115: // proportional text mode.  Next char is size of dots between chars.
                     lastseq=115;
-					return;
+                    return;
          // proportional spacing for selected chars in elite font only.
                 case '1': if (fontnumber==3) elitespacing=1;    mode=IW_TEXTMODE; return;
                 case '2': if (fontnumber==3) elitespacing=2;    mode=IW_TEXTMODE; return;
@@ -1303,7 +1306,7 @@ void ImageWriter::ImageWriterLoop( uint8 c)
 
          // direct graphics printing.
 
-				case 'G' :                     // both ESC G and ESC S are identical in function.
+                case 'G' :                     // both ESC G and ESC S are identical in function.
                 case 'S' : if (debug) fprintf(stdout,"ESC S = ESC G Switching lastseq to G\n");
                     lastseq='G'; return;
 
@@ -1327,34 +1330,43 @@ void ImageWriter::ImageWriterLoop( uint8 c)
 
          // custom or normal font selection.
 
-				case '\'':                     // switch to custom font
+                case '\'':                     // switch to custom font
 
                     memcpy(livefont,progfont,(128*16*sizeof(int16)));
                     memcpy(livefntwidth,progfntwidth,(sizeof(int8)*128));
                     mode=IW_TEXTMODE; return;
-				case '*' :                     // switch to custom font high bit chars.
+                case '*' :                     // switch to custom font high bit chars.
 
                     memcpy(livefont,&progfont[128],(128*16*sizeof(int16)));
                     memcpy(livefntwidth,&progfntwidth[128],(sizeof(int8)*128));
                     mode=IW_TEXTMODE; return;
 
-				case '$' :                     // switch to normal font.
+                case '$' :                     // switch to normal font.
 
                     if ( (fontnumber==3 || fontnumber==7) || propspacing)             // which font? Proportional or fixed?
-					{
-						for (i=0; i<128; i++)
-                        { livefntwidth[i]=iwpropw[fontnumber][i];
-                            for (j=0; j<18; j++) livefont[i][j]=iwprop[fontnumber][i][j];
-						}
-					}
-					else
-					{
-						for (i=0; i<128; i++)
-                        { livefntwidth[i]=8;
-                            for (j=0; j<18; j++) livefont[i][j]=iwfixed[fontnumber][i][j];
-						}
+                    {
+                        for (int i=0; i<128; i++)
+                        {
+                            livefntwidth[i]=iwpropw[fontnumber][i];
+                            for (int j=0; j<18; j++) livefont[i][j]=iwprop[fontnumber][i][j];
+                        }
+                    }
+                    else
+                    {
+                        // getting a warning here but: imagewriter-wx.h:    int16 livefont[256][19];     // live font (95-8*16 or 175-8*8) 175 chars max 16 lines each
+                        // 
+                        // imagewriter-wx.cpp:1354:89: warning: iteration 8u invokes undefined behavior [-Waggressive-loop-optimizations]
+                        // uint16 iwfixed[8][128][8] = {
+                        // uint16 iwprop [8][128][19] = 
+                        //  int16 livefont  [256][19];     // live font (95-8*16 or 175-8*8) 175 chars max 16 lines each
 
-					}
+                        for (int i=0; i<128; i++)
+                            {
+                                livefntwidth[i]=8; // 20190825 vvv was j<18 in for loop below
+                                for (int j=0; j<8; j++) livefont[i][j]=iwfixed[fontnumber][i][j];
+                            }
+
+                    }
                     mode=IW_TEXTMODE; return;
 
 
@@ -1401,9 +1413,9 @@ void ImageWriter::ImageWriterLoop( uint8 c)
 
          // Forward or Reverse Line Feeds.
                 case 'r': {linefeedreverse=1; mode=IW_TEXTMODE;  if (debug) fprintf(stdout,"!! Reverse Line Feed used !!\n");
-						return;}
+                        return;}
                 case 'f': {linefeedreverse=0; mode=IW_TEXTMODE;  if (debug) fprintf(stdout,"Forward LF selected.!!\n");
-						return;}
+                        return;}
 
          // ESC v is Set Top of Form.  we can likely ignore this.
                 case 'v': iw_settopofform();  // might need to implement this -- or not.
@@ -1423,26 +1435,26 @@ void ImageWriter::ImageWriterLoop( uint8 c)
                     //20070320//iw_formfeed();
                     iw_initialize(0);
                     mode=IW_TEXTMODE;
-					return;
+                    return;
 
      // Set Horizontal tabs.  ESC ( nnn,nnn,nnn. Leading n's can be 0's or spaces. End with a dot.
                 case '(': lastseq='('; submode1=0; submode2=0; submode3=0; return;
 
 
-				case 'u': // set the current position as a tab stop.
+                case 'u': // set the current position as a tab stop.
                     if (cursor)
-					{
-						for (i=0; i<32; i++)
+                    {
+                        for (i=0; i<32; i++)
                             if (tabs[i]==0) {tabs[i]=cursor; i=32;}
-					}
+                    }
                     mode=IW_TEXTMODE; return;
 
 
-				case '0': // clear all tabs
+                case '0': // clear all tabs
                     for (i=0; i<32; i++) tabs[i]=0;
                     mode=IW_TEXTMODE; return;
 
-				case ')': // clear a specific tab
+                case ')': // clear a specific tab
                     lastseq=')'; submode1=0; submode2=0; submode3=0; return;
 
 
@@ -1450,9 +1462,9 @@ void ImageWriter::ImageWriterLoop( uint8 c)
                 default: fprintf(stderr,"IW:*** UNKNOWN ESC SEQUENCE %c %x %d\n",c,c,c);
 
                     mode=IW_TEXTMODE; return;  // ignore unknown esc sequences.
-			}
+            }
 
-		case IW_TEXT_CTRLA: // so far this is only to set slashed zeros or not.  Might need to expand this, this is ignored now.
+        case IW_TEXT_CTRLA: // so far this is only to set slashed zeros or not.  Might need to expand this, this is ignored now.
 
             if (c==0) {mode=IW_TEXTMODE; return;  }
 
@@ -1460,24 +1472,24 @@ void ImageWriter::ImageWriterLoop( uint8 c)
 
 
 
-		case IW_TEXTMODE:
-			switch (c)
-			{
-				case 27: // escape character.
+        case IW_TEXTMODE:
+            switch (c)
+            {
+                case 27: // escape character.
                     lastseq=0; submode1=0; submode2=0; submode3=0;
                     mode=IW_TEXT_ESC;
-					return;
+                    return;
 
-				case 1:  // control-A;          // also used to go to next top of page or bottom of page vtab???
+                case 1:  // control-A;          // also used to go to next top of page or bottom of page vtab???
                     mode=IW_TEXT_CTRLA;
-					return;
+                    return;
 
 
-				case 0x1f :                     // control_ (control under line)
+                case 0x1f :                     // control_ (control under line)
                     mode=IW_TEXT_CTRLUL; return;
 
 
-				case 12 :    // control L -- jump to next page (page feed.)
+                case 12 :    // control L -- jump to next page (page feed.)
                     page=currentformnumber; currentformnumber=((page+1) % 5);
 
                     for (i=0; i<96; i++) if (vtabs[page][i][5]) {iw_set_vline_pos(i); return;}
@@ -1486,27 +1498,27 @@ void ImageWriter::ImageWriterLoop( uint8 c)
                     iw_formfeed(); return;
 
 
-				case 0x1d: // 0x1d mode - used to set top of form
+                case 0x1d: // 0x1d mode - used to set top of form
                     mode=IW_TEXT_0X1D;     submode=0; submode1=0; submode2=0;
-					return;
+                    return;
 
 
-				case 10: // line feed
+                case 10: // line feed
                     if (debug) fprintf(stdout,"Got LF from IW, AutoCRoff:%d, LFVTFFareCR:%d AutoCR Condition %d\n",autoCRoff,LFVTFFareCR,((!autoCRoff || LFVTFFareCR) ));
                     iw_lf();
                     if (!autoCRoff || LFVTFFareCR) iw_cr();
-					return;
+                    return;
 
-				case 9     : // tab ^I=TAB  horizontal tab
+                case 9     : // tab ^I=TAB  horizontal tab
                     // Find nearest tab to the right of the print head.
-					j=0;
+                    j=0;
                     for (i=0; i<32; i++) if (tabs[i]>cursor) if (tabs[i]<j) j=tabs[i];
                     // jump to that if its found.
 
                     if (debug) fprintf(stdout,"^I (Tab) from %d to %d (ignore if 0)\n",cursor,j);
 
                     if (j) cursor=j;
-					return;
+                    return;
 
     /*    case 12: // form feed. OLD CODE... Handled above a better way...
                    if (LFVTFFareCR) // If LFVTFFareCR mode feed a CR first.
@@ -1515,11 +1527,11 @@ void ImageWriter::ImageWriterLoop( uint8 c)
                     iw_cr();
                    }
     */
-				case 13: // carriage return
+                case 13: // carriage return
                     if (debug) fprintf(stdout,"Got CR from IW, AutoLF is %d\n",autoLF);
                     if (autoLF) iw_lf();
                     iw_cr();
-					return;
+                    return;
 
 
         /* case 31: // multiple line feeds.  Gonna treat this like a fake escape code.
@@ -1535,28 +1547,28 @@ void ImageWriter::ImageWriterLoop( uint8 c)
                 case 14      : headline=1; lastseq=0; mode=IW_TEXTMODE; return; // ^N
                 case 15      : headline=0; lastseq=0; mode=IW_TEXTMODE; return; // ^O
 
-				case 24      : // Control X cancels any unprinted characters in the buffer.
+                case 24      : // Control X cancels any unprinted characters in the buffer.
                        // for now we're gonna ignore this.  We can implement it later, but
                        // our IW model is that we print all we receive as we receive it.
                        // We'll implement this if it's found that it's used by real software.
-	               // Note that the Lisa sends a bunch of these before every print job to
-	               // flush any jobs in the buffer...  Shouldn't affect us at all.
+                   // Note that the Lisa sends a bunch of these before every print job to
+                   // flush any jobs in the buffer...  Shouldn't affect us at all.
                     lastseq=0; mode=IW_TEXTMODE; return;
 
                 default: iw_printchar(c); return;
 
 
-			}
-		case IW_TEXT_0X1D : // TOP of FORM for setting vertical tabs is 0x1d 0x41 0x40 -- not sure how this should be...
+            }
+        case IW_TEXT_0X1D : // TOP of FORM for setting vertical tabs is 0x1d 0x41 0x40 -- not sure how this should be...
             if ( c==65 && submode==0) {submode=1; submode1=0; iw_settopofform();return;       }
             if ( c==64 && submode==1)
-            {submode=2; submode1=0; submode2=0; submode3=0; submode4=(uint16)-1; return; }
+               {submode=2; submode1=0; submode2=0; submode3=0; submode4=(uint16)-1; return; }
 
             page=submode3;
             line=submode4+1;
 
             if (submode==2)
-			{
+            {
                 if (submode2==0) {submode2=c; return;}
 
                 c2=submode2; submode2=0; submode3=0;
@@ -1617,47 +1629,44 @@ void ImageWriter::ImageWriterLoop( uint8 c)
                     submode3=page; submode4=line; return;}  // BCDEF
 
 
-				if (c=='C' && c2=='@') {// set bottom of form
+                if (c=='C' && c2=='@') {// set bottom of form
                     vtabs[page][line][5]=1;
                     submode3=page; submode4=line; return;}
 
 
 
-				if (c=='A' && c2=='@') {// A@(Control-) (30 or 0x1e) set next page;
+                if (c=='A' && c2=='@') {// A@(Control-) (30 or 0x1e) set next page;
                     submode3=page; submode4=line; return;}
 
                 if (c==0x1e) {submode3=page; submode4=line; return;}  // eat control - from A@^- this is cheating, I know.
+            }
+            return;  //20190901
 
+        case  IW_TEXT_CTRLUL:
 
-
-			}
-
-
-		case  IW_TEXT_CTRLUL:
-
-			if (c>='A' && c<='F')
-			{
-				if ( c=='A') c='G';
-				c-='B';
-				for (i=0; i<96; i++)
+            if (c>='A' && c<='F')
+            {
+                if ( c=='A') c='G';
+                c-='B';
+                for (i=0; i<96; i++)
                     if (vtabs[page][i][c])
                     { iw_set_vline_pos(i);
                         mode=IW_TEXTMODE; submode1=0;submode2=0;submode3=0;submode4=0;
-						return; }
+                        return; }
                     // at this point, we didn't find what we were looking for, so we have to jump to next BOF.
-				for (i=0; i<96; i++)
+                for (i=0; i<96; i++)
                     if (vtabs[page][i][5])
                     { iw_set_vline_pos(i);
                         mode=IW_TEXTMODE; submode1=0;submode2=0;submode3=0;submode4=0;
-						return; }
+                        return; }
 
                 // we didn't find the next BOF, we go to the next page
                 //fprintf(stderr,"FF via CONTROL_ (bottom of form)\n");
                 fprintf(stderr,"formFeed due to not finding next bottom of form");
                 iw_formfeed();
                 mode=IW_TEXTMODE; submode1=0;submode2=0;submode3=0;submode4=0;
-				return;
-			}
+                return;
+            }
             mode=IW_TEXTMODE; submode1=0;submode2=0;submode3=0;submode4=0; return;
 
   /* case IW_TEXT_GS:                      // set vertical tabs to power on status, TOF to current position.
@@ -1668,9 +1677,9 @@ void ImageWriter::ImageWriterLoop( uint8 c)
                  }
 */
             mode=IW_TEXTMODE; submode1=0;submode2=0;submode3=0;submode4=0; return;
-		default:
+        default:
             mode=IW_TEXTMODE; submode1=0;submode2=0;submode3=0;submode4=0; return;
-	}
+    }
 
 }
 
@@ -1716,7 +1725,7 @@ void ImageWriter::iw_spitout_wx(void)
 #define IW_CALLBACK  3
 // callback should pass pagenum as int and the wxBitmap
 
-if (isblank) return;	
+if (isblank) return;    
 
 uint8 bmphdr[]=
 {

@@ -637,9 +637,10 @@ static inline void on_read_irq_handle(int port)
   if (!scc_w[port].s.wr9.r.MIE) return;
 
   switch(scc_w[port].s.wr1.r.rxintmode)
-  {   case 1 : scc_w[port].s.wr1.r.rxintmode=0;                            // clear mode, then fall through
+  {   case 1 : scc_w[port].s.wr1.r.rxintmode=0;                            // clear mode, then 
+               /* FALLTHRU */
       case 2 : if (!port) scc_r[1].s.rr3.r.ch_b_rx_irq_pending=1;          // RR3A
-               else       scc_r[1].s.rr3.r.ch_a_rx_irq_pending=1;          // fall through to return
+               else       scc_r[1].s.rr3.r.ch_a_rx_irq_pending=1;          /* FALLTHRU */
       default: return;                                                     // case 0,3 - just return, not applicable
   }
 }
@@ -650,11 +651,10 @@ static inline void on_special_irq_handle(int port)
   if (!scc_w[port].s.wr9.r.MIE) return;
 
   switch(scc_w[port].s.wr1.r.rxintmode)
-  {   case 1 : scc_w[port].s.wr1.r.rxintmode=0;                            // clear mode and fall through
-      case 2 :                                                             // fall through to 3
+  {   case 1 : scc_w[port].s.wr1.r.rxintmode=0;                            /* FALLTHROUGH */
+      case 2 :                                                             /* FALLTHROUGH */
       case 3 : if (!port) scc_r[1].s.rr3.r.ch_b_ext_status_irq_pending=1;  // set IRQ for the port
-               else       scc_r[1].s.rr3.r.ch_a_ext_status_irq_pending=1;  // fall through to return
-      default: return;                                                     // case 0 - return
+               else       scc_r[1].s.rr3.r.ch_a_ext_status_irq_pending=1;
   }
 }
 
@@ -1119,7 +1119,7 @@ uint8 lisa_rb_Oxd200_sccz8530(uint32 address)
         case  SERIAL_PORT_A_DATA:    access=1; port=1; break;
         default: DEBUG_LOG(0,"Warning invalid access! %08x",address);
                  return 0;                   // invalid address, just ignore it.
-	}
+    }
    DEBUG_LOG(0,"SRC:SCC: access:%d port %d",access,port);
 
 
@@ -1161,8 +1161,8 @@ uint8 lisa_rb_Oxd200_sccz8530(uint32 address)
               #ifdef ENHANCED_Z85C30
                if (scc_r[port].w[15] & 4) return BITORD((scc_w[port].w[4]));
               #endif
-
-              // fall through to return rr0.
+              // to return rr0
+              /* FALLTHRU */ 
 
      case  0: DEBUG_LOG(0,"Read from register 0");
 
@@ -1237,7 +1237,7 @@ uint8 lisa_rb_Oxd200_sccz8530(uint32 address)
                if (scc_r[port].w[15] & 4) return BITORD((scc_w[port].w[5]));
               #endif
               // fall through to return rr1
-
+               /* FALLTHROUGH */
      case  1: DEBUG_LOG(0,"Read from register 1");
 
               scc_r[port].s.rr1.r.rx_overrun_error=fliflo_buff_is_full(&SCC_READ[port]);
@@ -1269,7 +1269,7 @@ uint8 lisa_rb_Oxd200_sccz8530(uint32 address)
                if (scc_r[port].w[15] & 4) return BITORD((scc_r[port].r[6]));
               #endif
               // fall through to rr2
-
+               /* FALLTHROUGH */
      case  2: DEBUG_LOG(0,"Read from register 2");
 
               //scc_r[port].r[2]=scc_w[0].w[2];  // there is only one port 2!
@@ -1290,15 +1290,11 @@ uint8 lisa_rb_Oxd200_sccz8530(uint32 address)
                     *** es the INT pin to return High, the IEO pin to go Low, and
                     *** sets the IUS latch for the highest priority interrupt pending.
               */
-
-
 //V3|V2|V1 Status High/Status Low =0
 //V4|V5|V6 Status High/Status Low =1
-
               DEBUG_LOG(0,"About to read register 2 which contains %02x, (reordered is %02x) on port %d - z8530_last_irq_status_bits is:%02x",
                     scc_r[port].r[2],BITORD(scc_r[port].r[2]),
                     port,z8530_last_irq_status_bits);
-
 
               if (port)
                {
@@ -1344,7 +1340,7 @@ uint8 lisa_rb_Oxd200_sccz8530(uint32 address)
                if (scc_r[port].w[15] & 4) return BITORD((scc_r[port].r[7]));
               #endif
               // fall through to rr3
-
+              /* FALLTHROUGH */
      case  3: DEBUG_LOG(0,"Read from register 3 irq pending");
               {
               uint8 ret=BITORD(scc_r[port].r[3]);                // IRQ pending.  These must be set by loop IRQ routine!
@@ -1360,7 +1356,7 @@ uint8 lisa_rb_Oxd200_sccz8530(uint32 address)
               #ifdef ENHANCED_Z85C30
                  if (scc_r[port].w[15] & 4) return BITORD((scc_w[port].w.w7prime));
               #endif
-              // fall through for rr10
+               /* FALLTHROUGH */
      case 10: DEBUG_LOG(0,"Read from register 10 - returning 0 - sdlc not implemented");
               return 0;
              // return  BITORD(scc_r[port].r[10]);             // sdlc not implemented
@@ -1373,7 +1369,7 @@ uint8 lisa_rb_Oxd200_sccz8530(uint32 address)
               #ifdef ENHANCED_Z85C30
                  if (scc_r[port].w[15] & 4) return BITORD((scc_w[port].w[3]));
               #endif
-              // fall through to 13
+              /* FALLTHROUGH */
      case 13: DEBUG_LOG(0,"Read from register 13");            // return wr13
               return  BITORD(scc_w[port].w[13]);
 
@@ -1382,7 +1378,7 @@ uint8 lisa_rb_Oxd200_sccz8530(uint32 address)
               #ifdef ENHANCED_Z85C30
                  if (scc_r[port].w[15] & 4) return BITORD((scc_w[port].w[10]));
               #endif
-              // fall through to rr15
+              /* FALLTHROUGH */
      case 15: DEBUG_LOG(0,"Read from register 15");
               return  BITORD(scc_w[port].w[15]);               // return wr15
    }
@@ -1393,43 +1389,43 @@ uint8 lisa_rb_Oxd200_sccz8530(uint32 address)
    if ( (scc_w[port].w[15] & 4)==4 && (scc[port].w[17] & 32)==0)              // WR15 D2=1
    switch ( regnum)
    {
-     case  0: return   scc_r[port].r[0];
-     case  1: return   scc_r[port].r[1];
-     case  2: return   scc_r[port].r[2];
-     case  3: return   scc_r[port].r[3];
+     case  0: return   (scc_r[port].r[0]);
+     case  1: return   (scc_r[port].r[1]);
+     case  2: return   (scc_r[port].r[2]);
+     case  3: return   (scc_r[port].r[3]);
      case  4: return   (scc_r[port].r[0]);
      case  5: return   (scc_r[port].r[1]);
-     case  6: return   scc_r[port].r[6];
-     case  7: return   scc_r[port].r[7];
-     case  8: return   scc_r[port].r[8];
+     case  6: return   (scc_r[port].r[6]);
+     case  7: return   (scc_r[port].r[7]);
+     case  8: return   (scc_r[port].r[8]);
      case  9: return   (scc_r[port].r[13]);
-     case 10: return   scc_r[port].r[10];
+     case 10: return   (scc_r[port].r[10]);
      case 11: return   (scc_r[port].r[15]);
-     case 12: return   scc_r[port].r[12];
-     case 13: return   scc_r[port].r[13];
-     case 14: return   scc_r[port].r[14];
-     case 15: return   scc_r[port].r[15];
+     case 12: return   (scc_r[port].r[12]);
+     case 13: return   (scc_r[port].r[13]);
+     case 14: return   (scc_r[port].r[14]);
+     case 15: return   (scc_r[port].r[15]);
    }
 
    if ( (scc_w[port].w[15] & 4)==4 && (scc_w[port].w[17] & 32)==32)  // WR15 D2=1, WR7' D6=1
    switch (regnum)
    {
-     case  0: return   scc_r[port].r[0];
-     case  1: return   scc_r[port].r[1];
-     case  2: return   scc_r[port].r[2];
-     case  3: return   scc_r[port].r[3];
+     case  0: return   (scc_r[port].r[0]);
+     case  1: return   (scc_r[port].r[1]);
+     case  2: return   (scc_r[port].r[2]);
+     case  3: return   (scc_r[port].r[3]);
      case  4: return   (scc_w[port].w[4]);
      case  5: return   (scc_w[port].w[5]);
-     case  6: return   scc_r[port].r[6];
-     case  7: return   scc_r[port].r[7];
-     case  8: return   scc_r[port].r[8];
+     case  6: return   (scc_r[port].r[6]);
+     case  7: return   (scc_r[port].r[7]);
+     case  8: return   (scc_r[port].r[8]);
      case  9: return   (scc_w[port].w[3]);
-     case 10: return   scc_r[port].r[10];
+     case 10: return   (scc_r[port].r[10]);
      case 11: return   (scc_w[port].w[10]);
-     case 12: return   scc_r[port].r[12];
-     case 13: return   scc_r[port].r[13];
+     case 12: return   (scc_r[port].r[12]);
+     case 13: return   (scc_r[port].r[13]);
      case 14: return   (scc_w[port].w[17]);
-     case 15: return   scc_r[port].r[15];
+     case 15: return   (scc_r[port].r[15]);
    }
 
 }  // end of read fn
@@ -1541,22 +1537,22 @@ char read_serial_port(int8 port)                            // generic handler
     DEBUG_LOG(0,"r %p %p w %p %p",SCC_READ[0].buffer,&SCC_READ[1].buffer,SCC_WRITE[0].buffer,SCC_WRITE[1].buffer);
     DEBUG_LOG(0,"SRC:port:%d",port);
     if (port)
-	{
+    {
         if (serial_a==SCC_NOTHING)     return 0;
         if (serial_a==SCC_IMAGEWRITER) return 0;
         if (serial_a==SCC_LOCALPORT)
         {if (scc_a_port_F) return fgetc(scc_a_port_F); else return 0;}
-	}
-	else
-	{
+    }
+    else
+    {
 
         if (serial_b==SCC_NOTHING)     return 0;
         if (serial_b==SCC_IMAGEWRITER) return 0;
         if (serial_b==SCC_LOCALPORT)
         {if (scc_b_port_F) return fgetc(scc_b_port_F);}
-	}
+    }
 
-	return 0;
+    return 0;
 }
 
 
@@ -1585,31 +1581,31 @@ void write_serial_port(int8 port, char data)
     DEBUG_LOG(0,"r %p %p w %p %p",SCC_READ[0].buffer,&SCC_READ[1].buffer,SCC_WRITE[0].buffer,SCC_WRITE[1].buffer);
     DEBUG_LOG(0,"SRC:port:%d",port);
     if (port)
-	{
+    {
         if (serial_a==SCC_NOTHING)     return;
         if (serial_a==SCC_LOOPBACKPLUG) {fliflo_buff_add(&SCC_READ[port],data & scc_bits_per_char_mask[port]); return;}
         if (serial_a==SCC_IMAGEWRITER)
-		{
+        {
             if (scc_a_IW!=-1)      ImageWriterLoop(scc_a_IW,data);
             return;
-		}
+        }
 
         if (serial_a==SCC_LOCALPORT) {if (scc_a_port_F) fputc(data,scc_a_port_F);}
         return;
-	}
-	else
-	{
+    }
+    else
+    {
 
         if (serial_b==SCC_NOTHING)     return;
         if (serial_b==SCC_LOOPBACKPLUG) {fliflo_buff_add(&SCC_READ[port],data & scc_bits_per_char_mask[port]); return;}
         if (serial_b==SCC_IMAGEWRITER)
-		{
+        {
             if (scc_b_IW!=-1)
                 ImageWriterLoop(scc_b_IW,data);
             return;
-		}
+        }
         if (serial_b==SCC_LOCALPORT) {if (scc_b_port_F) fputc(data,scc_b_port_F);}
-	}
+    }
 
     return;
 }
@@ -1785,6 +1781,7 @@ int poll_telnet_serial_read(int portnum)
     if (received>0)
     {
        if (buffer[portnum][0]==0xff)  // special telnet sequence?
+       {
         switch (buffer[portnum][1])   // 3=^C, 8=^H
         {
           case 0xf3: return -2;  // printf("break\n");         break;
@@ -1804,12 +1801,13 @@ int poll_telnet_serial_read(int portnum)
 
           default:   return -1;  // printf("unknown\n");  break;
         }
-        buffer[portnum][1]=0; buffer[portnum][2]=0; // clear remaining buffers
-        DEBUG_LOG(0,"Got %c %02x",buffer[portnum][0],buffer[portnum][0]);
-
-        return buffer[portnum][0];
       }
+      buffer[portnum][1]=0; buffer[portnum][2]=0; // clear remaining buffers
+      DEBUG_LOG(0,"Got %c %02x",buffer[portnum][0],buffer[portnum][0]);
+
+      return buffer[portnum][0];
   }
+ }
 
  return -1;                              // nothing for the client to deal with
 }

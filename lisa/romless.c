@@ -180,267 +180,267 @@ static uint8  romless_loram[0x560]=
 
 void romless_setvia_and_flopram(int profileboot)
 {
-	if (profileboot )  //0=profile, 1=floppy
+    if (profileboot )  //0=profile, 1=floppy
 
-	{
-	// booted from floppy ////////////
+    {
+    // booted from floppy ////////////
 
-	via[1].active=0x01;
-	via[1].vianum=0x01;
-	via[1].via[0]=0x01;
-	via[1].via[1]=0x06;
-	via[1].via[2]=0xaf;
-	via[1].via[3]=0x00;
-	via[1].via[4]=0x00;
-	via[1].via[5]=0x00;
-	via[1].via[6]=0x00;
-	via[1].via[7]=0x00;
-	via[1].via[8]=0x00;
-	via[1].via[9]=0x00;
-	via[1].via[10]=0x0f;
-	via[1].via[11]=0x01;
-	via[1].via[12]=0xc9;
-	via[1].via[13]=0x82;
-	via[1].via[14]=0x82;
-	via[1].via[15]=0x00;
-	via[1].via[16]=0x20;
-	via[1].via[17]=0x00;
-	via[1].via[18]=0x06;
-	via[1].via[19]=0x7c;
-	via[1].via[20]=0x00;
-	via[1].via[21]=0x00;
-	via[1].last_a_accs=0;
-	via[1].orapending=1;
-	via[1].t1_e=(XTIMER)-1;
-	via[1].t1_fired=(XTIMER)12;
-	via[1].t2_e=(XTIMER)-1;
-	via[1].t2_fired=(XTIMER)0;
-	via[1].sr_e=(XTIMER)0;
-	via[1].sr_fired=(XTIMER)0;
-	via[1].t1_set_cpuclk=(XTIMER)4174038;
-	via[1].t2_set_cpuclk=(XTIMER)504058877;
-	via[1].t1_fired_cpuclk=(XTIMER)4174166;
-	via[1].t2_fired_cpuclk=(XTIMER)504058877;
-	via[1].irqnum=0x02;
-	via[1].srcount=0x00;
-	via[1].ca1=0x00;
-	via[1].ca2=0x00;
-	via[1].cb1=0x00;
-	via[1].cb2=0x00;
-	via[2].active=0x01;
-	via[2].vianum=0x02;
-	via[2].via[0]=0xfa;
-	via[2].via[1]=0x00;
-	via[2].via[2]=0x9c;
-	via[2].via[3]=0x00;
-	via[2].via[4]=0x00;
-	via[2].via[5]=0x00;
-	via[2].via[6]=0x00;
-	via[2].via[7]=0x00;
-	via[2].via[8]=0x00;
-	via[2].via[9]=0x00;
-	via[2].via[10]=0x00;
-	via[2].via[11]=0x00;
-	via[2].via[12]=0x6b;
-	via[2].via[13]=0x42;
-	via[2].via[14]=0x00;
-	via[2].via[15]=0x00;
-	via[2].via[16]=0x00;
-	via[2].via[17]=0x00;
-	via[2].via[18]=0x01;
-	via[2].via[19]=0x00;
-	via[2].via[20]=0x72;
-	via[2].via[21]=0xfa;
-	via[2].last_a_accs=1;
-	via[2].orapending=0;
-	via[2].t1_e=(XTIMER)-1;
-	via[2].t1_fired=(XTIMER)7;
-	via[2].t2_e=(XTIMER)-1;
-	via[2].t2_fired=(XTIMER)0;
-	via[2].sr_e=(XTIMER)0;
-	via[2].sr_fired=(XTIMER)0;
-	via[2].t1_set_cpuclk=(XTIMER)949960;
-	via[2].t2_set_cpuclk=(XTIMER)0;
-	via[2].t1_fired_cpuclk=(XTIMER)951976;
-	via[2].t2_fired_cpuclk=(XTIMER)0;
-	via[2].irqnum=0x01;
-	via[2].srcount=0x00;
-	via[2].ca1=0x00;
-	via[2].ca2=0x00;
-	via[2].cb1=0x00;
-	via[2].cb2=0x00;
+    via[1].active=0x01;
+    via[1].vianum=0x01;
+    via[1].via[0]=0x01;
+    via[1].via[1]=0x06;
+    via[1].via[2]=0xaf;
+    via[1].via[3]=0x00;
+    via[1].via[4]=0x00;
+    via[1].via[5]=0x00;
+    via[1].via[6]=0x00;
+    via[1].via[7]=0x00;
+    via[1].via[8]=0x00;
+    via[1].via[9]=0x00;
+    via[1].via[10]=0x0f;
+    via[1].via[11]=0x01;
+    via[1].via[12]=0xc9;
+    via[1].via[13]=0x82;
+    via[1].via[14]=0x82;
+    via[1].via[15]=0x00;
+    via[1].via[16]=0x20;
+    via[1].via[17]=0x00;
+    via[1].via[18]=0x06;
+    via[1].via[19]=0x7c;
+    via[1].via[20]=0x00;
+    via[1].via[21]=0x00;
+    via[1].last_a_accs=0;
+    via[1].orapending=1;
+    via[1].t1_e=(XTIMER)-1;
+    via[1].t1_fired=(XTIMER)12;
+    via[1].t2_e=(XTIMER)-1;
+    via[1].t2_fired=(XTIMER)0;
+    via[1].sr_e=(XTIMER)0;
+    via[1].sr_fired=(XTIMER)0;
+    via[1].t1_set_cpuclk=(XTIMER)4174038;
+    via[1].t2_set_cpuclk=(XTIMER)504058877;
+    via[1].t1_fired_cpuclk=(XTIMER)4174166;
+    via[1].t2_fired_cpuclk=(XTIMER)504058877;
+    via[1].irqnum=0x02;
+    via[1].srcount=0x00;
+    via[1].ca1=0x00;
+    via[1].ca2=0x00;
+    via[1].cb1=0x00;
+    via[1].cb2=0x00;
+    via[2].active=0x01;
+    via[2].vianum=0x02;
+    via[2].via[0]=0xfa;
+    via[2].via[1]=0x00;
+    via[2].via[2]=0x9c;
+    via[2].via[3]=0x00;
+    via[2].via[4]=0x00;
+    via[2].via[5]=0x00;
+    via[2].via[6]=0x00;
+    via[2].via[7]=0x00;
+    via[2].via[8]=0x00;
+    via[2].via[9]=0x00;
+    via[2].via[10]=0x00;
+    via[2].via[11]=0x00;
+    via[2].via[12]=0x6b;
+    via[2].via[13]=0x42;
+    via[2].via[14]=0x00;
+    via[2].via[15]=0x00;
+    via[2].via[16]=0x00;
+    via[2].via[17]=0x00;
+    via[2].via[18]=0x01;
+    via[2].via[19]=0x00;
+    via[2].via[20]=0x72;
+    via[2].via[21]=0xfa;
+    via[2].last_a_accs=1;
+    via[2].orapending=0;
+    via[2].t1_e=(XTIMER)-1;
+    via[2].t1_fired=(XTIMER)7;
+    via[2].t2_e=(XTIMER)-1;
+    via[2].t2_fired=(XTIMER)0;
+    via[2].sr_e=(XTIMER)0;
+    via[2].sr_fired=(XTIMER)0;
+    via[2].t1_set_cpuclk=(XTIMER)949960;
+    via[2].t2_set_cpuclk=(XTIMER)0;
+    via[2].t1_fired_cpuclk=(XTIMER)951976;
+    via[2].t2_fired_cpuclk=(XTIMER)0;
+    via[2].irqnum=0x01;
+    via[2].srcount=0x00;
+    via[2].ca1=0x00;
+    via[2].ca2=0x00;
+    via[2].cb1=0x00;
+    via[2].cb2=0x00;
 
-	floppy_FDIR=0;
-	floppy_6504_wait=0;
-	floppy_irq_top=1;
-	floppy_irq_bottom=0;
-	uint8 romless_floppyram[0xb0]={
-	      0x00, 0xcc, 0x80, 0x00, 0x00, 0x00, 0xd5, 0x00, 0x00,
-	      0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xd5, 0xc0,
-	      0xa7, 0x89, 0x64, 0x1e, 0x04, 0x09, 0xa8, 0x64, 0x02,
-	      0x82, 0x4f, 0x0c, 0x00, 0x00, 0xff, 0xff, 0x00, 0xff,
-	      0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
-	      0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0xd5, 0xaa, 0x96, 0xde, 0xaa, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0xff, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0xd5, 0xaa, 0xad, 0xde, 0xaa,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00
-	    };
+    floppy_FDIR=0;
+    floppy_6504_wait=0;
+    floppy_irq_top=1;
+    floppy_irq_bottom=0;
+    uint8 romless_floppyram[0xb0]={
+          0x00, 0xcc, 0x80, 0x00, 0x00, 0x00, 0xd5, 0x00, 0x00,
+          0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xd5, 0xc0,
+          0xa7, 0x89, 0x64, 0x1e, 0x04, 0x09, 0xa8, 0x64, 0x02,
+          0x82, 0x4f, 0x0c, 0x00, 0x00, 0xff, 0xff, 0x00, 0xff,
+          0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00,
+          0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0xd5, 0xaa, 0x96, 0xde, 0xaa, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0xff, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0xd5, 0xaa, 0xad, 0xde, 0xaa,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00
+        };
 
-		via[2].ProFile->Command=-2;
-		via[2].ProFile->StateMachineStep=0x00;
-		via[2].ProFile->indexread=0x0218;
-		via[2].ProFile->indexwrite=0x0004;
-		via[2].ProFile->CMDLine=0x00;
-		via[2].ProFile->BSYLine=0x00;
-		via[2].ProFile->DENLine=0x01;
-		via[2].ProFile->RRWLine=0x00;
-		via[2].ProFile->VIA_PA=0x08;
-		via[2].ProFile->last_a_accs=0x00;
-		
-  	memcpy(floppy_ram,romless_floppyram,0xb0);
+        via[2].ProFile->Command=-2;
+        via[2].ProFile->StateMachineStep=0x00;
+        via[2].ProFile->indexread=0x0218;
+        via[2].ProFile->indexwrite=0x0004;
+        via[2].ProFile->CMDLine=0x00;
+        via[2].ProFile->BSYLine=0x00;
+        via[2].ProFile->DENLine=0x01;
+        via[2].ProFile->RRWLine=0x00;
+        via[2].ProFile->VIA_PA=0x08;
+        via[2].ProFile->last_a_accs=0x00;
+        
+      memcpy(floppy_ram,romless_floppyram,0xb0);
 
-	} // above - booted from floppy
-	else
-	{  // profile --------------
+    } // above - booted from floppy
+    else
+    {  // profile --------------
 
-	via[1].active=0x01;
-	via[1].vianum=0x01;
-	via[1].via[0]=0x01;
-	via[1].via[1]=0x06;
-	via[1].via[2]=0xaf;
-	via[1].via[3]=0x00;
-	via[1].via[4]=0x00;
-	via[1].via[5]=0x00;
-	via[1].via[6]=0x00;
-	via[1].via[7]=0x00;
-	via[1].via[8]=0x00;
-	via[1].via[9]=0x00;
-	via[1].via[10]=0x0f;
-	via[1].via[11]=0x01;
-	via[1].via[12]=0xc9;
-	via[1].via[13]=0x82;
-	via[1].via[14]=0x82;
-	via[1].via[15]=0x00;
-	via[1].via[16]=0xa0;
-	via[1].via[17]=0x00;
-	via[1].via[18]=0x06;
-	via[1].via[19]=0x7c;
-	via[1].via[20]=0x40;
-	via[1].via[21]=0x00;
-	via[1].last_a_accs=0;
-	via[1].orapending=1;
-	via[1].t1_e=(XTIMER)-1;
-	via[1].t1_fired=(XTIMER)12;
-	via[1].t2_e=(XTIMER)-1;
-	via[1].t2_fired=(XTIMER)0;
-	via[1].sr_e=(XTIMER)0;
-	via[1].sr_fired=(XTIMER)0;
-	via[1].t1_set_cpuclk=(XTIMER)4174038;
-	via[1].t2_set_cpuclk=(XTIMER)12507185;
-	via[1].t1_fired_cpuclk=(XTIMER)4174166;
-	via[1].t2_fired_cpuclk=(XTIMER)12507185;
-	via[1].irqnum=0x02;
-	via[1].srcount=0x00;
-	via[1].ca1=0x00;
-	via[1].ca2=0x00;
-	via[1].cb1=0x00;
-	via[1].cb2=0x00;
-	via[2].active=0x01;
-	via[2].vianum=0x02;
-	via[2].via[0]=0xfa;
-	via[2].via[1]=0x08;
-	via[2].via[2]=0x9c;
-	via[2].via[3]=0x00;
-	via[2].via[4]=0x00;
-	via[2].via[5]=0x00;
-	via[2].via[6]=0x00;
-	via[2].via[7]=0x00;
-	via[2].via[8]=0x00;
-	via[2].via[9]=0x00;
-	via[2].via[10]=0x00;
-	via[2].via[11]=0x00;
-	via[2].via[12]=0x6b;
-	via[2].via[13]=0x40;
-	via[2].via[14]=0x00;
-	via[2].via[15]=0x00;
-	via[2].via[16]=0x00;
-	via[2].via[17]=0x00;
-	via[2].via[18]=0x08;
-	via[2].via[19]=0x55;
-	via[2].via[20]=0x72;
-	via[2].via[21]=0xfa;
-	via[2].last_a_accs=0;
-	via[2].orapending=0;
-	via[2].t1_e=(XTIMER)-1;
-	via[2].t1_fired=(XTIMER)7;
-	via[2].t2_e=(XTIMER)-1;
-	via[2].t2_fired=(XTIMER)0;
-	via[2].sr_e=(XTIMER)0;
-	via[2].sr_fired=(XTIMER)0;
-	via[2].t1_set_cpuclk=(XTIMER)949960;
-	via[2].t2_set_cpuclk=(XTIMER)0;
-	via[2].t1_fired_cpuclk=(XTIMER)951976;
-	via[2].t2_fired_cpuclk=(XTIMER)0;
-	via[2].irqnum=0x01;
-	via[2].srcount=0x00;
-	via[2].ca1=0x00;
-	via[2].ca2=0x00;
-	via[2].cb1=0x00;
-	via[2].cb2=0x00;
+    via[1].active=0x01;
+    via[1].vianum=0x01;
+    via[1].via[0]=0x01;
+    via[1].via[1]=0x06;
+    via[1].via[2]=0xaf;
+    via[1].via[3]=0x00;
+    via[1].via[4]=0x00;
+    via[1].via[5]=0x00;
+    via[1].via[6]=0x00;
+    via[1].via[7]=0x00;
+    via[1].via[8]=0x00;
+    via[1].via[9]=0x00;
+    via[1].via[10]=0x0f;
+    via[1].via[11]=0x01;
+    via[1].via[12]=0xc9;
+    via[1].via[13]=0x82;
+    via[1].via[14]=0x82;
+    via[1].via[15]=0x00;
+    via[1].via[16]=0xa0;
+    via[1].via[17]=0x00;
+    via[1].via[18]=0x06;
+    via[1].via[19]=0x7c;
+    via[1].via[20]=0x40;
+    via[1].via[21]=0x00;
+    via[1].last_a_accs=0;
+    via[1].orapending=1;
+    via[1].t1_e=(XTIMER)-1;
+    via[1].t1_fired=(XTIMER)12;
+    via[1].t2_e=(XTIMER)-1;
+    via[1].t2_fired=(XTIMER)0;
+    via[1].sr_e=(XTIMER)0;
+    via[1].sr_fired=(XTIMER)0;
+    via[1].t1_set_cpuclk=(XTIMER)4174038;
+    via[1].t2_set_cpuclk=(XTIMER)12507185;
+    via[1].t1_fired_cpuclk=(XTIMER)4174166;
+    via[1].t2_fired_cpuclk=(XTIMER)12507185;
+    via[1].irqnum=0x02;
+    via[1].srcount=0x00;
+    via[1].ca1=0x00;
+    via[1].ca2=0x00;
+    via[1].cb1=0x00;
+    via[1].cb2=0x00;
+    via[2].active=0x01;
+    via[2].vianum=0x02;
+    via[2].via[0]=0xfa;
+    via[2].via[1]=0x08;
+    via[2].via[2]=0x9c;
+    via[2].via[3]=0x00;
+    via[2].via[4]=0x00;
+    via[2].via[5]=0x00;
+    via[2].via[6]=0x00;
+    via[2].via[7]=0x00;
+    via[2].via[8]=0x00;
+    via[2].via[9]=0x00;
+    via[2].via[10]=0x00;
+    via[2].via[11]=0x00;
+    via[2].via[12]=0x6b;
+    via[2].via[13]=0x40;
+    via[2].via[14]=0x00;
+    via[2].via[15]=0x00;
+    via[2].via[16]=0x00;
+    via[2].via[17]=0x00;
+    via[2].via[18]=0x08;
+    via[2].via[19]=0x55;
+    via[2].via[20]=0x72;
+    via[2].via[21]=0xfa;
+    via[2].last_a_accs=0;
+    via[2].orapending=0;
+    via[2].t1_e=(XTIMER)-1;
+    via[2].t1_fired=(XTIMER)7;
+    via[2].t2_e=(XTIMER)-1;
+    via[2].t2_fired=(XTIMER)0;
+    via[2].sr_e=(XTIMER)0;
+    via[2].sr_fired=(XTIMER)0;
+    via[2].t1_set_cpuclk=(XTIMER)949960;
+    via[2].t2_set_cpuclk=(XTIMER)0;
+    via[2].t1_fired_cpuclk=(XTIMER)951976;
+    via[2].t2_fired_cpuclk=(XTIMER)0;
+    via[2].irqnum=0x01;
+    via[2].srcount=0x00;
+    via[2].ca1=0x00;
+    via[2].ca2=0x00;
+    via[2].cb1=0x00;
+    via[2].cb2=0x00;
 
-	floppy_FDIR=0;
-	floppy_6504_wait=0;
-	floppy_irq_top=1;
-	floppy_irq_bottom=1;
-	uint8 romless_floppyram[0xb0]={
-	      0x00, 0x88, 0x80, 0x00, 0x00, 0x01, 0xd5, 0x00, 0x00,
-	      0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xd5, 0xc0,
-	      0xa7, 0x89, 0x64, 0x1e, 0x04, 0x09, 0xa8, 0x64, 0x02,
-	      0x82, 0x4f, 0x0c, 0x00, 0x00, 0x00, 0xff, 0x01, 0xff,
-	      0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0xd5, 0xaa, 0x96, 0xde, 0xaa, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0xff, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0xd5, 0xaa, 0xad, 0xde, 0xaa,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	      0x00, 0x00, 0x00, 0x00, 0x00
-	      };
+    floppy_FDIR=0;
+    floppy_6504_wait=0;
+    floppy_irq_top=1;
+    floppy_irq_bottom=1;
+    uint8 romless_floppyram[0xb0]={
+          0x00, 0x88, 0x80, 0x00, 0x00, 0x01, 0xd5, 0x00, 0x00,
+          0x01, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0xd5, 0xc0,
+          0xa7, 0x89, 0x64, 0x1e, 0x04, 0x09, 0xa8, 0x64, 0x02,
+          0x82, 0x4f, 0x0c, 0x00, 0x00, 0x00, 0xff, 0x01, 0xff,
+          0xff, 0x02, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0xd5, 0xaa, 0x96, 0xde, 0xaa, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00, 0xff, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0xd5, 0xaa, 0xad, 0xde, 0xaa,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+          0x00, 0x00, 0x00, 0x00, 0x00
+          };
 
-  	memcpy(floppy_ram,romless_floppyram,0xb0);
-		via[2].ProFile->Command=-2;
-		via[2].ProFile->StateMachineStep=0x00;
-		via[2].ProFile->indexread=0x0218;
-		via[2].ProFile->indexwrite=0x0004;
-		via[2].ProFile->CMDLine=0x00;
-		via[2].ProFile->BSYLine=0x00;
-		via[2].ProFile->DENLine=0x01;
-		via[2].ProFile->RRWLine=0x00;
-		via[2].ProFile->VIA_PA=0x08;
-		via[2].ProFile->last_a_accs=0x00;
-		
-	} // profile //------------------------------------------
-	
-	
+      memcpy(floppy_ram,romless_floppyram,0xb0);
+        via[2].ProFile->Command=-2;
+        via[2].ProFile->StateMachineStep=0x00;
+        via[2].ProFile->indexread=0x0218;
+        via[2].ProFile->indexwrite=0x0004;
+        via[2].ProFile->CMDLine=0x00;
+        via[2].ProFile->BSYLine=0x00;
+        via[2].ProFile->DENLine=0x01;
+        via[2].ProFile->RRWLine=0x00;
+        via[2].ProFile->VIA_PA=0x08;
+        via[2].ProFile->last_a_accs=0x00;
+        
+    } // profile //------------------------------------------
+    
+    
 }
 
 void romless_proread(void);
@@ -538,7 +538,7 @@ if (profileboot==0)
   romless_proread();
   if (lisa_ram_safe_getword(1,0x1ffec+4)!=0xaaaa)
      {
-	     messagebox("This ProFile is not bootable!", "OS BOOT Aborted");
+         messagebox("This ProFile is not bootable!", "OS BOOT Aborted");
          cpu68k_clocks=cpu68k_clocks_stop; regs.stop=1;
          lisa_powered_off();
          return 1;
@@ -580,7 +580,7 @@ else
   romless_twgread();
   if (lisa_ram_safe_getword(1,0x1fff4+4)!=0xaaaa)
      {
-	     messagebox("This microdiskette is not bootable!", "OS BOOT Aborted");
+         messagebox("This microdiskette is not bootable!", "OS BOOT Aborted");
          cpu68k_clocks=cpu68k_clocks_stop; regs.stop=1;
          lisa_powered_off();
          return 1;
@@ -601,7 +601,7 @@ else
   reg68k_regs[12]=0x00fe1d14; 
   reg68k_regs[13]=0x00007ff8; 
   reg68k_regs[14]=0x000fb3be; 
-  reg68k_regs[15]=0x00000480;	
+  reg68k_regs[15]=0x00000480;    
 
   floppy_motor_sounds(0);
   lisaram[0x801b3]=1;
@@ -619,20 +619,20 @@ videolatchaddress=0x00178000;
 // show a fuzzy desktop with a profile
 for (i=0; i<32768; i++)   
     {
-  	  int j=i/90, k=i%90;
-	  dirtyvidram[i]=0xff; 
-	  if (j>20)        lisaram[videolatchaddress+i]=(j&1 ? 0x55:0xaa);
-	  else if (j==19)  lisaram[videolatchaddress+i]=0xff;
-	  else             lisaram[videolatchaddress+i]=0x00;
+        int j=i/90, k=i%90;
+      dirtyvidram[i]=0xff; 
+      if (j>20)        lisaram[videolatchaddress+i]=(j&1 ? 0x55:0xaa);
+      else if (j==19)  lisaram[videolatchaddress+i]=0xff;
+      else             lisaram[videolatchaddress+i]=0x00;
 
      if (profileboot==0)
         {
  
           if (!(  (j>t && j<t+8 && k==l+1)  ||     // corners
                   (j>t && j<t+8 && k==r-1)  ||
-	              (j>b-8 && j<b && k==l+1)  || 
-	              (j>b-8 && j<b && k==r-1)    )	   
-	                                           && 
+                  (j>b-8 && j<b && k==l+1)  || 
+                  (j>b-8 && j<b && k==r-1)    )       
+                                               && 
                   (j>t && j<b && k>l && k<r)     ) // white box with black border
                           lisaram[videolatchaddress+i]=(j<t+8 || j>b-8 || k<l+2 || k>r-2) ? 0xff:0x00; 
 
@@ -644,25 +644,25 @@ for (i=0; i<32768; i++)
         }
        else
        {
-	     if (!(j>t && j<t+8 && k==r-1) &&
+         if (!(j>t && j<t+8 && k==r-1) &&
               (j>t && j<b && k>l && k<r)  )  // border of floppy
                  lisaram[videolatchaddress+i]=(j<t+8 || j>b-8 || k<l+2 || k>r-2) ? 0xff:0x00; 
 
 
-		if (j>t+16   && j<t+70 && (k==r-20 || k==r-13 ))  lisaram[videolatchaddress+i]=0xff;
-		if (j>t+ 8   && j<t+16 && (k> r-19 && k< r-14 ))  lisaram[videolatchaddress+i]=0xff;
-		if (j>t+70   && j<t+78 && (k> r-19 && k< r-14 ))  lisaram[videolatchaddress+i]=0xff;
+        if (j>t+16   && j<t+70 && (k==r-20 || k==r-13 ))  lisaram[videolatchaddress+i]=0xff;
+        if (j>t+ 8   && j<t+16 && (k> r-19 && k< r-14 ))  lisaram[videolatchaddress+i]=0xff;
+        if (j>t+70   && j<t+78 && (k> r-19 && k< r-14 ))  lisaram[videolatchaddress+i]=0xff;
 
-		if (j>t     && j<t+98 && (k==l+11 || k==r-11 ))  lisaram[videolatchaddress+i]=0xff;
-		if (j>t+90  && j<t+98 && (k> l+11 && k< r-11 ))  lisaram[videolatchaddress+i]=0xff;
+        if (j>t     && j<t+98 && (k==l+11 || k==r-11 ))  lisaram[videolatchaddress+i]=0xff;
+        if (j>t+90  && j<t+98 && (k> l+11 && k< r-11 ))  lisaram[videolatchaddress+i]=0xff;
 
-		if (j>b-150 && j<b     && (k==l+8  || k==r- 7 ))  lisaram[videolatchaddress+i]=0xff;
-	    if (j>b-158 && j<b-150 && (k> l+8  && k< r- 7 ))  lisaram[videolatchaddress+i]=0xff;
+        if (j>b-150 && j<b     && (k==l+8  || k==r- 7 ))  lisaram[videolatchaddress+i]=0xff;
+        if (j>b-158 && j<b-150 && (k> l+8  && k< r- 7 ))  lisaram[videolatchaddress+i]=0xff;
 
-	
-	
+    
+    
        } 
-   	}
+       }
 
 videoramdirty=32768;
 
@@ -684,7 +684,7 @@ void romless_vfychksum(void)
  if (reg68k_regs[1])
       do
         {
-		 reg68k_regs[2]=(fetchbyte(reg68k_regs[8])<<8)|(fetchbyte(reg68k_regs[8]+2));
+         reg68k_regs[2]=(fetchbyte(reg68k_regs[8])<<8)|(fetchbyte(reg68k_regs[8]+2));
          reg68k_regs[8]+=4;
 
          reg68k_regs[2]=((reg68k_regs[2]>>8) & 0xff00)|(reg68k_regs[2] & 0xff);
@@ -695,7 +695,7 @@ void romless_vfychksum(void)
  else
        do
         {
-		
+        
         reg68k_regs[2]=fetchword(reg68k_regs[8]);
         reg68k_regs[8]+=2;
 
@@ -703,11 +703,11 @@ void romless_vfychksum(void)
         reg68k_regs[3]=wrol(reg68k_regs[3],1);
         }
        while ( (reg68k_regs[0]--) != 0xffffffff);
-	   
+       
 // hack // hack // hack //
-	reg68k_regs[3]=0;	
+    reg68k_regs[3]=0;    
 // hack // hack // hack //
-	
+    
  if  (reg68k_regs[3]) reg68k_sr.sr_struct.c=1;
  else                 {reg68k_sr.sr_struct.c=0; reg68k_sr.sr_struct.n=0;}
 
@@ -739,7 +739,7 @@ void romless_proread(void)
 
   if (sectornumber>0x00fffff0)  
     {
-	   if (sectornumber==0x00ffffff)  get_profile_spare_table(P);
+       if (sectornumber==0x00ffffff)  get_structure_identity_table(P);
 
 
   //    ALERT_LOG(0,"Slot 1 ID:%04x, Slot 2 ID:%04x, Slot 3 ID:%04x",
@@ -834,22 +834,22 @@ if ((reg68k_pc & 0x00ff0000)==0x00fe0000)
    switch((reg68k_pc & 0x00ffffff))
    {   
    
-	case 0x00fe0090: romless_proread();   taken=1; break;
-	
-	case 0x00fe0094: romless_twgread();   taken=1; break;
-	
-	case 0x00fe00bc: romless_vfychksum(); taken=1; break;
-	
+    case 0x00fe0090: romless_proread();   taken=1; break;
+    
+    case 0x00fe0094: romless_twgread();   taken=1; break;
+    
+    case 0x00fe00bc: romless_vfychksum(); taken=1; break;
+    
     case 0x00fe0084: {
                       char str[1024];
-  	  	  	    	  snprintf(str,1024,"OS Returned error code:%d.\n%s\n\nSee:\n"
-	 	 	    			 	       "http://lisafaq.sunder.net/lisafaq-hw-rom_error_codes.html or\n"
-	 	 	    			           "http://lisafaq.sunder.net/lisafaq-sw-los_error_codes.html\n\nfor details.\n%s\n",
-	 	 	    					   (int16)(reg68k_regs[0] & 0x0000ffff),
-	                                   los_error_code((signed long int)(reg68k_regs[0] & 0x0000ffff)),
-  	  	  	    	                   reg68k_regs[8+3] ? (char *)(&lisaram[CHK_MMU_TRANS(reg68k_regs[8+3])]) : "" );				 
+                            snprintf(str,1024,"OS Returned error code:%d.\n%s\n\nSee:\n"
+                                          "http://lisafaq.sunder.net/lisafaq-hw-rom_error_codes.html or\n"
+                                         "http://lisafaq.sunder.net/lisafaq-sw-los_error_codes.html\n\nfor details.\n%s\n",
+                                         (int16)(reg68k_regs[0] & 0x0000ffff),
+                                       los_error_code((signed long int)(reg68k_regs[0] & 0x0000ffff)),
+                                             reg68k_regs[8+3] ? (char *)(&lisaram[CHK_MMU_TRANS(reg68k_regs[8+3])]) : "" );                 
                        messagebox(str, "OS BOOT Aborted");
-	 	 	    	   cpu68k_clocks=cpu68k_clocks_stop; regs.stop=1;
+                         cpu68k_clocks=cpu68k_clocks_stop; regs.stop=1;
                        lisa_powered_off();
                        return 1;
                      } 
@@ -857,22 +857,22 @@ if ((reg68k_pc & 0x00ff0000)==0x00fe0000)
     case 0x00fe0080: {
                        messagebox("OS has reset the Lisa", "OS BOOT Aborted");
                        lisa_powered_off();
-	 	 	    	   cpu68k_clocks=cpu68k_clocks_stop; regs.stop=1;
+                         cpu68k_clocks=cpu68k_clocks_stop; regs.stop=1;
                        return 1;
                      } 
     case 0x00fe0736: {
-   	                   cpu68k_clocks=cpu68k_clocks_stop; regs.stop=1;
+                          cpu68k_clocks=cpu68k_clocks_stop; regs.stop=1;
                        lisa_powered_off();
                        return 1;
                      }
 
-    default: 	
+    default:     
                 EXITR(1,0,"Entered UNHANDLED ROM code while ROMLESS from operating system at %08x from %08x\n"
                           "D 0:%08x 1:%08x 2:%08x 3:%08x 4:%08x 5:%08x 6:%08x 7:%08x\n"
                           "A 0:%08x 1:%08x 2:%08x 3:%08x 4:%08x 5:%08x 6:%08x 7:%08x\n",
                           reg68k_pc,pc24,
-  			              reg68k_regs[0], reg68k_regs[1], reg68k_regs[2], reg68k_regs[3], reg68k_regs[4], reg68k_regs[5], reg68k_regs[6], reg68k_regs[7],
-  			              reg68k_regs[8], reg68k_regs[9], reg68k_regs[10],reg68k_regs[11],reg68k_regs[12],reg68k_regs[13],reg68k_regs[14],reg68k_regs[15]
+                            reg68k_regs[0], reg68k_regs[1], reg68k_regs[2], reg68k_regs[3], reg68k_regs[4], reg68k_regs[5], reg68k_regs[6], reg68k_regs[7],
+                            reg68k_regs[8], reg68k_regs[9], reg68k_regs[10],reg68k_regs[11],reg68k_regs[12],reg68k_regs[13],reg68k_regs[14],reg68k_regs[15]
                     );
   }
 

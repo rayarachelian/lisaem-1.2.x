@@ -51,7 +51,7 @@ enum
     ID_KEY_APL_3,
     ID_KEY_NMI,
 
-	ID_KEY_RESET,
+    ID_KEY_RESET,
 
     ID_PROFILEPWR,
     ID_FLOPPY,
@@ -147,7 +147,7 @@ public:
     void OnKEY_APL_2(wxCommandEvent& event);
     void OnKEY_APL_3(wxCommandEvent& event);
     void OnKEY_NMI(wxCommandEvent& event);
-	void OnKEY_RESET(wxCommandEvent& event);
+    void OnKEY_RESET(wxCommandEvent& event);
     void OnProFilePower(wxCommandEvent& event);
     void OnFLOPPY(wxCommandEvent& event);
     void OnNewFLOPPY(wxCommandEvent& event);
@@ -177,15 +177,15 @@ public:
     void SetStatusBarText(wxString &msg);
     void Update_Status(long elapsed,long idleentry);
     void VidRefresh(long now);
-	int EmulateLoop(long idleentry);
+    int EmulateLoop(long idleentry);
 
     //void OnIdleEvent(wxIdleEvent& event);
     void OnEmulationTimer(wxTimerEvent& event);
 
-	void OnPasteToKeyboard(wxCommandEvent&event);
+    void OnPasteToKeyboard(wxCommandEvent&event);
 
 
-	void FloppyAnimation(void);
+    void FloppyAnimation(void);
     // menu commands that switch video mode
     void OnVideoAntiAliased(wxCommandEvent& event);
     void OnVideoAAGray(wxCommandEvent& event);
@@ -234,8 +234,8 @@ public:
 
     wxString floppy_to_insert;
     long lastcrtrefresh;
-	long hostrefresh;
-	long screen_paint_update;
+    long hostrefresh;
+    long screen_paint_update;
     long onidle_calls;
     XTIMER cycles_wanted;
 

@@ -258,7 +258,7 @@ void   lisa_wl_vidram_parity(uint32 addr, uint32 data);
 
 
 typedef enum {
-	mem_byte, mem_word, mem_long
+    mem_byte, mem_word, mem_long
 } t_memtype;
 
 int mem68k_init(void);

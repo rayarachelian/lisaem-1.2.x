@@ -92,28 +92,28 @@ void checkcontext(uint8 c, char *text) {;}  // disabled
 
 void xxxcheckcontext(uint8 c, char *text)
 {
-	int i,j,k,l;
+    int i,j,k,l;
 
     //------------------------------------------
 
     DEBUG_LOG(0,"checking for %s",text);
         k=1; // supress initial good messages.
-	for (i=0; i<32767; i++)
-	{
-		j=(mmu_trans_all[c][i].writefn>0) && (mmu_trans_all[c][i].readfn>0);
-		l=(mmu_trans_all[c][i].writefn<MAX_LISA_MFN) && (mmu_trans_all[c][i].readfn<MAX_LISA_MFN);
-		j=j && l;
+    for (i=0; i<32767; i++)
+    {
+        j=(mmu_trans_all[c][i].writefn>0) && (mmu_trans_all[c][i].readfn>0);
+        l=(mmu_trans_all[c][i].writefn<MAX_LISA_MFN) && (mmu_trans_all[c][i].readfn<MAX_LISA_MFN);
+        j=j && l;
 
-		if (j!=k)
-		{
-			k=j;
+        if (j!=k)
+        {
+            k=j;
             DEBUG_LOG(10,"%s mmu fn trans_all %s context %d: i=%i addr:%08x rfn=%d wfn=%d addr=%08x\n",
-				j ? "Good":"Bad!",
-				text,context,i,(i<<9),mmu_trans_all[c][i].readfn,mmu_trans_all[c][i].writefn,
-				mmu_trans_all[c][i].address);
+                j ? "Good":"Bad!",
+                text,context,i,(i<<9),mmu_trans_all[c][i].readfn,mmu_trans_all[c][i].writefn,
+                mmu_trans_all[c][i].address);
             if (!j) EXIT(337,0,"mmu context failure");
-		}
-	}
+        }
+    }
 }
 #else
  void checkcontext(uint8 c, char *text) {;}
@@ -149,12 +149,12 @@ void enable_vidram(void)
    else
    {
         mem68k_memptr[vidram]=lisa_mptr_vidram;
-	mem68k_fetch_byte[vidram]=lisa_rb_vidram;
-	mem68k_fetch_word[vidram]=lisa_rw_vidram;
-	mem68k_fetch_long[vidram]=lisa_rl_vidram;
-	mem68k_store_byte[vidram]=lisa_wb_vidram;
-	mem68k_store_word[vidram]=lisa_ww_vidram;
-	mem68k_store_long[vidram]=lisa_wl_vidram;
+    mem68k_fetch_byte[vidram]=lisa_rb_vidram;
+    mem68k_fetch_word[vidram]=lisa_rw_vidram;
+    mem68k_fetch_long[vidram]=lisa_rl_vidram;
+    mem68k_store_byte[vidram]=lisa_wb_vidram;
+    mem68k_store_word[vidram]=lisa_ww_vidram;
+    mem68k_store_long[vidram]=lisa_wl_vidram;
    }
     videoramdirty|=9;                    // ok now it's time to do so.
 }
@@ -168,15 +168,15 @@ void lisa_diag2_off_mem(void)
         mem68k_memptr[ram]=lisa_mptr_ram;
 
     mem68k_fetch_byte[ram]=lisa_rb_ram;
-	mem68k_fetch_word[ram]=lisa_rw_ram;
-	mem68k_fetch_long[ram]=lisa_rl_ram;
+    mem68k_fetch_word[ram]=lisa_rw_ram;
+    mem68k_fetch_long[ram]=lisa_rl_ram;
         mem68k_memptr[vidram]=lisa_mptr_vidram;
-	mem68k_fetch_byte[vidram]=lisa_rb_vidram;
-	mem68k_fetch_word[vidram]=lisa_rw_vidram;
-	mem68k_fetch_long[vidram]=lisa_rl_vidram;
+    mem68k_fetch_byte[vidram]=lisa_rb_vidram;
+    mem68k_fetch_word[vidram]=lisa_rw_vidram;
+    mem68k_fetch_long[vidram]=lisa_rl_vidram;
     mem68k_store_byte[ram]=lisa_wb_ram;
-	mem68k_store_word[ram]=lisa_ww_ram;
-	mem68k_store_long[ram]=lisa_wl_ram;
+    mem68k_store_word[ram]=lisa_ww_ram;
+    mem68k_store_long[ram]=lisa_wl_ram;
 
 
    if (has_lisa_xl_screenmod)
@@ -187,9 +187,9 @@ void lisa_diag2_off_mem(void)
    }
    else
    {
-	mem68k_store_byte[vidram]=lisa_wb_vidram;
-	mem68k_store_word[vidram]=lisa_ww_vidram;
-	mem68k_store_long[vidram]=lisa_wl_vidram;
+    mem68k_store_byte[vidram]=lisa_wb_vidram;
+    mem68k_store_word[vidram]=lisa_ww_vidram;
+    mem68k_store_long[vidram]=lisa_wl_vidram;
    }
 
 }
@@ -258,8 +258,8 @@ void init_start_mode_segment(uint16 i)
         rfn = get_lisa_sio_fn(i);
         wfn = get_lisa_sio_fn(i);
 
-		if ( (i & (32))==32) // 001 bit 14 is 1, means MMU is enabled, when in start mode.
-		{
+        if ( (i & (32))==32) // 001 bit 14 is 1, means MMU is enabled, when in start mode.
+        {
             #ifdef DEBUG
             if (pc24)                   // don't warn when initializing mmu before executing POST.
             {
@@ -269,7 +269,7 @@ void init_start_mode_segment(uint16 i)
             #endif
             rfn = sio_mmu;
             wfn = sio_mmu;
-		}
+        }
         else
         if ( (i & (64|32))==64) // 010 bit 15 is 1, means MMU REG being accessed
         {
@@ -296,6 +296,7 @@ void init_start_mode_segment(uint16 i)
         mmu_trans_all[0][i].address= adr;
         mmu_trans_all[0][i].readfn = rfn;
         mmu_trans_all[0][i].writefn= wfn;
+        mmu_trans_all[0][i].table  = NULL; //20190601 fixed a huge bug!
 }
 
 
@@ -313,40 +314,51 @@ void init_lisa_mmu(void)
 {
     uint32 i,j;
 
-	start=1; segment1=0; segment2=0; context=0;
-	mmudirty=0;
+    start=1; segment1=0; segment2=0; context=0;
+    mmudirty=0;
     mmudirty_all[0]=0;
     mmudirty_all[1]=0;
     mmudirty_all[2]=0;
     mmudirty_all[3]=0;
     mmudirty_all[4]=0;
 
+
+DECLARE(t_ipc_table,*ipct_mallocs[MAX_IPCT_MALLOCS]);
+DECLARE(uint32,sipct_mallocs[MAX_IPCT_MALLOCS]);
+DECLARE(t_ipc_table,*ipct_mallocs[MAX_IPCT_MALLOCS]);
+DECLARE(uint32,sipct_mallocs[MAX_IPCT_MALLOCS]);
+DECLARE(viatype,via[10]);
+DECLARE(mmu_t,mmu_all[5][128]);
+DECLARE(mmu_trans_t,mmu_trans_all[5][32768]);
+
+
+
     DEBUG_LOG(0,"Initializing... mmu_trans_all: %p mmu_all: %p",mmu_trans_all,mmu_all);
 
-	for (i=0; i<32768; i++) // Initialize START mode (setup in hwg81) translation table
-	{
+    for (i=0; i<32768; i++) // Initialize START mode (setup in hwg81) translation table
+    {
      // First, zap all MMU contexts to bad pages.  This is to make sure that
      // we don't accidentally hit unused pages.  Alternatively, for debugging
      // purposes, we could uncomment this block and see if anything breaks.
 
-		mmu_trans_all[1][i].address= 0;
-		mmu_trans_all[1][i].readfn = bad_page;
-		mmu_trans_all[1][i].writefn= bad_page;
+        mmu_trans_all[1][i].address= 0;
+        mmu_trans_all[1][i].readfn = bad_page;
+        mmu_trans_all[1][i].writefn= bad_page;
         mmu_trans_all[1][i].table=NULL;
 
-		mmu_trans_all[2][i].address= 0;
-		mmu_trans_all[2][i].readfn = bad_page;
-		mmu_trans_all[2][i].writefn= bad_page;
+        mmu_trans_all[2][i].address= 0;
+        mmu_trans_all[2][i].readfn = bad_page;
+        mmu_trans_all[2][i].writefn= bad_page;
         mmu_trans_all[2][i].table=NULL;
 
-		mmu_trans_all[3][i].address= 0;
-		mmu_trans_all[3][i].readfn = bad_page;
-		mmu_trans_all[3][i].writefn= bad_page;
+        mmu_trans_all[3][i].address= 0;
+        mmu_trans_all[3][i].readfn = bad_page;
+        mmu_trans_all[3][i].writefn= bad_page;
         mmu_trans_all[3][i].table=NULL;
 
-		mmu_trans_all[4][i].address= 0;
-		mmu_trans_all[4][i].readfn = bad_page;
-		mmu_trans_all[4][i].writefn= bad_page;
+        mmu_trans_all[4][i].address= 0;
+        mmu_trans_all[4][i].readfn = bad_page;
+        mmu_trans_all[4][i].writefn= bad_page;
         mmu_trans_all[4][i].table=NULL;
 
         init_start_mode_segment(i);
@@ -357,11 +369,11 @@ void init_lisa_mmu(void)
         mmudirty_all[2]=0xdec0de;
         mmudirty_all[3]=0xdec0de;
         mmudirty_all[4]=0xdec0de;
-	}
+    }
 
 
-	for (i=0; i<128; i++) // Initialize START mode fake mmu table
-	{
+    for (i=0; i<128; i++) // Initialize START mode fake mmu table
+    {
         mmu_all[0][i].sor=0;
         mmu_all[0][i].slr=0xf00;
         mmu_all[0][i].changed=0;
@@ -374,7 +386,7 @@ void init_lisa_mmu(void)
         mmu_all[2][i].slr=0xc00;             mmu_all[4][i].slr=0xc00;
         mmu_all[2][i].changed=1;             mmu_all[4][i].changed=1;
 
-	}
+    }
 
 
     // fill up memory
@@ -388,8 +400,8 @@ void init_lisa_mmu(void)
     mmu_all[1][127].slr=0xf00;       mmu_all[1][127].sor=0;
 
 
-	// Initialize Lisa MMU Function Types
-	// fn assignments
+    // Initialize Lisa MMU Function Types
+    // fn assignments
     for (i=0; i<MAX_LISA_MFN; i++)
     {
      mem68k_memptr[i]=lisa_mptr_OxERROR;
@@ -401,189 +413,189 @@ void init_lisa_mmu(void)
      mem68k_store_long[i]=lisa_wl_OxERROR;
     }
 
-	mem68k_memptr[OxUnused]=lisa_mptr_OxUnused;
-	mem68k_fetch_byte[OxUnused]=lisa_rb_OxUnused;
-	mem68k_fetch_word[OxUnused]=lisa_rw_OxUnused;
-	mem68k_fetch_long[OxUnused]=lisa_rl_OxUnused;
-	mem68k_store_byte[OxUnused]=lisa_wb_OxUnused;
-	mem68k_store_word[OxUnused]=lisa_ww_OxUnused;
-	mem68k_store_long[OxUnused]=lisa_wl_OxUnused;
+    mem68k_memptr[OxUnused]=lisa_mptr_OxUnused;
+    mem68k_fetch_byte[OxUnused]=lisa_rb_OxUnused;
+    mem68k_fetch_word[OxUnused]=lisa_rw_OxUnused;
+    mem68k_fetch_long[OxUnused]=lisa_rl_OxUnused;
+    mem68k_store_byte[OxUnused]=lisa_wb_OxUnused;
+    mem68k_store_word[OxUnused]=lisa_ww_OxUnused;
+    mem68k_store_long[OxUnused]=lisa_wl_OxUnused;
                                   
-	mem68k_memptr[    Ox0000_slot1]=lisa_mptr_Ox0000_slot1;
-	mem68k_fetch_byte[Ox0000_slot1]=lisa_rb_Ox0000_slot1;
-	mem68k_fetch_word[Ox0000_slot1]=lisa_rw_Ox0000_slot1;
-	mem68k_fetch_long[Ox0000_slot1]=lisa_rl_Ox0000_slot1;
-	mem68k_store_byte[Ox0000_slot1]=lisa_wb_Ox0000_slot1;
-	mem68k_store_word[Ox0000_slot1]=lisa_ww_Ox0000_slot1;
-	mem68k_store_long[Ox0000_slot1]=lisa_wl_Ox0000_slot1;
+    mem68k_memptr[    Ox0000_slot1]=lisa_mptr_Ox0000_slot1;
+    mem68k_fetch_byte[Ox0000_slot1]=lisa_rb_Ox0000_slot1;
+    mem68k_fetch_word[Ox0000_slot1]=lisa_rw_Ox0000_slot1;
+    mem68k_fetch_long[Ox0000_slot1]=lisa_rl_Ox0000_slot1;
+    mem68k_store_byte[Ox0000_slot1]=lisa_wb_Ox0000_slot1;
+    mem68k_store_word[Ox0000_slot1]=lisa_ww_Ox0000_slot1;
+    mem68k_store_long[Ox0000_slot1]=lisa_wl_Ox0000_slot1;
                                   
-	mem68k_memptr[    Ox2000_slot1]=lisa_mptr_Ox2000_slot1;
-	mem68k_fetch_byte[Ox2000_slot1]=lisa_rb_Ox2000_slot1;
-	mem68k_fetch_word[Ox2000_slot1]=lisa_rw_Ox2000_slot1;
-	mem68k_fetch_long[Ox2000_slot1]=lisa_rl_Ox2000_slot1;
-	mem68k_store_byte[Ox2000_slot1]=lisa_wb_Ox2000_slot1;
-	mem68k_store_word[Ox2000_slot1]=lisa_ww_Ox2000_slot1;
-	mem68k_store_long[Ox2000_slot1]=lisa_wl_Ox2000_slot1;
+    mem68k_memptr[    Ox2000_slot1]=lisa_mptr_Ox2000_slot1;
+    mem68k_fetch_byte[Ox2000_slot1]=lisa_rb_Ox2000_slot1;
+    mem68k_fetch_word[Ox2000_slot1]=lisa_rw_Ox2000_slot1;
+    mem68k_fetch_long[Ox2000_slot1]=lisa_rl_Ox2000_slot1;
+    mem68k_store_byte[Ox2000_slot1]=lisa_wb_Ox2000_slot1;
+    mem68k_store_word[Ox2000_slot1]=lisa_ww_Ox2000_slot1;
+    mem68k_store_long[Ox2000_slot1]=lisa_wl_Ox2000_slot1;
                                   
-	mem68k_memptr[    Ox4000_slot2]=lisa_mptr_Ox4000_slot2;
-	mem68k_fetch_byte[Ox4000_slot2]=lisa_rb_Ox4000_slot2;
-	mem68k_fetch_word[Ox4000_slot2]=lisa_rw_Ox4000_slot2;
-	mem68k_fetch_long[Ox4000_slot2]=lisa_rl_Ox4000_slot2;
-	mem68k_store_byte[Ox4000_slot2]=lisa_wb_Ox4000_slot2;
-	mem68k_store_word[Ox4000_slot2]=lisa_ww_Ox4000_slot2;
-	mem68k_store_long[Ox4000_slot2]=lisa_wl_Ox4000_slot2;
+    mem68k_memptr[    Ox4000_slot2]=lisa_mptr_Ox4000_slot2;
+    mem68k_fetch_byte[Ox4000_slot2]=lisa_rb_Ox4000_slot2;
+    mem68k_fetch_word[Ox4000_slot2]=lisa_rw_Ox4000_slot2;
+    mem68k_fetch_long[Ox4000_slot2]=lisa_rl_Ox4000_slot2;
+    mem68k_store_byte[Ox4000_slot2]=lisa_wb_Ox4000_slot2;
+    mem68k_store_word[Ox4000_slot2]=lisa_ww_Ox4000_slot2;
+    mem68k_store_long[Ox4000_slot2]=lisa_wl_Ox4000_slot2;
                                   
-	mem68k_memptr[    Ox6000_slot2]=lisa_mptr_Ox6000_slot2;
-	mem68k_fetch_byte[Ox6000_slot2]=lisa_rb_Ox6000_slot2;
-	mem68k_fetch_word[Ox6000_slot2]=lisa_rw_Ox6000_slot2;
-	mem68k_fetch_long[Ox6000_slot2]=lisa_rl_Ox6000_slot2;
-	mem68k_store_byte[Ox6000_slot2]=lisa_wb_Ox6000_slot2;
-	mem68k_store_word[Ox6000_slot2]=lisa_ww_Ox6000_slot2;
-	mem68k_store_long[Ox6000_slot2]=lisa_wl_Ox6000_slot2;
+    mem68k_memptr[    Ox6000_slot2]=lisa_mptr_Ox6000_slot2;
+    mem68k_fetch_byte[Ox6000_slot2]=lisa_rb_Ox6000_slot2;
+    mem68k_fetch_word[Ox6000_slot2]=lisa_rw_Ox6000_slot2;
+    mem68k_fetch_long[Ox6000_slot2]=lisa_rl_Ox6000_slot2;
+    mem68k_store_byte[Ox6000_slot2]=lisa_wb_Ox6000_slot2;
+    mem68k_store_word[Ox6000_slot2]=lisa_ww_Ox6000_slot2;
+    mem68k_store_long[Ox6000_slot2]=lisa_wl_Ox6000_slot2;
                                   
-	mem68k_memptr[    Ox8000_slot3]=lisa_mptr_Ox8000_slot3;
-	mem68k_fetch_byte[Ox8000_slot3]=lisa_rb_Ox8000_slot3;
-	mem68k_fetch_word[Ox8000_slot3]=lisa_rw_Ox8000_slot3;
-	mem68k_fetch_long[Ox8000_slot3]=lisa_rl_Ox8000_slot3;
-	mem68k_store_byte[Ox8000_slot3]=lisa_wb_Ox8000_slot3;
-	mem68k_store_word[Ox8000_slot3]=lisa_ww_Ox8000_slot3;
-	mem68k_store_long[Ox8000_slot3]=lisa_wl_Ox8000_slot3;
+    mem68k_memptr[    Ox8000_slot3]=lisa_mptr_Ox8000_slot3;
+    mem68k_fetch_byte[Ox8000_slot3]=lisa_rb_Ox8000_slot3;
+    mem68k_fetch_word[Ox8000_slot3]=lisa_rw_Ox8000_slot3;
+    mem68k_fetch_long[Ox8000_slot3]=lisa_rl_Ox8000_slot3;
+    mem68k_store_byte[Ox8000_slot3]=lisa_wb_Ox8000_slot3;
+    mem68k_store_word[Ox8000_slot3]=lisa_ww_Ox8000_slot3;
+    mem68k_store_long[Ox8000_slot3]=lisa_wl_Ox8000_slot3;
                                   
-	mem68k_memptr[    Oxa000_slot3]=lisa_mptr_Oxa000_slot3;
-	mem68k_fetch_byte[Oxa000_slot3]=lisa_rb_Oxa000_slot3;
-	mem68k_fetch_word[Oxa000_slot3]=lisa_rw_Oxa000_slot3;
-	mem68k_fetch_long[Oxa000_slot3]=lisa_rl_Oxa000_slot3;
-	mem68k_store_byte[Oxa000_slot3]=lisa_wb_Oxa000_slot3;
-	mem68k_store_word[Oxa000_slot3]=lisa_ww_Oxa000_slot3;
-	mem68k_store_long[Oxa000_slot3]=lisa_wl_Oxa000_slot3;
+    mem68k_memptr[    Oxa000_slot3]=lisa_mptr_Oxa000_slot3;
+    mem68k_fetch_byte[Oxa000_slot3]=lisa_rb_Oxa000_slot3;
+    mem68k_fetch_word[Oxa000_slot3]=lisa_rw_Oxa000_slot3;
+    mem68k_fetch_long[Oxa000_slot3]=lisa_rl_Oxa000_slot3;
+    mem68k_store_byte[Oxa000_slot3]=lisa_wb_Oxa000_slot3;
+    mem68k_store_word[Oxa000_slot3]=lisa_ww_Oxa000_slot3;
+    mem68k_store_long[Oxa000_slot3]=lisa_wl_Oxa000_slot3;
 
-	mem68k_memptr[Oxc000_flopmem]=lisa_mptr_Oxc000_flopmem;
-	mem68k_fetch_byte[Oxc000_flopmem]=lisa_rb_Oxc000_flopmem;
-	mem68k_fetch_word[Oxc000_flopmem]=lisa_rw_Oxc000_flopmem;
-	mem68k_fetch_long[Oxc000_flopmem]=lisa_rl_Oxc000_flopmem;
-	mem68k_store_byte[Oxc000_flopmem]=lisa_wb_Oxc000_flopmem;
-	mem68k_store_word[Oxc000_flopmem]=lisa_ww_Oxc000_flopmem;
-	mem68k_store_long[Oxc000_flopmem]=lisa_wl_Oxc000_flopmem;
+    mem68k_memptr[Oxc000_flopmem]=lisa_mptr_Oxc000_flopmem;
+    mem68k_fetch_byte[Oxc000_flopmem]=lisa_rb_Oxc000_flopmem;
+    mem68k_fetch_word[Oxc000_flopmem]=lisa_rw_Oxc000_flopmem;
+    mem68k_fetch_long[Oxc000_flopmem]=lisa_rl_Oxc000_flopmem;
+    mem68k_store_byte[Oxc000_flopmem]=lisa_wb_Oxc000_flopmem;
+    mem68k_store_word[Oxc000_flopmem]=lisa_ww_Oxc000_flopmem;
+    mem68k_store_long[Oxc000_flopmem]=lisa_wl_Oxc000_flopmem;
 
     mem68k_memptr[Oxd200_sccz8530]=lisa_mptr_Oxd200_sccz8530;
-	mem68k_fetch_byte[Oxd200_sccz8530]=lisa_rb_Oxd200_sccz8530;
-	mem68k_fetch_word[Oxd200_sccz8530]=lisa_rw_Oxd200_sccz8530;
-	mem68k_fetch_long[Oxd200_sccz8530]=lisa_rl_Oxd200_sccz8530;
-	mem68k_store_byte[Oxd200_sccz8530]=lisa_wb_Oxd200_sccz8530;
-	mem68k_store_word[Oxd200_sccz8530]=lisa_ww_Oxd200_sccz8530;
-	mem68k_store_long[Oxd200_sccz8530]=lisa_wl_Oxd200_sccz8530;
+    mem68k_fetch_byte[Oxd200_sccz8530]=lisa_rb_Oxd200_sccz8530;
+    mem68k_fetch_word[Oxd200_sccz8530]=lisa_rw_Oxd200_sccz8530;
+    mem68k_fetch_long[Oxd200_sccz8530]=lisa_rl_Oxd200_sccz8530;
+    mem68k_store_byte[Oxd200_sccz8530]=lisa_wb_Oxd200_sccz8530;
+    mem68k_store_word[Oxd200_sccz8530]=lisa_ww_Oxd200_sccz8530;
+    mem68k_store_long[Oxd200_sccz8530]=lisa_wl_Oxd200_sccz8530;
 
-	mem68k_memptr[Oxd800_par_via2]=lisa_mptr_Oxd800_par_via2;
-	mem68k_fetch_byte[Oxd800_par_via2]=lisa_rb_Oxd800_par_via2;
-	mem68k_fetch_word[Oxd800_par_via2]=lisa_rw_Oxd800_par_via2;
-	mem68k_fetch_long[Oxd800_par_via2]=lisa_rl_Oxd800_par_via2;
-	mem68k_store_byte[Oxd800_par_via2]=lisa_wb_Oxd800_par_via2;
-	mem68k_store_word[Oxd800_par_via2]=lisa_ww_Oxd800_par_via2;
-	mem68k_store_long[Oxd800_par_via2]=lisa_wl_Oxd800_par_via2;
+    mem68k_memptr[Oxd800_par_via2]=lisa_mptr_Oxd800_par_via2;
+    mem68k_fetch_byte[Oxd800_par_via2]=lisa_rb_Oxd800_par_via2;
+    mem68k_fetch_word[Oxd800_par_via2]=lisa_rw_Oxd800_par_via2;
+    mem68k_fetch_long[Oxd800_par_via2]=lisa_rl_Oxd800_par_via2;
+    mem68k_store_byte[Oxd800_par_via2]=lisa_wb_Oxd800_par_via2;
+    mem68k_store_word[Oxd800_par_via2]=lisa_ww_Oxd800_par_via2;
+    mem68k_store_long[Oxd800_par_via2]=lisa_wl_Oxd800_par_via2;
 
-	mem68k_memptr[Oxdc00_cops_via1]=lisa_mptr_Oxdc00_cops_via1;
-	mem68k_fetch_byte[Oxdc00_cops_via1]=lisa_rb_Oxdc00_cops_via1;
-	mem68k_fetch_word[Oxdc00_cops_via1]=lisa_rw_Oxdc00_cops_via1;
-	mem68k_fetch_long[Oxdc00_cops_via1]=lisa_rl_Oxdc00_cops_via1;
-	mem68k_store_byte[Oxdc00_cops_via1]=lisa_wb_Oxdc00_cops_via1;
-	mem68k_store_word[Oxdc00_cops_via1]=lisa_ww_Oxdc00_cops_via1;
-	mem68k_store_long[Oxdc00_cops_via1]=lisa_wl_Oxdc00_cops_via1;
+    mem68k_memptr[Oxdc00_cops_via1]=lisa_mptr_Oxdc00_cops_via1;
+    mem68k_fetch_byte[Oxdc00_cops_via1]=lisa_rb_Oxdc00_cops_via1;
+    mem68k_fetch_word[Oxdc00_cops_via1]=lisa_rw_Oxdc00_cops_via1;
+    mem68k_fetch_long[Oxdc00_cops_via1]=lisa_rl_Oxdc00_cops_via1;
+    mem68k_store_byte[Oxdc00_cops_via1]=lisa_wb_Oxdc00_cops_via1;
+    mem68k_store_word[Oxdc00_cops_via1]=lisa_ww_Oxdc00_cops_via1;
+    mem68k_store_long[Oxdc00_cops_via1]=lisa_wl_Oxdc00_cops_via1;
 
-	mem68k_memptr[Oxe000_latches]=lisa_mptr_Oxe000_latches;
-	mem68k_fetch_byte[Oxe000_latches]=lisa_rb_Oxe000_latches;
-	mem68k_fetch_word[Oxe000_latches]=lisa_rw_Oxe000_latches;
-	mem68k_fetch_long[Oxe000_latches]=lisa_rl_Oxe000_latches;
-	mem68k_store_byte[Oxe000_latches]=lisa_wb_Oxe000_latches;
-	mem68k_store_word[Oxe000_latches]=lisa_ww_Oxe000_latches;
-	mem68k_store_long[Oxe000_latches]=lisa_wl_Oxe000_latches;
+    mem68k_memptr[Oxe000_latches]=lisa_mptr_Oxe000_latches;
+    mem68k_fetch_byte[Oxe000_latches]=lisa_rb_Oxe000_latches;
+    mem68k_fetch_word[Oxe000_latches]=lisa_rw_Oxe000_latches;
+    mem68k_fetch_long[Oxe000_latches]=lisa_rl_Oxe000_latches;
+    mem68k_store_byte[Oxe000_latches]=lisa_wb_Oxe000_latches;
+    mem68k_store_word[Oxe000_latches]=lisa_ww_Oxe000_latches;
+    mem68k_store_long[Oxe000_latches]=lisa_wl_Oxe000_latches;
 
-	mem68k_memptr[Oxe800_videlatch]=lisa_mptr_Oxe800_videlatch;
-	mem68k_fetch_byte[Oxe800_videlatch]=lisa_rb_Oxe800_videlatch;
-	mem68k_fetch_word[Oxe800_videlatch]=lisa_rw_Oxe800_videlatch;
-	mem68k_fetch_long[Oxe800_videlatch]=lisa_rl_Oxe800_videlatch;
-	mem68k_store_byte[Oxe800_videlatch]=lisa_wb_Oxe800_videlatch;
-	mem68k_store_word[Oxe800_videlatch]=lisa_ww_Oxe800_videlatch;
-	mem68k_store_long[Oxe800_videlatch]=lisa_wl_Oxe800_videlatch;
+    mem68k_memptr[Oxe800_videlatch]=lisa_mptr_Oxe800_videlatch;
+    mem68k_fetch_byte[Oxe800_videlatch]=lisa_rb_Oxe800_videlatch;
+    mem68k_fetch_word[Oxe800_videlatch]=lisa_rw_Oxe800_videlatch;
+    mem68k_fetch_long[Oxe800_videlatch]=lisa_rl_Oxe800_videlatch;
+    mem68k_store_byte[Oxe800_videlatch]=lisa_wb_Oxe800_videlatch;
+    mem68k_store_word[Oxe800_videlatch]=lisa_ww_Oxe800_videlatch;
+    mem68k_store_long[Oxe800_videlatch]=lisa_wl_Oxe800_videlatch;
 
-	mem68k_memptr[Oxf000_memerror]=lisa_mptr_Oxf000_memerror;
-	mem68k_fetch_byte[Oxf000_memerror]=lisa_rb_Oxf000_memerror;
-	mem68k_fetch_word[Oxf000_memerror]=lisa_rw_Oxf000_memerror;
-	mem68k_fetch_long[Oxf000_memerror]=lisa_rl_Oxf000_memerror;
-	mem68k_store_byte[Oxf000_memerror]=lisa_wb_Oxf000_memerror;
-	mem68k_store_word[Oxf000_memerror]=lisa_ww_Oxf000_memerror;
-	mem68k_store_long[Oxf000_memerror]=lisa_wl_Oxf000_memerror;
+    mem68k_memptr[Oxf000_memerror]=lisa_mptr_Oxf000_memerror;
+    mem68k_fetch_byte[Oxf000_memerror]=lisa_rb_Oxf000_memerror;
+    mem68k_fetch_word[Oxf000_memerror]=lisa_rw_Oxf000_memerror;
+    mem68k_fetch_long[Oxf000_memerror]=lisa_rl_Oxf000_memerror;
+    mem68k_store_byte[Oxf000_memerror]=lisa_wb_Oxf000_memerror;
+    mem68k_store_word[Oxf000_memerror]=lisa_ww_Oxf000_memerror;
+    mem68k_store_long[Oxf000_memerror]=lisa_wl_Oxf000_memerror;
 
-	mem68k_memptr[Oxf800_statreg]=lisa_mptr_Oxf800_statreg;
-	mem68k_fetch_byte[Oxf800_statreg]=lisa_rb_Oxf800_statreg;
-	mem68k_fetch_word[Oxf800_statreg]=lisa_rw_Oxf800_statreg;
-	mem68k_fetch_long[Oxf800_statreg]=lisa_rl_Oxf800_statreg;
-	mem68k_store_byte[Oxf800_statreg]=lisa_wb_Oxf800_statreg;
-	mem68k_store_word[Oxf800_statreg]=lisa_ww_Oxf800_statreg;
-	mem68k_store_long[Oxf800_statreg]=lisa_wl_Oxf800_statreg;
+    mem68k_memptr[Oxf800_statreg]=lisa_mptr_Oxf800_statreg;
+    mem68k_fetch_byte[Oxf800_statreg]=lisa_rb_Oxf800_statreg;
+    mem68k_fetch_word[Oxf800_statreg]=lisa_rw_Oxf800_statreg;
+    mem68k_fetch_long[Oxf800_statreg]=lisa_rl_Oxf800_statreg;
+    mem68k_store_byte[Oxf800_statreg]=lisa_wb_Oxf800_statreg;
+    mem68k_store_word[Oxf800_statreg]=lisa_ww_Oxf800_statreg;
+    mem68k_store_long[Oxf800_statreg]=lisa_wl_Oxf800_statreg;
 
-	mem68k_memptr[ram]=lisa_mptr_ram;
-	mem68k_fetch_byte[ram]=lisa_rb_ram;
-	mem68k_fetch_word[ram]=lisa_rw_ram;
-	mem68k_fetch_long[ram]=lisa_rl_ram;
-	mem68k_store_byte[ram]=lisa_wb_ram;
-	mem68k_store_word[ram]=lisa_ww_ram;
-	mem68k_store_long[ram]=lisa_wl_ram;
+    mem68k_memptr[ram]=lisa_mptr_ram;
+    mem68k_fetch_byte[ram]=lisa_rb_ram;
+    mem68k_fetch_word[ram]=lisa_rw_ram;
+    mem68k_fetch_long[ram]=lisa_rl_ram;
+    mem68k_store_byte[ram]=lisa_wb_ram;
+    mem68k_store_word[ram]=lisa_ww_ram;
+    mem68k_store_long[ram]=lisa_wl_ram;
 
-	mem68k_memptr[ro_violn]=lisa_mptr_ro_violn;
-	mem68k_fetch_byte[ro_violn]=lisa_rb_ro_violn;
-	mem68k_fetch_word[ro_violn]=lisa_rw_ro_violn;
-	mem68k_fetch_long[ro_violn]=lisa_rl_ro_violn;
-	mem68k_store_byte[ro_violn]=lisa_wb_ro_violn;
-	mem68k_store_word[ro_violn]=lisa_ww_ro_violn;
-	mem68k_store_long[ro_violn]=lisa_wl_ro_violn;
+    mem68k_memptr[ro_violn]=lisa_mptr_ro_violn;
+    mem68k_fetch_byte[ro_violn]=lisa_rb_ro_violn;
+    mem68k_fetch_word[ro_violn]=lisa_rw_ro_violn;
+    mem68k_fetch_long[ro_violn]=lisa_rl_ro_violn;
+    mem68k_store_byte[ro_violn]=lisa_wb_ro_violn;
+    mem68k_store_word[ro_violn]=lisa_ww_ro_violn;
+    mem68k_store_long[ro_violn]=lisa_wl_ro_violn;
 
-	mem68k_memptr[bad_page]=lisa_mptr_bad_page;
-	mem68k_fetch_byte[bad_page]=lisa_rb_bad_page;
-	mem68k_fetch_word[bad_page]=lisa_rw_bad_page;
-	mem68k_fetch_long[bad_page]=lisa_rl_bad_page;
-	mem68k_store_byte[bad_page]=lisa_wb_bad_page;
-	mem68k_store_word[bad_page]=lisa_ww_bad_page;
-	mem68k_store_long[bad_page]=lisa_wl_bad_page;
+    mem68k_memptr[bad_page]=lisa_mptr_bad_page;
+    mem68k_fetch_byte[bad_page]=lisa_rb_bad_page;
+    mem68k_fetch_word[bad_page]=lisa_rw_bad_page;
+    mem68k_fetch_long[bad_page]=lisa_rl_bad_page;
+    mem68k_store_byte[bad_page]=lisa_wb_bad_page;
+    mem68k_store_word[bad_page]=lisa_ww_bad_page;
+    mem68k_store_long[bad_page]=lisa_wl_bad_page;
 
-	mem68k_memptr[sio_rom]=lisa_mptr_sio_rom;
-	mem68k_fetch_byte[sio_rom]=lisa_rb_sio_rom;
-	mem68k_fetch_word[sio_rom]=lisa_rw_sio_rom;
-	mem68k_fetch_long[sio_rom]=lisa_rl_sio_rom;
-	mem68k_store_byte[sio_rom]=lisa_wb_sio_rom;
-	mem68k_store_word[sio_rom]=lisa_ww_sio_rom;
-	mem68k_store_long[sio_rom]=lisa_wl_sio_rom;
+    mem68k_memptr[sio_rom]=lisa_mptr_sio_rom;
+    mem68k_fetch_byte[sio_rom]=lisa_rb_sio_rom;
+    mem68k_fetch_word[sio_rom]=lisa_rw_sio_rom;
+    mem68k_fetch_long[sio_rom]=lisa_rl_sio_rom;
+    mem68k_store_byte[sio_rom]=lisa_wb_sio_rom;
+    mem68k_store_word[sio_rom]=lisa_ww_sio_rom;
+    mem68k_store_long[sio_rom]=lisa_wl_sio_rom;
 
-	mem68k_memptr[sio_mrg]=lisa_mptr_sio_mrg;
-	mem68k_fetch_byte[sio_mrg]=lisa_rb_sio_mrg;
-	mem68k_fetch_word[sio_mrg]=lisa_rw_sio_mrg;
-	mem68k_fetch_long[sio_mrg]=lisa_rl_sio_mrg;
-	mem68k_store_byte[sio_mrg]=lisa_wb_sio_mrg;
-	mem68k_store_word[sio_mrg]=lisa_ww_sio_mrg;
-	mem68k_store_long[sio_mrg]=lisa_wl_sio_mrg;
+    mem68k_memptr[sio_mrg]=lisa_mptr_sio_mrg;
+    mem68k_fetch_byte[sio_mrg]=lisa_rb_sio_mrg;
+    mem68k_fetch_word[sio_mrg]=lisa_rw_sio_mrg;
+    mem68k_fetch_long[sio_mrg]=lisa_rl_sio_mrg;
+    mem68k_store_byte[sio_mrg]=lisa_wb_sio_mrg;
+    mem68k_store_word[sio_mrg]=lisa_ww_sio_mrg;
+    mem68k_store_long[sio_mrg]=lisa_wl_sio_mrg;
 
-	mem68k_memptr[sio_mmu]=lisa_mptr_sio_mmu;
-	mem68k_fetch_byte[sio_mmu]=lisa_rb_sio_mmu;
-	mem68k_fetch_word[sio_mmu]=lisa_rw_sio_mmu;
-	mem68k_fetch_long[sio_mmu]=lisa_rl_sio_mmu;
-	mem68k_store_byte[sio_mmu]=lisa_wb_sio_mmu;
-	mem68k_store_word[sio_mmu]=lisa_ww_sio_mmu;
-	mem68k_store_long[sio_mmu]=lisa_wl_sio_mmu;
+    mem68k_memptr[sio_mmu]=lisa_mptr_sio_mmu;
+    mem68k_fetch_byte[sio_mmu]=lisa_rb_sio_mmu;
+    mem68k_fetch_word[sio_mmu]=lisa_rw_sio_mmu;
+    mem68k_fetch_long[sio_mmu]=lisa_rl_sio_mmu;
+    mem68k_store_byte[sio_mmu]=lisa_wb_sio_mmu;
+    mem68k_store_word[sio_mmu]=lisa_ww_sio_mmu;
+    mem68k_store_long[sio_mmu]=lisa_wl_sio_mmu;
 
-	mem68k_memptr[vidram]=lisa_mptr_vidram;
-	mem68k_fetch_byte[vidram]=lisa_rb_vidram;
-	mem68k_fetch_word[vidram]=lisa_rw_vidram;
-	mem68k_fetch_long[vidram]=lisa_rl_vidram;
-	mem68k_store_byte[vidram]=lisa_wb_vidram;
-	mem68k_store_word[vidram]=lisa_ww_vidram;
-	mem68k_store_long[vidram]=lisa_wl_vidram;
+    mem68k_memptr[vidram]=lisa_mptr_vidram;
+    mem68k_fetch_byte[vidram]=lisa_rb_vidram;
+    mem68k_fetch_word[vidram]=lisa_rw_vidram;
+    mem68k_fetch_long[vidram]=lisa_rl_vidram;
+    mem68k_store_byte[vidram]=lisa_wb_vidram;
+    mem68k_store_word[vidram]=lisa_ww_vidram;
+    mem68k_store_long[vidram]=lisa_wl_vidram;
 
-	mem68k_memptr[io]=lisa_mptr_io;
-	mem68k_fetch_byte[io]=lisa_rb_io;
-	mem68k_fetch_word[io]=lisa_rw_io;
-	mem68k_fetch_long[io]=lisa_rl_io;
-	mem68k_store_byte[io]=lisa_wb_io;
-	mem68k_store_word[io]=lisa_ww_io;
-	mem68k_store_long[io]=lisa_wl_io;
+    mem68k_memptr[io]=lisa_mptr_io;
+    mem68k_fetch_byte[io]=lisa_rb_io;
+    mem68k_fetch_word[io]=lisa_rw_io;
+    mem68k_fetch_long[io]=lisa_rl_io;
+    mem68k_store_byte[io]=lisa_wb_io;
+    mem68k_store_word[io]=lisa_ww_io;
+    mem68k_store_long[io]=lisa_wl_io;
 
 
     mem68k_memptr[Oxd400_amd9512]=lisa_mptr_Oxd400_amd9512;
@@ -625,7 +637,7 @@ void init_lisa_mmu(void)
 #ifdef DEBUG
 char *printslr(char *x, long size, uint16 slr)
 {
-	*x=0;
+    *x=0;
 
     memset(x,0,size-1);
 
@@ -648,9 +660,9 @@ char *printslr(char *x, long size, uint16 slr)
     else if ((slr & FILTR)==SLR_IO_SPACE)        strncat(x,"=I/O space",size);
     else if ((slr & FILTR)==SLR_UNUSED_PAGE)     strncat(x,"=bad_page",size);
     else if ((slr & FILTR)==SLR_SIO_SPACE)       strncat(x,"=SI/O space",size);
-	else 	strncat(x,"** INVALID CODE **",size);
+    else     strncat(x,"** INVALID CODE **",size);
 
-	return x;
+    return x;
 }
 
 
@@ -716,7 +728,6 @@ void fill_mmu_segment(uint8 segment, int32 ea, lisa_mem_t rfn, lisa_mem_t wfn, i
               in,ea,out,in+ea,out-in); }
             #endif
 
-
            if (mt->table) free_ipct(mt->table);                             //   invalidate ipct's
            mt->table=NULL;                                                  //   and wipe pointer to be sure it won't be followed
            }
@@ -780,11 +791,11 @@ void get_slr_page_range(int cx,int seg, int16 *pagestart, int16 *pageend, lisa_m
 void create_mmu_segment(uint8 segment)
 {
   //uint32 page=0;              // page #
-    int32  ea; //epage,           // page and effective page (sor+/-page), and diff address ea
+    int32  ea; //epage,         // page and effective page (sor+/-page), and diff address ea
     uint16 sor, slr;            // mmu regs
     uint32 segment8;            // segment shifted 8 bits over into place
     //mmu_trans_t *mt=NULL;
-	lisa_mem_t rfn=bad_page, wfn=bad_page;
+    lisa_mem_t rfn=bad_page, wfn=bad_page;
     int32 ps,pe;
     int16 pagestart, pageend;
 
@@ -794,7 +805,7 @@ void create_mmu_segment(uint8 segment)
 
 
     if (segment>127) { EXIT(42,0,"Create_mmu_segment passed segment>127!"); }
-    if (start)       {  DEBUG_LOG(0,"context=0"); init_start_mode_segment(segment); return;}
+    if (start)       { DEBUG_LOG(0,"context=0"); init_start_mode_segment(segment); return;}
 
 //    DEBUG_LOG(10,":create_mmu_context::context=%d s1/s2=%d/%d start=%d",context,segment1,segment2,start);
 
@@ -1134,7 +1145,7 @@ void validate_mmu_segments(char *from)
     uint8  segment;
     uint32 segment8;           // segment shifted 8 bits over into place
     //mmu_trans_t *mt=NULL;
-	lisa_mem_t rfn=bad_page, wfn=bad_page;
+    lisa_mem_t rfn=bad_page, wfn=bad_page;
     int cx=CXSEL;
     int16 pagestart, pageend;
 

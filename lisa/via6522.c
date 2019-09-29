@@ -35,12 +35,12 @@
 #define FIX_VIA_IFR(vianum)  {                                                               \
                                if ( via[vianum].via[IFR] & 127) via[vianum].via[IFR]|=128;   \
                                else via[vianum].via[IFR]=0;                                  \
-	                         }
+                             }
 
 #define FIX_VIAP_IFR()       {                                                               \
                                if ( V->via[IFR] & 127) V->via[IFR]|=128;                     \
                                else V->via[IFR]=0;                                           \
- 	                         }
+                              }
 
 
 
@@ -66,11 +66,19 @@
 #define  VIA_CLEAR_IRQ_T2(x)     { via[x].via[IFR] &=~VIA_IRQ_BIT_T2; if ( via[x].via[IFR]==128) via[x].via[IFR]=0; DEBUG_LOG(0,"Timer2 IRQ on via %d cleared",x);}
 
 
-
 #define IN_VIA6522_C
 #include "vars.h"
 
 extern void set_next_timer_id(uint8 x);
+
+
+#define VIA_SET_CB2(x) {via[x].via[IFR] |= VIA_IRQ_BIT_CB2;}
+
+void via_set_cb2_ifr(int x) 
+{
+  if ((via[x].via[PCR] & (128|64|32))==128) VIA_SET_CB2(x);
+}
+
 
 #define FIX_CLKSTOP_VIA_T1(x) \
             {  if (via[x].t1_e>-1 && via[x].t1_e<cpu68k_clocks_stop)                                  \
@@ -220,24 +228,24 @@ char *via_regname(int i)
 {
 char *viaregname[]=
 {
-	"I/ORB    ",
+    "I/ORB    ",
     "I/ORA    ",
     "DDRB     ",
     "DDRA     ",
     "T1CL     ",
     "T1CH     ",
-	"T1LL     ",
-	"T1LH     ",
-	"T2CL     ",
-	"T2CH     ",
-	"SHIFTR   ",
-	"ACR      ",
-	"PCR      ",
-	"IFR      ",
-	"IER      ",
-	"I/ORANH  ",
-	"T2LL shadow",
-	"T2LH shadow"
+    "T1LL     ",
+    "T1LH     ",
+    "T2CL     ",
+    "T2CH     ",
+    "SHIFTR   ",
+    "ACR      ",
+    "PCR      ",
+    "IFR      ",
+    "IER      ",
+    "I/ORANH  ",
+    "T2LL shadow",
+    "T2LH shadow"
 };
 
 if (i>-1 && i<18) return viaregname[i];
@@ -371,7 +379,7 @@ void fdumpvia2(FILE *out)
 {
     int i, pcr, acr;
 
-    fprintf(out,"\n\nvia2 (Motherboard Parallel Port) active:%d\n",via[2].active);
+    fprintf(out,"\n\n============0=via2 (Motherboard Parallel Port) active:%d============\n",via[2].active);
     fprintf(out,"via2 vianum:%d\n",via[2].vianum);
 
     fprintf(out,"via2 irqnum:%d\n",via[2].irqnum);
@@ -390,7 +398,7 @@ void fdumpvia2(FILE *out)
                       via[2].via[i] & 64  ? "DSK:Out":"DSK:In",
                       via[2].via[i] & 128 ? "CRS:Out":"CRS:In");
 
-            if (i==0) fprintf(out,"PB0:OCD:%s PB1:!BSY:%s PB2:!DEN:%s PB3:drw:%s PB4:!CMD:%s PB5:!parity:%s PB6:FDIR:%s PB7:Contrast:%s \n",
+            if (i==0) fprintf(out,"PB0:OCD:%s PB1<!BSY:%s PB2:!DEN:%s PB3:drw:%s PB4>!CMD:%s PB5:!parity:%s PB6:FDIR:%s PB7:Contrast:%s \n",
                       via[2].via[i] & 1   ? "no":"connected",
                       via[2].via[i] & 2   ? "busy":"ready",
                       via[2].via[i] & 4   ? "contrast":"parallel",
@@ -477,6 +485,8 @@ void fdumpvia2(FILE *out)
       case 3: fprintf(out,"11 Continous IRQ's, PB7 Square Wave Output\n"); break;
     }
 
+    fprintf(out,"================================================================================\n");
+
 }
 
 void dumpvia(void)
@@ -498,9 +508,9 @@ void dumpvia(void)
 void print_via_profile_state(char *s, uint8 data, viatype *V)
 {
 #ifdef DEBUG
-  if (!debug_log_enabled) return;
+  if (!debug_log_enabled || !buglog) return;
 
-  fprintf(buglog,"%s(%02x) via#:%d ProFileState#:%d widx:%d, ridx:%d,block#:%ld pb1!BSY:%d pb2!DEN:%d pb3!RRW:%d pb4!CMD:%d :: VIA:: ",s,data,
+  fprintf(buglog,"%s(%02x) via#:%d ProFileState#:%d widx:%d, ridx:%d,block#:%ld pb1<!BSY:%d pb2!DEN:%d pb3!RRW:%d pb4>!CMD:%d :: VIA:: ",s,data,
          V->vianum,
          V->ProFile->StateMachineStep,V->ProFile->indexwrite,V->ProFile->indexread,(long)V->ProFile->blocktowrite,
          V->ProFile->BSYLine,
@@ -509,10 +519,10 @@ void print_via_profile_state(char *s, uint8 data, viatype *V)
          V->ProFile->CMDLine);
 
   if (OCDLine_BIT   &  V->via[DDRB]) fprintf(buglog," !OCDLine:%02x ",    data & OCDLine_BIT);
-  if (BSYLine_BIT   &  V->via[DDRB]) fprintf(buglog," !BSYLine:%02x ",    data & BSYLine_BIT);
+  if (BSYLine_BIT   &  V->via[DDRB]) fprintf(buglog,"<!BSYLine:%02x ",    data & BSYLine_BIT);
   if (DENLine_BIT   &  V->via[DDRB]) fprintf(buglog," !DENLine:%02x ",    data & DENLine_BIT);
   if (RRWLine_BIT   &  V->via[DDRB]) fprintf(buglog," !R/RWLine:%02x ",   data & RRWLine_BIT);
-  if (CMDLine_BIT   &  V->via[DDRB]) fprintf(buglog," !CMDLine :%02x ",   data & CMDLine_BIT);
+  if (CMDLine_BIT   &  V->via[DDRB]) fprintf(buglog,">!CMDLine :%02x ",   data & CMDLine_BIT);
   if (PARITY_BIT    &  V->via[DDRB]) fprintf(buglog," !ParityReset:%02x ",data & PARITY_BIT);
   if (DSK_DIAG_BIT  &  V->via[DDRB]) fprintf(buglog," Floppy_wait:%02x ", data & DSK_DIAG_BIT);
   if (CTRL_RES_BIT  &  V->via[DDRB]) fprintf(buglog," !ProFileReset:%02x",data & CTRL_RES_BIT);
@@ -530,7 +540,7 @@ int check_contrast_set(void)
 
 //    if ((via[2].via[DDRB] & via[2].via[ORBB] & 0x80)==0x80 && via[2].via[DDRA]) // this is OK (DDRA used with port B!)
     if ((via[2].via[DDRB] & 0x84)==0x84 && (via[2].via[ORBB] & 0x4)==4 && via[2].via[DDRA]!=0) // this is OK (DDRA used with port B!)
-	{
+    {
         contrast=via[2].via[DDRA] & via[2].via[ORAA]; videoramdirty|=9;
 //        DEBUG_LOG(0,"Setting Contrast:%02x",contrast);
         if ( contrast==0xff) disable_vidram(); else enable_vidram();
@@ -539,7 +549,7 @@ int check_contrast_set(void)
         contrastchange();  // force UI to adjust display
 
         return 1;
-	}
+    }
 
     return 0;
 }
@@ -552,15 +562,15 @@ uint8 via2_ira(uint8 regnum)
     if (via[2].via[ORBB] & via[2].via[DDRB] & 4) {DEBUG_LOG(0,"Returning Contrast"); return contrast;}
 
     if (via[2].ProFile) // Is this a profile?
-	{
+    {
         VIAProfileLoop(2,via[2].ProFile,PROLOOP_EV_IRA);
         via[2].via[IRA]=via[2].ProFile->VIA_PA;
         DEBUG_LOG(0,"profile.c:READ %02x from ProFile, pc24:%08x  tag:profile state:%d",via[2].via[IRA],pc24,via[2].ProFile->StateMachineStep);
         return via[2].via[IRA];
-	}
+    }
     else if (via[2].ADMP) return 0;
 
-	return 0; // nothing attached, ignore.
+    return 0; // nothing attached, ignore.
 }
 
 
@@ -569,7 +579,7 @@ void  via2_ora(uint8 data, uint8 regnum)
 {
     VIA_CLEAR_IRQ_PORT_A(2); // clear CA1/CA2 on ORA/IRA access
 
-	via[2].last_pa_write=cpu68k_clocks;
+    via[2].last_pa_write=cpu68k_clocks;
 
     DEBUG_LOG(0,"ORA:%02x DDRA:%02x   ORB:%02x DDRB:%0x",via[2].via[ORA],via[2].via[DDRA],via[2].via[ORB],via[2].via[DDRB]);
     if (via[2].via[DDRA]==0) return;    // can't write just yet, ignore.
@@ -581,16 +591,15 @@ void  via2_ora(uint8 data, uint8 regnum)
 
     //if (debug_log_enabled) fdumpvia2(buglog);
     if (via[2].ProFile) // Is this a profile?
-	{
-        DEBUG_LOG(0,"profile.c:Sending byte %02x from via2_ora to ProFile code pc24:%08x tag:profile step:%d @%d",
+    {
+        DEBUG_LOG(0,"profile.c:widget.c:Sending byte >%02x from via2_ora to ProFile code pc24:%08x tag:profile step:%d @%d",
                 data,
                 pc24,
                 via[2].ProFile->StateMachineStep,via[2].ProFile->indexwrite);
         via[2].ProFile->VIA_PA=data;  via[2].via[ORA]=data; via[2].ProFile->last_a_accs=1; //20060323//
         VIAProfileLoop(2,via[2].ProFile,PROLOOP_EV_ORA);
-
         return;
-	}
+    }
 
     if (via[2].ADMP) {via[2].via[ORA]=data; ImageWriterLoop(via[2].ADMP,data); return;}
 }
@@ -610,7 +619,7 @@ void via2_orb(uint8 data)
 
 
     // Is there an attached ProFile device on this parallel port?
-	if (via[2].ProFile){
+    if (via[2].ProFile){
 
     // Push the ORB bits to the ProFile flags. (OCD/BSY/DSKDiag/PARITY_BIT are inputs, so we don't do them, hence they're
     // commented out, but left in for the sake of completeness / being pendantic, fasict, totalitarian, etc.
@@ -631,7 +640,7 @@ void via2_orb(uint8 data)
        //                                       }
 
         DEBUG_LOG(0,"profile.c:ORA:%02x DDRA:%02x   ORB:%02x DDRB:%0x",via[2].via[ORA],via[2].via[DDRA],via[2].via[ORB],via[2].via[DDRB]);
-        DEBUG_LOG(0,"profile.c:pb0:!OCD:%d pb1:!BSY:%d pb2:!DEN:%d pb3:!DR/W/:%d pb4:!CMD/:%d pb5:PRES:%d pb6:DIAGWait:%d pb7:CTRL_RES:%d = Data=%02x",
+        DEBUG_LOG(0,"profile.c:pb0:!OCD:%d pb1<!BSY:%d pb2:!DEN:%d pb3:!DR/W/:%d pb4>!CMD/:%d pb5:PRES:%d pb6:DIAGWait:%d pb7:CTRL_RES:%d = Data=%02x",
                     (data&1),(data&2),(data&4),(data&8),(data&16),(data&32),(data&64),(data&128),data);
 
         DEBUG_LOG(0,"Flipped bits: %s%s%s%s%s%s%s%s",((flipped &    1) ? "OCD:pb0 ":"    ")
@@ -643,7 +652,7 @@ void via2_orb(uint8 data)
                                                    , ((flipped &   64) ? "DSK:pb6 ":"    ")
                                                    , ((flipped &  128) ? "CRS:pb7 ":"    ") );
 
-		via[2].ca1=via[2].ProFile->BSYLine;	// refresh
+        via[2].ca1=via[2].ProFile->BSYLine;    // refresh
 
 
         DEBUG_LOG(0,"before Lines DEN:%d RRW:%d CMD:%d",
@@ -657,12 +666,12 @@ void via2_orb(uint8 data)
 
 
         if (pc24<0x00fe0000) print_via_profile_state("\nvia2_orb post-loop ", data,&via[2]);
-	}
+    }
 
     // Is there an attached dot matrix printer?
     if (via[2].ADMP) return;       // Output to Apple Dot Matrix Printer -- not yet implemented
 
-	return; // nothing attached, ignore.
+    return; // nothing attached, ignore.
 }
 
 
@@ -735,12 +744,12 @@ uint8 via2_irb(void) //this is good
 
      else if (via[2].irb) return via[2].irb(2,IRB);
 
-	 ALERT_LOG(0,"Unhandled device via #%d",2);
+     ALERT_LOG(0,"Unhandled device via #%d",2);
 
     //retval |=0x02;   // Set ProFile busy line, since there isn't once attached.
     //retval |=4;      // Set Disk Enable Line to no drive there.
 
-     DEBUG_LOG(0,"profile.c:pb0:!OCD:%d pb1:!BSY:%d pb2:!DEN:%d pb3:DR/W/:%d pb4:!CMD/:%d pb5:!PRES:%d pb6:DIAGWait:%d pb7:CTRL_RES:%d = Data=%02x",
+     DEBUG_LOG(0,"profile.c:pb0:!OCD:%d pb1<!BSY:%d pb2:!DEN:%d pb3:DR/W/:%d pb4>!CMD/:%d pb5:!PRES:%d pb6:DIAGWait:%d pb7:CTRL_RES:%d = Data=%02x",
                     (retval&1),(retval&2),(retval&4),(retval&8),(retval&16),(retval&32),(retval&64),(retval&128),retval);
 
 
@@ -874,10 +883,10 @@ void via1_orb(uint8 data)
 
     if (0x01 & via[1].via[DDRB]) {if (!(data & 1)) cops_reset();}  // Reset Cops when PB0=0
 
-	// Set sound volume PB1-3
+    // Set sound volume PB1-3
     if (  (via[1].via[DDRB] & 0x0e)) {volume=((volume<<1)&(0x0e^(via[1].via[DDRB] & 0x0e)))|(data & via[1].via[DDRB] & 0x0e)>>1; return ;}
 
-	// Do I need this here???
+    // Do I need this here???
     //if (via[1].via[DDRB]) floppy_FDIR=(data & 0x10 ? 1:0); // Is Lisa trying to clear or set FDIR?
     if (via[1].via[DDRB] & 16) {DEBUG_LOG(0,"Lisa attempting to clear/set FDIR  %02x -> %02x\n",data, data & 16); }
 //                              floppy_FDIR=(data&16 ? floppy_FDIR:0); }      // Is Lisa trying to clear FDIR?
@@ -885,7 +894,7 @@ void via1_orb(uint8 data)
     if (data & 32 & via[1].via[DDRB]) {DEBUG_LOG(0,"lisa writing to Parity RESET: %02x ->%02x\n",data, data & 0x40);} // PRES/ Parity Reset
 
     if (data & 64 & via[1].via[DDRB]) {DEBUG_LOG(0,"lisa writing to cops handshake: %02x ->%02x\n",data, data & 0x40);} // cops handshake
-	// PB7=CRES/
+    // PB7=CRES/
 
     if (0x80 & via[1].via[DDRB])
         {
@@ -904,10 +913,10 @@ void via1_orb(uint8 data)
 void chk_sound_play(void)
 {
             if  (  via[1].via[SHIFTREG]!=0 && via[1].via[T2LL]!=0  && ((via[1].via[ACR] & 0x10)==0x10) )
-			{
+            {
                 sound_play( via[1].via[T2LH]<<8 | (via[1].via[T2LL] ) ); // enable sound, smaller the higher the pitch.
                 return;
-			}
+            }
 
             if ((via[1].via[ACR] & 0x10)==0) sound_off();               // otherwise, STFU
 }
@@ -927,7 +936,7 @@ void lisa_wb_Oxdc00_cops_via1(uint32 addr, uint8 xvalue)
 
 
     switch (addr & 0x1f)
-	{
+    {
         case ORB1  :
                    /* It is possible to write multiple bytes by writing different
                     * sized values out the VIA - this is used by the parallel via
@@ -943,7 +952,7 @@ void lisa_wb_Oxdc00_cops_via1(uint32 addr, uint8 xvalue)
             via1_orb(via[1].via[ORB] & via[1].via[DDRB]); // output the masked data.
             return;
 
-		case ORANH1 : //IRA/ORA
+        case ORANH1 : //IRA/ORA
             via[1].last_a_accs=1;
             DEBUG_LOG(0,"ORANH1");
             via[1].via[ORAA]= xvalue;
@@ -951,9 +960,9 @@ void lisa_wb_Oxdc00_cops_via1(uint32 addr, uint8 xvalue)
             DEBUG_LOG(0,"VIA1 ORA(NH)=%02x DDRA=%02x",via[1].via[ORA],via[1].via[DDRA]);
             if ( !via[1].via[DDRA]) {via[1].orapending=1;return;}  // don't write anything if the DDRA is all inputs
             via1_ora((via[1].via[ORA] & via[1].via[DDRA]),15);
-			return;
+            return;
 
-		case ORA1   :
+        case ORA1   :
             via[1].last_a_accs=1;
             VIA_CLEAR_IRQ_PORT_A(1); // clear CA1/CA2 on ORA/IRA access
 
@@ -962,9 +971,9 @@ void lisa_wb_Oxdc00_cops_via1(uint32 addr, uint8 xvalue)
             via[1].via[ORA]= xvalue;
             if ( !via[1].via[DDRA]) {via[1].orapending=1;;return;}  // don't write anything if the DDRA is all inputs
             via1_ora(via[1].via[ORAA] & via[1].via[DDRA],ORA); //output the masked data
-			return;
+            return;
 
-		case DDRB1  :         // DDRB 2
+        case DDRB1  :         // DDRB 2
             DEBUG_LOG(0,"DDRB1");
 
 
@@ -978,7 +987,7 @@ void lisa_wb_Oxdc00_cops_via1(uint32 addr, uint8 xvalue)
 
             return;
 
-		case DDRA1  :         // and DDRA 3 registers
+        case DDRA1  :         // and DDRA 3 registers
             DEBUG_LOG(0,"DDRA1");
 
             via[1].via[DDRA]=xvalue;
@@ -1018,7 +1027,7 @@ write to register
 
             return;
 
-		case T1LH1  :
+        case T1LH1  :
             DEBUG_LOG(0,"T1LH1");                                                  // 7 T1HL value copied into T1HL, no transfer to T1CH
             via[1].via[T1LH]=(xvalue);                                             // Set timer1 latch and counter
             via_running=1;
@@ -1050,7 +1059,7 @@ write to register
 
 
 
-		case T1CH1  :
+        case T1CH1  :
             DEBUG_LOG(0,"T1CH1");
             if ( via[1].via[ACR]&128) via[1].via[IRB] &= 0x7f;                             // with ACR7=1, a write to T1C brings PB7 low
             via[1].via[T1LH]=xvalue;                                                       // load into register
@@ -1069,10 +1078,10 @@ write to register
 
             via_running=1;
 
-			return;
+            return;
 
 
-		case T2CL1  :  // Set Timer 2 Low Latch
+        case T2CL1  :  // Set Timer 2 Low Latch
             DEBUG_LOG(0,"T2CL1");
             via[1].via[T2LL]=xvalue;                                                       // Set t2 latch low
 
@@ -1088,7 +1097,7 @@ write to register
 
 
 
-		case T2CH1  : // timer2 high byte
+        case T2CH1  : // timer2 high byte
               // a write to T2H will load and the counter as well.
             DEBUG_LOG(0,"T2CH1");
 
@@ -1105,7 +1114,7 @@ write to register
 
             via_running=1;
             chk_sound_play();
-			return;
+            return;
 
 
         case SR1 :
@@ -1194,11 +1203,11 @@ write to register
                     if ((via[1].via[PCR] ^ xvalue) & 1) via[1].via[IFR]|=VIA_IRQ_BIT_CA1;
                     via[1].via[PCR]=xvalue; return;
 
-		case IFR1 :                      /* IFR  */
+        case IFR1 :                      /* IFR  */
             via[1].via[IFR] &= (0x7f^(xvalue & 0x7f));          // 1 writes to IFR are used to clear bits!
 
-	        
-			FIX_VIA_IFR(1);
+            
+            FIX_VIA_IFR(1);
 
             DEBUG_LOG(0,"VIA1 IFR Write:%02x::%s %s %s %s %s %s %s %s\n",xvalue,
             (xvalue & VIA_IRQ_BIT_CA2        ) ? "CA2":"",
@@ -1210,10 +1219,10 @@ write to register
             (xvalue & VIA_IRQ_BIT_T1         ) ? "T1 ":"",
             (xvalue & VIA_IRQ_BIT_SET_CLR_ANY) ? "ANY":"");
 
-			return;
+            return;
 
-		case IER1 :
-			/* IER  */
+        case IER1 :
+            /* IER  */
             DEBUG_LOG(0,"IER1");
 
               // if bit 7=0, then all 1 bits are reversed. 1=no irq, 0=irq enabled.
@@ -1240,11 +1249,11 @@ write to register
             (via[1].via[IER] & VIA_IRQ_BIT_T1         ) ? "T1 ":"",
             (via[1].via[IER] & VIA_IRQ_BIT_SET_CLR_ANY) ? "SET":"CLEAR");
 
-			return;
+            return;
         default: DEBUG_LOG(0,"Illegal I/O addr Error %08x ignored (%02x not writen!)",addr,xvalue);
                  return;
-	}
-	return;
+    }
+    return;
 }
 
 
@@ -1257,7 +1266,7 @@ uint8 lisa_rb_Oxdc00_cops_via1(uint32 addr)
     DEBUG_LOG(0,"reading from register %d (%s)", ((addr & 0x1f)>>1) ,via_regname(((addr & 0x1f)>>1) ));
 
     switch (addr & 0x1f)
-	{
+    {
         case IRB1   : VIA_CLEAR_IRQ_PORT_B(1);
                       DEBUG_LOG(0,"IRB1");                                           //20060105 | for previously used outputs
 
@@ -1293,15 +1302,15 @@ uint8 lisa_rb_Oxdc00_cops_via1(uint32 addr)
         case DDRA1  : DEBUG_LOG(0,"DDRA1"); return via[1].via[DDRA];                       //DDRA
 
 
-		case T1LL1  :   // Timer 1 Low Order Latch
+        case T1LL1  :   // Timer 1 Low Order Latch
             DEBUG_LOG(0,"T1LL1");
             return (via[1].via[T1LL]);
 
-		case T1LH1  :   // Time 1 High Order Latch
+        case T1LH1  :   // Time 1 High Order Latch
             DEBUG_LOG(0,"T1LH1");
             return via[1].via[T1LH];
 
-		case T1CL1  :   // Timer 1 Low Order Counter
+        case T1CL1  :   // Timer 1 Low Order Counter
             DEBUG_LOG(0,"T1CL1");
             VIA_CLEAR_IRQ_T1(1);     // clear T1 irq on T1 read low or write high
             //via[1].via[T1CL]=get_via_timer_left_from_te(via[1].t1_e) & 0xff;
@@ -1309,13 +1318,13 @@ uint8 lisa_rb_Oxdc00_cops_via1(uint32 addr)
             via[1].via[T1CL]=get_via_timer_left_or_passed_from_te(via[1].t1_e,via[1].t1_set_cpuclk) & 0xff;
             return via[1].via[T1CL];
 
-		case T1CH1  :  // Timer 1 High Order Counter
+        case T1CH1  :  // Timer 1 High Order Counter
             DEBUG_LOG(0,"T1CH1");
             VIA_CLEAR_IRQ_T1(1);     // clear timer 1 interrupt on access
             via[1].via[T1CH]=get_via_timer_left_or_passed_from_te(via[1].t1_e,via[1].t1_set_cpuclk)>>8;
             return via[1].via[T1CH];
 
-		case T2CL1  :  // Timer 2 Low Byte
+        case T2CL1  :  // Timer 2 Low Byte
             DEBUG_LOG(0,"read T2CL1 t2_e:%ld set at:%ld",via[1].t2_e, via[1].t2_set_cpuclk);
 
             via[1].via[T2CL]=get_via_timer_left_or_passed_from_te(via[1].t2_e,via[1].t2_set_cpuclk) & 0xff;
@@ -1359,7 +1368,7 @@ uint8 lisa_rb_Oxdc00_cops_via1(uint32 addr)
                       (via[1].via[IFR] & VIA_IRQ_BIT_SET_CLR_ANY) ? "ANY:on":"ANY:off");
                       #endif
 
-					  FIX_VIA_IFR(1);
+                      FIX_VIA_IFR(1);
                       return via[1].via[IFR];
 
         case IER1   : DEBUG_LOG(0,"IER1");
@@ -1379,7 +1388,7 @@ uint8 lisa_rb_Oxdc00_cops_via1(uint32 addr)
                       return via[1].via[IER];
 
         default: DEBUG_LOG(0,"Illegal addr error:%08x",addr);return 0xff;
-	}
+    }
     return 0xff;
 }
 
@@ -1396,7 +1405,7 @@ void lisa_wb_Oxd800_par_via2(uint32 addr, uint8 xvalue)
 
 
     switch (addr & 0x79)  // fcd901      // was 0x7f it's now 0x79  // 2004.06.24 because saw MOVEP.W to T2CH, but suspect it also writes to T2CL!
-	{
+    {
         case ORB2  :  //IRB/ORB
            {
             #ifdef DEBUG
@@ -1422,7 +1431,8 @@ void lisa_wb_Oxd800_par_via2(uint32 addr, uint8 xvalue)
                                 (( flipped &   64) ?"DSK:PB6 ":" "),
                                 (( flipped &  128) ?"CRS:PB7 ":" "));
 
-             if (flipped & 16) DEBUG_LOG(0,"profile.c: CMD Flipped to %d at PC24:%08x  tag:profile step:%d",xvalue&16,pc24,via[2].ProFile->StateMachineStep);
+             if (flipped & 16) DEBUG_LOG(0,"profile.c:widget.c: >%sCMD Flipped to %d at PC24:%08x  tag:profile step:%d   pc24:%08x",
+                               (xvalue&16 ? "+":"!"),xvalue&16,pc24,via[2].ProFile->StateMachineStep, pc24);
 
              DEBUG_LOG(0,"VIA2 ORB write=%02x:(OCD:%s BSY:%s DEN:%s RRW: %sCMD:%s PAR:%s DSKDIAG:%s CRES:%s)",xvalue,
                                 (( xvalue &    1) ?"OCD:PB0:1 ":"OCD:PB0:0 "),
@@ -1444,9 +1454,9 @@ void lisa_wb_Oxd800_par_via2(uint32 addr, uint8 xvalue)
             if ( !via[2].via[DDRB]) return;  // don't write anything (no handshake) if the DDRB is all inputs
             via2_orb(via[2].via[ORBB] & via[2].via[DDRB]); // output the masked data.
 
-			return;
+            return;
             }
-		case ORANH2 : //IRA/ORA
+        case ORANH2 : //IRA/ORA
             DEBUG_LOG(0,"ORANH2");
 
             via[2].last_a_accs=1;
@@ -1470,7 +1480,7 @@ void lisa_wb_Oxd800_par_via2(uint32 addr, uint8 xvalue)
             //via[2].orapending=1;              //20060417//
 
 
-			return;
+            return;
 
         case ORA2   :
             DEBUG_LOG(0,"ORA2");
@@ -1489,9 +1499,9 @@ void lisa_wb_Oxd800_par_via2(uint32 addr, uint8 xvalue)
 
             via2_ora(via[2].via[ORAA] & via[2].via[DDRA],ORA); //output the masked data
             via[2].orapending=0;
-			return;
+            return;
 
-		case DDRB2  :         // DDRB 2
+        case DDRB2  :         // DDRB 2
             DEBUG_LOG(0,"DDRB2");
             via[2].via[DDRB]=xvalue;
 
@@ -1511,7 +1521,7 @@ void lisa_wb_Oxd800_par_via2(uint32 addr, uint8 xvalue)
                  via2_orb(via[2].via[ORBB] & via[2].via[DDRB]); // output the data that was masked off
             return;
 
-		case DDRA2  :         // and DDRA 3 registers
+        case DDRA2  :         // and DDRA 3 registers
 
              DEBUG_LOG(0,"Overwriting DDRA (previous value was=%02x, new value is:%02x)",
                           via[2].via[DDRA],xvalue);
@@ -1540,9 +1550,9 @@ void lisa_wb_Oxd800_par_via2(uint32 addr, uint8 xvalue)
 
                   via2_ora((via[2].via[ORAA] & xvalue), ORA); //output the masked data
                 }
-			return;
+            return;
 
-		case T1LL2  :   // Timer 1 Low Order Latch
+        case T1LL2  :   // Timer 1 Low Order Latch
             DEBUG_LOG(0,"T1LL2");
 
             via[2].via[T1CL]=xvalue;                                               // 4 T1LC actually writes to T1LL only
@@ -1560,7 +1570,7 @@ void lisa_wb_Oxd800_par_via2(uint32 addr, uint8 xvalue)
 
             return;                        // Set timer2 low byte
 
-		case T1LH2  :
+        case T1LH2  :
             DEBUG_LOG(0,"T1LH2");
             via[2].via[T1LH]=(xvalue);                                             // Set timer1 latch and counter
             via_running=1;
@@ -1576,7 +1586,7 @@ void lisa_wb_Oxd800_par_via2(uint32 addr, uint8 xvalue)
 
             return;
 
-		case T1CL2  :
+        case T1CL2  :
             DEBUG_LOG(0,"T1CL2");
 
             via[2].via[T1LL]=xvalue;
@@ -1644,7 +1654,7 @@ void lisa_wb_Oxd800_par_via2(uint32 addr, uint8 xvalue)
 
             via_running=1;
 
-			return;
+            return;
 
 
         case SR2:
@@ -1653,16 +1663,6 @@ void lisa_wb_Oxd800_par_via2(uint32 addr, uint8 xvalue)
             uint8 shift=(via[2].via[ACR] & 28)>>2;
 
             DEBUG_LOG(0,"Write %02x to shift register on VIA2!!!!",xvalue);
-            //fprintf(buglog,"Write %02x to shift register on VIA2!!!!\n",xvalue);
-
-
-           // #ifdef DEBUG
-           // if (xvalue==0)  debug_off();
-           // #endif
-
-
-            // EXIT(53);
-
             DEBUG_LOG(0,"SR2");
             via[2].via[SHIFTREG]=xvalue;                     // write shift register
             via_running=1;
@@ -1736,10 +1736,10 @@ void lisa_wb_Oxd800_par_via2(uint32 addr, uint8 xvalue)
              if ((via[2].via[PCR] ^ xvalue) & 1) via[2].via[IFR]|=VIA_IRQ_BIT_CA1;
              via[2].via[PCR]=xvalue; return;
 
-		case IFR2:                      /* IFR  */
+        case IFR2:                      /* IFR  */
 
             via[2].via[IFR]&=(0x7f^(xvalue & 0x7f));  // 1 writes to IFR are used to clear bits!
-			FIX_VIA_IFR(2);
+            FIX_VIA_IFR(2);
             DEBUG_LOG(0,"IFR2 write bits: %s %s %s %s %s %s %s %s",
                            (via[2].via[IFR] &   1) ? "ifr0CA2:on"              :"ifr0CA2:off",
                            (via[2].via[IFR] &   2) ? "bsy_ifr1CA1:on"          :"bsy_ifr1CA1:off",
@@ -1750,7 +1750,7 @@ void lisa_wb_Oxd800_par_via2(uint32 addr, uint8 xvalue)
                            (via[2].via[IFR] &  64) ? "ifr6T1 :on"              :"ifr6T1 :off",
                            (via[2].via[IFR] & 128) ? "ifr7ANY:on"              :"ifr7ANY:off");
 
-			return;
+            return;
 
         case IER2:
             DEBUG_LOG(0,"IER2");
@@ -1789,10 +1789,10 @@ void lisa_wb_Oxd800_par_via2(uint32 addr, uint8 xvalue)
                 ((via[2].via[IER] & VIA_IRQ_BIT_SET_CLR_ANY) ? "SET":"CLEAR"));
                }
             #endif
-			return;
+            return;
         default: DEBUG_LOG(0,"Illegal address error Write to illegal address in via2_wb_ @ %08x",addr);
-	}
-	return;
+    }
+    return;
 }
 
 
@@ -1803,9 +1803,8 @@ uint8 lisa_rb_Oxd800_par_via2(uint32 addr)
 
     DEBUG_LOG(0,"reading from register %d (%s)", ((addr & 0x7f)>>3) ,via_regname(((addr & 0x7f)>>3) ));
 
-
     switch (addr & 0x79)                // was 7f, changing to 79
-	{
+    {
         case IRB2   :
                     {
                      #ifdef DEBUG
@@ -1844,7 +1843,7 @@ uint8 lisa_rb_Oxd800_par_via2(uint32 addr)
                                 (( flipped &   64) ?"DSK:PB6 ":" "),
                                 (( flipped &  128) ?"CRS:PB7 ":" "));
 
-
+                      if (flipped & 2) DEBUG_LOG(0,"profile.c:widget.c:<%sBSY flipped to %d   pc24:%08x",((via[2].via[IRB] & 2) ? "+":"!"),via[2].via[IRB] & 2,  pc24);
 
                       DEBUG_LOG(0,"VIA2 IRB read=%02x:(OCD:%s BSY:%s DEN:%s RRW: %sCMD:%s PAR:%s DSKDIAG:%s CRES:%s)",via[2].via[IRB],
                                 ( (via[2].via[IRB] &    1) ?"PB0:1 ":"pb0:0 "),
@@ -1864,24 +1863,23 @@ uint8 lisa_rb_Oxd800_par_via2(uint32 addr)
         case IRANH2 : via[2].last_a_accs=0;
                       if (via[2].ProFile) via[2].ProFile->last_a_accs=0;
 
-                      DEBUG_LOG(0,"IRANH2");                                          //20060105 or in old outputs
-
                       via[2].via[IRAA]=(via2_ira(15));
                       via[2].via[IRA]=(via[2].via[IRAA] & (~via[2].via[DDRA])) | (via[2].via[ORAA] & via[2].via[DDRA]);  // read data from port base it on DDRA mask
 
+                      DEBUG_LOG(0,"profile.c:widget.c: IRANH2  Profile to Lisa <%02x  pc24:%08x",via[2].via[IRA], pc24);
                       return via[2].via[IRA];
 
 
         case IRA2   : via[2].last_a_accs=0;
                       if (via[2].ProFile) via[2].ProFile->last_a_accs=0;
 
-                      DEBUG_LOG(0,"IRA2");
 
                       VIA_CLEAR_IRQ_PORT_A(2); // clear CA1/CA2 on ORA/IRA access
 
                       via[2].via[IRAA]=(via2_ira(15));
                       via[2].via[IRA]=(via[2].via[IRAA] & (~via[2].via[DDRA])) | (via[2].via[ORAA] & via[2].via[DDRA]);  // read data from port base it on DDRA mask
 
+                      DEBUG_LOG(0,"profile.c:widget.c: IRA2  Profile to Lisa <%02x   pc24:%08x",via[2].via[IRA], pc24);
                       return via[2].via[IRA];
 
 
@@ -1889,15 +1887,15 @@ uint8 lisa_rb_Oxd800_par_via2(uint32 addr)
         case DDRA2  : DEBUG_LOG(0,"DDRA2"); return via[2].via[DDRA];                                          //DDRA
 
 
-		case T1LL2  :   // Timer 1 Low Order Latch
+        case T1LL2  :   // Timer 1 Low Order Latch
             DEBUG_LOG(0,"T1LL2=%02x",(via[2].via[T1LL]));
             return (via[2].via[T1LL]);
 
-		case T1LH2  :   // Time 1 High Order Latch
+        case T1LH2  :   // Time 1 High Order Latch
             DEBUG_LOG(0,"T1LH2 %02x",via[2].via[T1LH]);
             return via[2].via[T1LH];
 
-		case T1CL2  :   // Timer 1 Low Order Counter
+        case T1CL2  :   // Timer 1 Low Order Counter
             DEBUG_LOG(0,"T1CL2");
             VIA_CLEAR_IRQ_T1(2);     // clear T1 irq on T1 read low or write high
             //via[2].via[T1CL]=get_via_timer_left_from_te(via[2].t1_e) & 0xff;
@@ -1905,7 +1903,7 @@ uint8 lisa_rb_Oxd800_par_via2(uint32 addr)
             via[2].via[T1CL]=get_via_timer_left_or_passed_from_te(via[2].t1_e,via[2].t1_set_cpuclk) & 0xff;
             return via[2].via[T1CL];
 
-		case T1CH2  :  // Timer 1 High Order Counter
+        case T1CH2  :  // Timer 1 High Order Counter
             DEBUG_LOG(0,"T1CH2");
             VIA_CLEAR_IRQ_T1(2);     // clear timer 1 interrupt on access
             via[2].via[T1CH]=get_via_timer_left_or_passed_from_te(via[2].t1_e,via[2].t1_set_cpuclk)>>8;
@@ -1947,8 +1945,8 @@ uint8 lisa_rb_Oxd800_par_via2(uint32 addr)
                          via[2].via[IFR] &=~VIA_IRQ_BIT_CB2;            //20060525 - want this one  // Parity Error=false
                       }
 
- 					  via[2].via[IFR] &= ~VIA_IRQ_BIT_SR; // SR is not used on a Lisa // 20071103
-					  FIX_VIA_IFR(2);
+                       via[2].via[IFR] &= ~VIA_IRQ_BIT_SR; // SR is not used on a Lisa // 20071103
+                      FIX_VIA_IFR(2);
 
                       DEBUG_LOG(0,"IFR2=%02x bits: %s %s %s %s %s %s %s %s",via[2].via[IFR],
                            (via[2].via[IFR] &   1) ? "ifr0CA2:on"              :"ifr0CA2:off",
@@ -1969,8 +1967,8 @@ uint8 lisa_rb_Oxd800_par_via2(uint32 addr)
                       return  via[2].via[IER];
 
         default:  DEBUG_LOG(0,"Illegal Address Access VIA2:%08x",addr);
-	}
-	return 0;
+    }
+    return 0;
 }
 
 
@@ -1985,16 +1983,16 @@ uint8 viaX_ira(viatype *V,uint8 regnum)
     if (V->vianum==2 && V->via[ORBB] & V->via[DDRB] & 4) {DEBUG_LOG(0,"VIA:%d Returning Contrast",V->vianum); return contrast;}
 
     if (V->ProFile) // Is this a profile?
-	{
+    {
         VIAProfileLoop(V->vianum,V->ProFile,PROLOOP_EV_IRA);
         V->via[IRA]=V->ProFile->VIA_PA;
         DEBUG_LOG(0,"VIA:%d profile.c:READ %02x from ProFile, pc24:%08x  tag:profile state:%d",V->vianum,V->via[IRA],pc24,V->ProFile->StateMachineStep);
         return V->via[IRA];
-	}
+    }
     else if (V->ADMP) {DEBUG_LOG(0,"ADMP read from IRA"); return 0;} // ADMP doesn't return anything far as I know
     //else if (V->ira!=NULL) return viaX_ira(2,regnum); // Some other thing attached.
 
-	return 0; // nothing attached, ignore.
+    return 0; // nothing attached, ignore.
 }
 
 // this is the one that's actually used!
@@ -2002,7 +2000,7 @@ void  viaX_ora(viatype *V,uint8 data, uint8 regnum)
 {
     VIA_CLEAR_IRQ_PORT_A(V->vianum); // clear CA1/CA2 on ORA/IRA access
 
-	V->last_pa_write=cpu68k_clocks;
+    V->last_pa_write=cpu68k_clocks;
 
     DEBUG_LOG(0,"VIA:%D ORA:%02x DDRA:%02x   ORB:%02x DDRB:%0x",V->vianum,V->via[ORA],V->via[DDRA],V->via[ORB],V->via[DDRB]);
     if (V->via[DDRA]==0) return;    // can't write just yet, ignore.
@@ -2014,7 +2012,7 @@ void  viaX_ora(viatype *V,uint8 data, uint8 regnum)
 
     //if (debug_log_enabled) fdumpvia2(buglog);
     if (V->ProFile) // Is this a profile?
-	{
+    {
         DEBUG_LOG(0,"VIA:%d profile.c:Sending byte %02x from viaX_ora to ProFile code pc24:%08x tag:profile step:%d @%d",
                 V->vianum,
                 data,
@@ -2022,9 +2020,8 @@ void  viaX_ora(viatype *V,uint8 data, uint8 regnum)
                 V->ProFile->StateMachineStep,V->ProFile->indexwrite);
         V->ProFile->VIA_PA=data;  V->via[ORA]=data; V->ProFile->last_a_accs=1; //20060323//
         VIAProfileLoop(V->vianum,V->ProFile,PROLOOP_EV_ORA);
-
         return;
-	}
+    }
 
     if (V->ADMP) {
                    V->via[ORA]=data;
@@ -2064,7 +2061,7 @@ void viaX_orb(ViaType *V, uint8 data)
     //  if ( PARITY_BIT   & V->via[DDRB]) {V->ProFile->Parity=(data &  PARITY_BIT) ? 0:1;}   //5 Parity error bit is input
         if ( DSK_DIAG_BIT & V->via[DDRB]) {DEBUG_LOG(0,"VIA:%d Write to DSK_DIAG on viaX_orb!:%02x",V->vianum,data & DSK_DIAG_BIT);} // 6 Floppy Disk Diag is input
 
-        // this is wrong, reet is on VIa1!
+        // this is wrong, reset is on VIa1!
        // if ( CTRL_RES_BIT & V->via[DDRB]) {if ((data & CTRL_RES_BIT)==0)                         //7 Controller reset
        //                                           { DEBUG_LOG(0,"Sent Controller Reset to ProFile:%02x",data & CTRL_RES_BIT);
        //                                             ProfileReset(V->ProFile);
@@ -2072,7 +2069,7 @@ void viaX_orb(ViaType *V, uint8 data)
        //                                       }
 
         DEBUG_LOG(0,"VIA:%d profile.c:ORA:%02x DDRA:%02x   ORB:%02x DDRB:%0x",V->vianum,V->via[ORA],V->via[DDRA],V->via[ORB],V->via[DDRB]);
-        DEBUG_LOG(0,"VIA:%d profile.c:pb0:!OCD:%d pb1:!BSY:%d pb2:!DEN:%d pb3:!DR/W/:%d pb4:!CMD/:%d pb5:PRES:%d pb6:DIAGWait:%d pb7:CTRL_RES:%d = Data=%02x",
+        DEBUG_LOG(0,"VIA:%d profile.c:pb0:!OCD:%d pb1<!BSY:%d pb2:!DEN:%d pb3:!DR/W/:%d pb4>!CMD/:%d pb5:PRES:%d pb6:DIAGWait:%d pb7:CTRL_RES:%d = Data=%02x",
                     V->vianum,
                     (data&1),(data&2),(data&4),(data&8),(data&16),(data&32),(data&64),(data&128),data);
 
@@ -2112,14 +2109,14 @@ void viaX_orb(ViaType *V, uint8 data)
     // Is there an attached dot matrix printer?
     if (V->ADMP)
     {
-        DEBUG_LOG(0,"ADMP VIA:%d profile.c:pb0:!OCD:%d pb1:!BSY:%d pb2:!DEN:%d pb3:!DR/W/:%d pb4:!CMD/:%d pb5:PRES:%d pb6:DIAGWait:%d pb7:CTRL_RES:%d = Data=%02x",
+        DEBUG_LOG(0,"ADMP VIA:%d profile.c:pb0:!OCD:%d pb1<!BSY:%d pb2:!DEN:%d pb3:!DR/W/:%d pb4>!CMD/:%d pb5:PRES:%d pb6:DIAGWait:%d pb7:CTRL_RES:%d = Data=%02x",
                     V->vianum,
                     (data&1),(data&2),(data&4),(data&8),(data&16),(data&32),(data&64),(data&128),data);
 
 
             return;       // Output to Apple Dot Matrix Printer -- no control needed here
     }
-	return; // nothing attached, ignore.
+    return; // nothing attached, ignore.
 }
 
 
@@ -2143,7 +2140,7 @@ uint8 viaX_irb(viatype *V) //this is good
            {
              DEBUG_LOG(0,"ADMP VIA#%d polled for IRB",V->vianum);
 
-		     retval |= (V->ProFile || V->ADMP) && IS_PARALLEL_PORT_ENABLED(V->vianum) ? 0 : OCDLine_BIT;  // ADMP/Profile attached?
+             retval |= (V->ProFile || V->ADMP) && IS_PARALLEL_PORT_ENABLED(V->vianum) ? 0 : OCDLine_BIT;  // ADMP/Profile attached?
              if (IS_PARALLEL_PORT_ENABLED(V->vianum)) retval = BSYLine_BIT;
 
              //retval=V->via[IRB];
@@ -2152,8 +2149,6 @@ uint8 viaX_irb(viatype *V) //this is good
            }
 
 
-
-   // Is there a ProFile on VIA2? - yes, some lines are crossed between VIA1 and VIA2 - likely a legacy design bug before ProFiles
    if (V->ProFile)
    {
 
@@ -2208,7 +2203,7 @@ uint8 viaX_irb(viatype *V) //this is good
     //retval |=0x02;   // Set ProFile busy line, since there isn't once attached.
     //retval |=4;      // Set Disk Enable Line to no drive there.
 
-     DEBUG_LOG(0,"VIA:%d profile.c:pb0:!OCD:%d pb1:!BSY:%d pb2:!DEN:%d pb3:DR/W/:%d pb4:!CMD/:%d pb5:!PRES:%d pb6:DIAGWait:%d pb7:CTRL_RES:%d = Data=%02x",
+     DEBUG_LOG(0,"VIA:%d profile.c:pb0:!OCD:%d pb1<!BSY:%d pb2:!DEN:%d pb3:DR/W/:%d pb4>!CMD/:%d pb5:!PRES:%d pb6:DIAGWait:%d pb7:CTRL_RES:%d = Data=%02x",
                     V->vianum,
                     (retval&1),(retval&2),(retval&4),(retval&8),(retval&16),(retval&32),(retval&64),(retval&128),retval);
 
@@ -2229,7 +2224,7 @@ uint8 lisa_rb_ext_2par_via(ViaType *V,uint32 addr)
 
 
     switch (addr & 0x79)                // was 7f, changing to 79
-	{
+    {
         case IRB2   :
                     {
                      #ifdef DEBUG
@@ -2288,23 +2283,21 @@ uint8 lisa_rb_ext_2par_via(ViaType *V,uint32 addr)
         case IRANH2 : V->last_a_accs=0;
                       if (V->ProFile) V->ProFile->last_a_accs=0;
 
-                      DEBUG_LOG(0,"IRANH");                                          //20060105 or in old outputs
 
                       V->via[IRAA]=(viaX_ira(V,15));
                       V->via[IRA]=(V->via[IRAA] & (~V->via[DDRA])) | (V->via[ORAA] & V->via[DDRA]);  // read data from port base it on DDRA mask
 
+                      DEBUG_LOG(0,"profile.c:widget.c: Profile->Lisa IRANH %02x  pc24:%08x",V->via[IRA], pc24);                                          //20060105 or in old outputs
                       return V->via[IRA];
 
 
         case IRA2   : V->last_a_accs=0;
                       if (V->ProFile) V->ProFile->last_a_accs=0;
-
-                      DEBUG_LOG(0,"IRA");
-
                       VIA_CLEAR_IRQ_PORT_A(V->vianum); // clear CA1/CA2 on ORA/IRA access
 
                       V->via[IRAA]=(viaX_ira(V,15));
                       V->via[IRA]=(V->via[IRAA] & (~V->via[DDRA])) | (V->via[ORAA] & V->via[DDRA]);  // read data from port base it on DDRA mask
+                      DEBUG_LOG(0,"profile.c:widget.c: Profile->Lisa IRA2 %02x   pc24:%08x",V->via[IRA], pc24);                                          //20060105 or in old outputs
 
                       return V->via[IRA];
 
@@ -2313,15 +2306,15 @@ uint8 lisa_rb_ext_2par_via(ViaType *V,uint32 addr)
         case DDRA2  : DEBUG_LOG(0,"DDRA"); return V->via[DDRA];                                          //DDRA
 
 
-		case T1LL2  :   // Timer 1 Low Order Latch
+        case T1LL2  :   // Timer 1 Low Order Latch
             DEBUG_LOG(0,"T1LL2=%02x",(V->via[T1LL]));
             return (V->via[T1LL]);
 
-		case T1LH2  :   // Time 1 High Order Latch
+        case T1LH2  :   // Time 1 High Order Latch
             DEBUG_LOG(0,"T1LH2 %02x",V->via[T1LH]);
             return V->via[T1LH];
 
-		case T1CL2  :   // Timer 1 Low Order Counter
+        case T1CL2  :   // Timer 1 Low Order Counter
             DEBUG_LOG(0,"T1CL2");
             VIA_CLEAR_IRQ_T1(V->vianum);     // clear T1 irq on T1 read low or write high
             //V->via[T1CL]=get_via_timer_left_from_te(V->t1_e) & 0xff;
@@ -2329,7 +2322,7 @@ uint8 lisa_rb_ext_2par_via(ViaType *V,uint32 addr)
             V->via[T1CL]=get_via_timer_left_or_passed_from_te(V->t1_e,V->t1_set_cpuclk) & 0xff;
             return V->via[T1CL];
 
-		case T1CH2  :  // Timer 1 High Order Counter
+        case T1CH2  :  // Timer 1 High Order Counter
             DEBUG_LOG(0,"T1CH2");
             VIA_CLEAR_IRQ_T1(V->vianum);     // clear timer 1 interrupt on access
             V->via[T1CH]=get_via_timer_left_or_passed_from_te(V->t1_e,V->t1_set_cpuclk)>>8;
@@ -2375,7 +2368,7 @@ uint8 lisa_rb_ext_2par_via(ViaType *V,uint32 addr)
                       }
 
                       V->via[IFR] &= ~VIA_IRQ_BIT_SR;  // explicitly shut off SR bit.
-					  FIX_VIAP_IFR();
+                      FIX_VIAP_IFR();
                       DEBUG_LOG(0,"IFR2=%02x",V->via[IFR]);
 
                       DEBUG_LOG(0,"IFR2 bits: %s %s %s %s %s %s %s %s",
@@ -2396,8 +2389,8 @@ uint8 lisa_rb_ext_2par_via(ViaType *V,uint32 addr)
                       return  V->via[IER];
 
         default:  DEBUG_LOG(0,"Illegal Address Access VIA2:%08x",addr);
-	}
-	return 0;
+    }
+    return 0;
 }
 
 void lisa_wb_ext_2par_via(ViaType *V,uint32 addr, uint8 xvalue)
@@ -2410,7 +2403,7 @@ void lisa_wb_ext_2par_via(ViaType *V,uint32 addr, uint8 xvalue)
 
 
     switch (addr & 0x79)  // fcd901      // was 0x7f it's now 0x79  // 2004.06.24 because saw MOVEP.W to T2CH, but suspect it also writes to T2CL!
-	{
+    {
         case ORB2  :  //IRB/ORB
            {
             #ifdef DEBUG
@@ -2459,9 +2452,9 @@ void lisa_wb_ext_2par_via(ViaType *V,uint32 addr, uint8 xvalue)
             if ( !V->via[DDRB]) return;  // don't write anything (no handshake) if the DDRB is all inputs
             viaX_orb(V,V->via[ORBB] & V->via[DDRB]); // output the masked data.
 
-			return;
+            return;
             }
-		case ORANH2 : //IRA/ORA
+        case ORANH2 : //IRA/ORA
             DEBUG_LOG(0,"ORANH");
 
             V->last_a_accs=1;
@@ -2479,13 +2472,11 @@ void lisa_wb_ext_2par_via(ViaType *V,uint32 addr, uint8 xvalue)
                                        V->orapending=1;
                                        DEBUG_LOG(0,"ORANH: Not writing %02x now, but setting pending since DDRA=0",xvalue);
                                        return;
-                                    }
-
+                                }
+            DEBUG_LOG(0,"profile.c:widget.c: Lisa->Profile ORA2NH %02x   pc24:%08x",V->via[ORA], pc24);
             viaX_ora(V,V->via[ORAA] & V->via[DDRA],15);
             //V->orapending=1;              //20060417//
-
-
-			return;
+            return;
 
         case ORA2   :
             DEBUG_LOG(0,"ORA");
@@ -2501,12 +2492,12 @@ void lisa_wb_ext_2par_via(ViaType *V,uint32 addr, uint8 xvalue)
                                        V->orapending=1;
                                        return;
                                     }
-
+            DEBUG_LOG(0,"profile.c:widget.c: Lisa->Profile ORA2 %02x  pc24:%08x",V->via[ORA], pc24);
             viaX_ora(V,V->via[ORAA] & V->via[DDRA],ORA); //output the masked data
             V->orapending=0;
-			return;
+            return;
 
-		case DDRB2  :         // DDRB 2
+        case DDRB2  :         // DDRB 2
             DEBUG_LOG(0,"DDRB2");
             V->via[DDRB]=xvalue;
 
@@ -2526,7 +2517,7 @@ void lisa_wb_ext_2par_via(ViaType *V,uint32 addr, uint8 xvalue)
                  viaX_orb(V,V->via[ORBB] & V->via[DDRB]); // output the data that was masked off
             return;
 
-		case DDRA2  :         // and DDRA 3 registers
+        case DDRA2  :         // and DDRA 3 registers
 
              DEBUG_LOG(0,"Overwriting DDRA (previous value was=%02x, new value is:%02x)",
                           V->via[DDRA],xvalue);
@@ -2555,9 +2546,9 @@ void lisa_wb_ext_2par_via(ViaType *V,uint32 addr, uint8 xvalue)
 
                   viaX_ora(V,(V->via[ORAA] & xvalue), ORA); //output the masked data
                 }
-			return;
+            return;
 
-		case T1LL2  :   // Timer 1 Low Order Latch
+        case T1LL2  :   // Timer 1 Low Order Latch
             DEBUG_LOG(0,"T1LL2");
 
             V->via[T1CL]=xvalue;                                               // 4 T1LC actually writes to T1LL only
@@ -2575,7 +2566,7 @@ void lisa_wb_ext_2par_via(ViaType *V,uint32 addr, uint8 xvalue)
 
             return;                        // Set timer2 low byte
 
-		case T1LH2  :
+        case T1LH2  :
             DEBUG_LOG(0,"T1LH2");
             V->via[T1LH]=(xvalue);                                             // Set timer1 latch and counter
             via_running=1;
@@ -2591,7 +2582,7 @@ void lisa_wb_ext_2par_via(ViaType *V,uint32 addr, uint8 xvalue)
 
             return;
 
-		case T1CL2  :
+        case T1CL2  :
             DEBUG_LOG(0,"T1CL2");
 
             V->via[T1LL]=xvalue;
@@ -2667,7 +2658,7 @@ void lisa_wb_ext_2par_via(ViaType *V,uint32 addr, uint8 xvalue)
 
             via_running=1;
 
-			return;
+            return;
 
 
         case SR2:
@@ -2759,7 +2750,7 @@ void lisa_wb_ext_2par_via(ViaType *V,uint32 addr, uint8 xvalue)
              if ((V->via[PCR] ^ xvalue) & 1) V->via[IFR]|=2;
              V->via[PCR]=xvalue; return;
 
-		case IFR2 :                      /* IFR  */
+        case IFR2 :                      /* IFR  */
 
             V->via[IFR]&=(0x7f^(xvalue & 0x7f));  // 1 writes to IFR are used to clear bits!
             if ( V->via[IFR] & 127) V->via[IFR]|=128;   // if all are cleared, clear bit 7 else set it
@@ -2774,7 +2765,7 @@ void lisa_wb_ext_2par_via(ViaType *V,uint32 addr, uint8 xvalue)
                            (V->via[IFR] &  32) ? "ifr5T2 :on"              :"ifr5T2 :off",
                            (V->via[IFR] &  64) ? "ifr6T1 :on"              :"ifr6T1 :off",
                            (V->via[IFR] & 128) ? "ifr7ANY:on"              :"ifr7ANY:off");
-			return;
+            return;
 
 
         case IER2 :
@@ -2814,10 +2805,10 @@ void lisa_wb_ext_2par_via(ViaType *V,uint32 addr, uint8 xvalue)
                 ((V->via[IER] & VIA_IRQ_BIT_SET_CLR_ANY) ? "SET":"CLEAR"));
                }
             #endif
-			return;
+            return;
         default: DEBUG_LOG(0,"Illegal address error Write to illegal address in viaX_wb_ @ %08x",addr);
-	}
-	return;
+    }
+    return;
 }
 
 
@@ -2825,46 +2816,46 @@ void lisa_wb_ext_2par_via(ViaType *V,uint32 addr, uint8 xvalue)
 
 void init_vias(void)
 {
-	int i,j;
+    int i,j;
 
     memset(&via[0],0,8*sizeof(ViaType));
     via[0].active=0;                    // sacrificial lamb. :)  (aka waste of memory)
-	via[1].active=1;
-	via[2].active=1;
-	via[3].active=0;
-	via[4].active=0;
-	via[5].active=0;
-	via[6].active=0;
-	via[7].active=0;
+    via[1].active=1;
+    via[2].active=1;
+    via[3].active=0;
+    via[4].active=0;
+    via[5].active=0;
+    via[6].active=0;
+    via[7].active=0;
     via[8].active=0;
 
-	via[1].irqnum=2 ; //cops via
-	via[2].irqnum=1 ; //parallel port via
+    via[1].irqnum=2 ; //cops via
+    via[2].irqnum=1 ; //parallel port via
 
-	via[3].irqnum=5; //slot 1
-	via[4].irqnum=5; //slot 1
-	via[5].irqnum=4; //slot 2
-	via[6].irqnum=4; //slot 2
-	via[7].irqnum=3; //slot 3
-	via[8].irqnum=3; //slot 3
+    via[3].irqnum=5; //slot 1
+    via[4].irqnum=5; //slot 1
+    via[5].irqnum=4; //slot 2
+    via[6].irqnum=4; //slot 2
+    via[7].irqnum=3; //slot 3
+    via[8].irqnum=3; //slot 3
 
-	via[1].active=via[2].active=1;
+    via[1].active=via[2].active=1;
 
-	for (i=1; i<9; i++)
-	{
-		via[i].vianum=i;
-		for (j=0; j<16; j++) via[i].via[j]=0;
+    for (i=1; i<9; i++)
+    {
+        via[i].vianum=i;
+        for (j=0; j<16; j++) via[i].via[j]=0;
 
         via[i].last_a_accs=0;
         via[i].irb=NULL;
-		via[i].ira=NULL;
-		via[i].orb=NULL;
-		via[i].ora=NULL;
-		via[i].ca1=0;
-		via[i].ca2=0;
-		via[i].cb1=0;
-		via[i].cb2=0;
-		via[i].srcount=0;
+        via[i].ira=NULL;
+        via[i].orb=NULL;
+        via[i].ora=NULL;
+        via[i].ca1=0;
+        via[i].ca2=0;
+        via[i].cb1=0;
+        via[i].cb2=0;
+        via[i].srcount=0;
         via[i].ProFile=NULL;
         via[i].ADMP=0;
         via[i].t1_e=-1;
@@ -2877,7 +2868,7 @@ void init_vias(void)
         via[i].t1_fired_cpuclk=0;
         via[i].t2_fired_cpuclk=0;
         //#endif
-	}
+    }
 
 
    via_running=0;
@@ -2908,14 +2899,14 @@ void reset_via(int i)
     via[1].irqnum=2; //cops via
     via[2].irqnum=1; //parallel port via
 
-	via[3].irqnum=5; //slot 1
-	via[4].irqnum=5; //slot 1
+    via[3].irqnum=5; //slot 1
+    via[4].irqnum=5; //slot 1
 
     via[5].irqnum=4; //slot 2
-	via[6].irqnum=4; //slot 2
+    via[6].irqnum=4; //slot 2
 
-	via[7].irqnum=3; //slot 3
-	via[8].irqnum=3; //slot 3
+    via[7].irqnum=3; //slot 3
+    via[8].irqnum=3; //slot 3
 
 
     via[1].vianum=1;
@@ -2930,27 +2921,27 @@ void reset_via(int i)
 
     via[1].active=1;
     via[2].active=1;
-	via[i].srcount=0;
-	via[i].vianum=i;
-	via[i].via[0]=0;
-	via[i].via[1]=0;
-	via[i].via[2]=0;
-	via[i].via[3]=0;
+    via[i].srcount=0;
+    via[i].vianum=i;
+    via[i].via[0]=0;
+    via[i].via[1]=0;
+    via[i].via[2]=0;
+    via[i].via[3]=0;
 
-	via[i].via[11]=0;
-	via[i].via[12]=0;
-	via[i].via[13]=0;
-	via[i].via[14]=0;
-	via[i].via[15]=0;
-	via[i].irb=NULL;
-	via[i].ira=NULL;
-	via[i].orb=NULL;
-	via[i].ora=NULL;
+    via[i].via[11]=0;
+    via[i].via[12]=0;
+    via[i].via[13]=0;
+    via[i].via[14]=0;
+    via[i].via[15]=0;
+    via[i].irb=NULL;
+    via[i].ira=NULL;
+    via[i].orb=NULL;
+    via[i].ora=NULL;
 
-	via[i].ca1=0;
-	via[i].ca2=0;
-	via[i].cb1=0;
-	via[i].cb2=0;
+    via[i].ca1=0;
+    via[i].ca2=0;
+    via[i].cb1=0;
+    via[i].cb2=0;
 
     via_running=0;
 }

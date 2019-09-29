@@ -42,7 +42,7 @@ public:
      int floppystate;      // animation state of floppy
      int powerstate;       // animation state of power button
 
-	 void RepaintNow(void);
+     void RepaintNow(void);
 
      void RePaint_AAGray(void);
 
@@ -67,7 +67,7 @@ public:
 
      void OnErase(wxEraseEvent &event);
 
-	 long mousemoved;
+     long mousemoved;
 
      void OnMouseMove(wxMouseEvent &event);
      void OnKeyDown(wxKeyEvent& event);
@@ -80,7 +80,7 @@ public:
      int lastkeystroke;
 
      uint8 bright[8];       // brightness levels for ContrastChange and repaint routines.
-	 
+     
      int repaintall;
      int ox,oy,ex,ey;
      int dwx,dwy;

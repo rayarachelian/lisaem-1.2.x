@@ -70,7 +70,7 @@ char *getvector(int v)
      case 46:     sprintf(vectxt,"0x%x (%d) trap #e  ",v,v); return vectxt;
      case 47:     sprintf(vectxt,"0x%x (%d) trap #f  ",v,v); return vectxt;
 }
-if (v>63)    sprintf(vectxt,"0x%x (%d) user irq vector #%d",v,v,v-64); return vectxt;
+if (v>63)    {sprintf(vectxt,"0x%x (%d) user irq vector #%d",v,v,v-64); return vectxt;}
 
 sprintf(vectxt,"0x%x (%d) unassigned/reserved",v,v); return vectxt;
 }
@@ -165,7 +165,7 @@ void lisaos_trap5(void)
         case 0x5a:     /* 5b4   */ label="settimes"; break;
         case 0x5c:     /* 5c4   */ label="timetoda"; break;
         }
-        fprintf(buglog,"TRAP #5 Hardware Library call taken D7=%08x, (%s)\n",reg68k_regs[7],label);
+        if (buglog) fprintf(buglog,"TRAP #5 Hardware Library call taken D7=%08x, (%s)\n",reg68k_regs[7],label);
     }
 
 
