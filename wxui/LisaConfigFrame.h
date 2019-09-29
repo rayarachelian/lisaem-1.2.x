@@ -31,9 +31,9 @@ public:
 
     //          event handlers
     void        OnApply(            wxCommandEvent& event);
-	void        OnZapPram(          wxCommandEvent& event);
-	void        OnSavePram(          wxCommandEvent& event);
-	void        OnLoadPram(          wxCommandEvent& event);
+    void        OnZapPram(          wxCommandEvent& event);
+    void        OnSavePram(          wxCommandEvent& event);
+    void        OnLoadPram(          wxCommandEvent& event);
     void        OnSernoInfo(         wxCommandEvent& event); 
     void        OnNoteBook(wxNotebookEvent& event);
     void        OnPickRom(            wxCommandEvent& event);
@@ -88,6 +88,8 @@ public:
     wxTextCtrl *serialbparam;
 
     wxString pportopts[3];        // common to all parallel ports
+    wxString wpportopts[3];       // Widget on Lisa 2/10
+
     wxString serportopts[6];
     int      serialopts;
 
@@ -104,10 +106,10 @@ public:
 
 
 private:
-	LisaConfig *my_lisaconfig;
-	wxString slotcard[2];
+    LisaConfig *my_lisaconfig;
+    wxString slotcard[2];
 
-	DECLARE_EVENT_TABLE()
+    DECLARE_EVENT_TABLE()
 };
 
 #endif

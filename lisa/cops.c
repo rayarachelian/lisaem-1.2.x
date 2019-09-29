@@ -77,7 +77,7 @@ int mouse_keys_enabled=0, mouse_keys_x=0, mouse_keys_y=0;
 
 ///////////////////////////////////
 
-								
+                                
 void init_clock(void);
 
 void bigm_delta(int16 x, int16 y);
@@ -157,15 +157,16 @@ void my_dump_cops(FILE *buglog)
 {
  int i;
 
+ if (!buglog) return;
  fflush(buglog);
 
  if ( copsqueuelen<=0)
  {
     switch ( copsqueuelen) {
-        case 0  : DEBUG_LOG(0,"COPS queue is empty, and no mouse motion is pending.");
-        case -1 : DEBUG_LOG(0,"Mouse: pending the send of 00");
-        case -2 : DEBUG_LOG(0,"Mouse: pending the send of mouse_x_delta %d",mouse_pending_x);
-        case -3 : DEBUG_LOG(0,"Mouse: pending the send of mouse_y_delta %d",mouse_pending_y);
+        case 0  : DEBUG_LOG(0,"COPS queue is empty, and no mouse motion is pending.");                 /* FALLTHRU */
+        case -1 : DEBUG_LOG(0,"Mouse: pending the send of 00");                                        /* FALLTHRU */  
+        case -2 : DEBUG_LOG(0,"Mouse: pending the send of mouse_x_delta %d",mouse_pending_x);          /* FALLTHRU */
+        case -3 : DEBUG_LOG(0,"Mouse: pending the send of mouse_y_delta %d",mouse_pending_y);          /* FALLTHRU */
         default:  DEBUG_LOG(0,"ERROR! copsqueuelen is negative but out of range! %d",copsqueuelen);
     }
    return;
@@ -310,7 +311,7 @@ void keystroke_cops(unsigned char c)
         k=keydecodetable[c][j];
         if (k) {SEND_COPS_CODE(k);}
         else    {
-                 if (k==NMIKEY && NMIKEY) {fprintf(buglog,"COPS NMI KEY:%04x hit, firing.\n",NMIKEY); lisa_nmi_vector(CHK_MMU_TRANS(pc24));}
+                 if (k==NMIKEY && NMIKEY) {ALERT_LOG(0,"COPS NMI KEY:%04x hit, firing.\n",NMIKEY); lisa_nmi_vector(CHK_MMU_TRANS(pc24));}
         }
     }
     SET_COPS_NEXT_EVENT(0);
@@ -497,8 +498,31 @@ void plugmouse(void)                    // Used by initialization sequence - che
 }
 
 
-
+// old
 void set_mouse_button(int i)  {  DEBUG_LOG(0,"mouse button event:%d",i); SEND_COPS_CODE( ( i?0x86:0x06) ); }
+
+void set_mouse_button_x(int i)
+{
+   DEBUG_LOG(0,"mouse button event:%d",i);
+   SEND_COPS_CODE(i < 0 ? 7+i : 0x87-i );
+}
+// 0,1 mouse button 0
+/*
+  switch ( mousequeue[1].button)
+  { case -1 : if (last_mouse_button_state!=0)
+              {
+               set_mouse_button(0); //DEBUG_LOG(0,"mouse button set to 0 (up)");   // mouse is now up
+               last_mouse_button_state=0;
+              }
+              break;
+    case +1 : if (last_mouse_button_state!=1)
+              {
+                set_mouse_button(1); //DEBUG_LOG(0,"mouse button set 1 (down)");   // mouse is now down
+                last_mouse_button_state=1;
+              }
+
+*/
+
 
 //#define OLD_COPS_BEHAVIOR
 
@@ -635,15 +659,15 @@ void normalize_lisa_set_clock(void)
 
 void init_clock(void)
 {
-	struct tm *timev;
-	time_t clktime;
-	uint8 dd_hun, dd_ten, dd_one;
-	uint16 yday;
-	
-		clktime=time(&clktime);
-		timev=(struct tm *)localtime(&clktime);
+    struct tm *timev;
+    time_t clktime;
+    uint8 dd_hun, dd_ten, dd_one;
+    uint16 yday;
+    
+        clktime=time(&clktime);
+        timev=(struct tm *)localtime(&clktime);
 
-		yday=timev->tm_yday;
+        yday=timev->tm_yday;
      dd_hun=(uint8) (yday/100);
      dd_ten=(uint8)((yday/10)%10);
      dd_one=(uint8) (yday%10);
@@ -678,7 +702,7 @@ void init_clock(void)
        //lisa_clock.hours_l=11;
        //lisa_clock.hours_h=0;
      }
-	
+    
 }
 
 void init_cops(void)
@@ -707,7 +731,7 @@ void via1_ora(uint8 data,uint8 regnum)
     ///
 
 
-	switch ( data) {
+    switch ( data) {
         case 0x00 : cops_reset(); DEBUG_LOG(0,"cops reset 0 - PORT ON\n");
                     return;   // turn off port - just ignore it (reset signal received)
 
@@ -716,9 +740,12 @@ void via1_ora(uint8 data,uint8 regnum)
 
         case 0x02 :                               // read clock data
 
-            if ( copsqueuelen+8>MAXCOPSQUEUE) {fprintf(buglog,"\n\n\n\n     COPS OVERFLOW! CAN'T SET DATE!\n\n\n"); }
-            if ( copsqueuelen+7<MAXCOPSQUEUE)  // if the queue isn't full that is...
-			{
+            if ( copsqueuelen+8>MAXCOPSQUEUE) 
+            {
+                 ALERT_LOG(0,"\n\n\n\n     COPS OVERFLOW! CAN'T SET DATE!\n\n\n"); 
+            }
+            else
+            {
               DEBUG_LOG(0,"getting clock.\n");
 
 
@@ -754,26 +781,24 @@ void via1_ora(uint8 data,uint8 regnum)
                                                                lisa_clock.mins_h,lisa_clock.mins_l,
                                                                lisa_clock.secs_h,lisa_clock.secs_l,
                                                                lisa_clock.tenths);
-
-
-                return;
-			}
-
-           case 0x10:
-           case 0x11:
-           case 0x12:
-           case 0x13:
-           case 0x14:
-           case 0x15:
-           case 0x16:
-           case 0x17:
-           case 0x18:
-           case 0x19:
-           case 0x1a:
-           case 0x1b:
-           case 0x1c:
-           case 0x1d:
-           case 0x1e:
+            }
+            return;
+            
+           case 0x10: /* FALLTHROUGH */
+           case 0x11: /* FALLTHROUGH */
+           case 0x12: /* FALLTHROUGH */
+           case 0x13: /* FALLTHROUGH */
+           case 0x14: /* FALLTHROUGH */
+           case 0x15: /* FALLTHROUGH */
+           case 0x16: /* FALLTHROUGH */
+           case 0x17: /* FALLTHROUGH */
+           case 0x18: /* FALLTHROUGH */
+           case 0x19: /* FALLTHROUGH */
+           case 0x1a: /* FALLTHROUGH */
+           case 0x1b: /* FALLTHROUGH */
+           case 0x1c: /* FALLTHROUGH */
+           case 0x1d: /* FALLTHROUGH */
+           case 0x1e: /* FALLTHROUGH */
            case 0x1f:             // 0001 xxxx  0001 nnnn - 0x1? write nnnn to clock
                {                  // 8421 8421
                 ALERT_LOG(0,"Writing %02x at position %d of LisaClockSet",data & 0x0f, lisa_clock_set_idx);
@@ -786,21 +811,21 @@ void via1_ora(uint8 data,uint8 regnum)
                }
 
 
-           case 0x20:
-           case 0x21:
-           case 0x22:
-           case 0x23:
-           case 0x24:
-           case 0x25:
-           case 0x26:
-           case 0x27:
-           case 0x28:
-           case 0x29:
-           case 0x2a:
-           case 0x2b:
-           case 0x2c:
-           case 0x2d:
-           case 0x2e:
+           case 0x20: /* FALLTHROUGH */
+           case 0x21: /* FALLTHROUGH */
+           case 0x22: /* FALLTHROUGH */
+           case 0x23: /* FALLTHROUGH */
+           case 0x24: /* FALLTHROUGH */
+           case 0x25: /* FALLTHROUGH */
+           case 0x26: /* FALLTHROUGH */
+           case 0x27: /* FALLTHROUGH */
+           case 0x28: /* FALLTHROUGH */
+           case 0x29: /* FALLTHROUGH */
+           case 0x2a: /* FALLTHROUGH */
+           case 0x2b: /* FALLTHROUGH */
+           case 0x2c: /* FALLTHROUGH */
+           case 0x2d: /* FALLTHROUGH */
+           case 0x2e: /* FALLTHROUGH */
            case 0x2f:                          // 0010 spmm - 0x2? set clock modes
             {//      8421                      // 8421 8421
              /* 0010 spmm - 2x set clock modes: 00 -disable clock/timer, 01 - timer disable,
@@ -834,30 +859,30 @@ void via1_ora(uint8 data,uint8 regnum)
                lisa_clock_on=1;
 
                //fprintf(buglog,"copsclk:");
-               switch(lisa_clock_set_idx-1)                         // don't want breaks here, we want it to fall through!!
-                  {   case  0xf: lisa_clock.tenths   = lisa_clock_set[0xf];  //fall through
-                      case  0xe: lisa_clock.secs_l   = lisa_clock_set[0xe];  //fall through
-                      case  0xd: lisa_clock.secs_h   = lisa_clock_set[0xd];  //fall through
-                      case  0xc: lisa_clock.mins_l   = lisa_clock_set[0xc];  //fall through
-                      case  0xb: lisa_clock.mins_h   = lisa_clock_set[0xb];  //fall through
-                      case  0xa: lisa_clock.hours_l  = lisa_clock_set[0xa];  //fall through
-                      case  0x9: lisa_clock.hours_h  = lisa_clock_set[0x9];  //fall through
-
+               switch(lisa_clock_set_idx-1)                                  // don't want breaks here, we want it to fall through!!
+                  {   case  0xf: lisa_clock.tenths   = lisa_clock_set[0xf];  /* FALLTHRU */
+                      case  0xe: lisa_clock.secs_l   = lisa_clock_set[0xe];  /* FALLTHRU */
+                      case  0xd: lisa_clock.secs_h   = lisa_clock_set[0xd];  /* FALLTHRU */
+                      case  0xc: lisa_clock.mins_l   = lisa_clock_set[0xc];  /* FALLTHRU */
+                      case  0xb: lisa_clock.mins_h   = lisa_clock_set[0xb];  /* FALLTHRU */
+                      case  0xa: lisa_clock.hours_l  = lisa_clock_set[0xa];  /* FALLTHRU */
+                      case  0x9: lisa_clock.hours_h  = lisa_clock_set[0x9];  /* FALLTHRU */
                       case  0x8: lisa_clock.days_l   = lisa_clock_set[0x8];
-  //                               fprintf(buglog,"days_l=%02x ",lisa_clock.days_l);         //fall through
-
+  //                               fprintf(buglog,"days_l=%02x ",lisa_clock.days_l);       
+                                                                                       /* FALLTHRU */
                       case  0x7: lisa_clock.days_h   =((lisa_clock_set[0x7]&0x0f)  | (lisa_clock.days_h & 0xf0));
-  //                               fprintf(buglog,"days_h=%02x ",lisa_clock.days_h);         //fall through
-
+  //                               fprintf(buglog,"days_h=%02x ",lisa_clock.days_h);
+                                                                                      /* FALLTHRU */
                       case  0x6: lisa_clock.days_h   =((lisa_clock_set[0x6]&0x0f)<<4) | (lisa_clock.days_h & 0x0f);
-  //                               fprintf(buglog,"days_h=%02x ",lisa_clock.days_h);         //fall through
-
+  //                               fprintf(buglog,"days_h=%02x ",lisa_clock.days_h);
+                                                                                       /* FALLTHRU */
                       case  0x5: lisa_clock.year     = (lisa_clock_set[0x5] & 0x0f)|0xe0;
-  //                               fprintf(buglog,"year=%02x ",lisa_clock.year);             //fall through
-                      case  0x4:                                                           //fall through
-                      case  0x3:                                                           //fall through
-                      case  0x2:                                                           //fall through
-                      case  0x1:                                                           //fall through
+  //                               fprintf(buglog,"year=%02x ",lisa_clock.year);
+                                   /* FALLTHRU */
+                      case  0x4:  /* FALLTHRU */
+                      case  0x3:  /* FALLTHRU */
+                      case  0x2:  /* FALLTHRU */
+                      case  0x1:  /* FALLTHRU */
                       case  0x0: lisa_alarm=0;
                                  lisa_alarm=((lisa_clock_set[0x4]&0x0f)    )
                                            |((lisa_clock_set[0x3]&0x0f)<< 4)
@@ -1042,7 +1067,7 @@ void via1_ora(uint8 data,uint8 regnum)
         default:
            DEBUG_LOG(0,"COPS: unimplemented cops command %02x",data);
 
-	}
+    }
 
 
     // does the lisa actually use this? - maybe we can ignore it... maybe...
@@ -1055,15 +1080,15 @@ void via1_ora(uint8 data,uint8 regnum)
 
 uint8 via1_ira(uint8 regnum)
 {
-	uint8 data;
-	register int16 i;
+    uint8 data;
+    register int16 i;
     copsqueuefull=0;  // since the Lisa is reading the queue, assume it's alive,
                       // clear the copsqueuefull watchdog.
     DEBUG_LOG(0,"IRA1 copsqueuelen:%d, mousequeuelen:%d cops_mouse:%d",copsqueuelen,mousequeuelen,cops_mouse);
 
     #ifdef DEBUG
 
-      if (debug_log_enabled)
+      if (debug_log_enabled && buglog!=NULL)
       {  fprintf(buglog,"IRA1 COPS Queue:");
          for(i=0; i<MAXCOPSQUEUE; i++) fprintf(buglog,"%02x ",copsqueue[i]);
          fprintf(buglog,"\n");
@@ -1103,7 +1128,7 @@ uint8 via1_ira(uint8 regnum)
     copsqueuelen--; copsqueue[i]=0x00;
 //    ALERT_LOG(0,"returning %02x, %d bytes left.  %02x,%02x,%02x,%02x,%02x,%02x,%02x,%02x,",data,copsqueuelen,
 //                copsqueue[0],copsqueue[1],copsqueue[2],copsqueue[3],
-//				copsqueue[4],copsqueue[5],copsqueue[6],copsqueue[7]);
+//                copsqueue[4],copsqueue[5],copsqueue[6],copsqueue[7]);
 //    ALERT_LOG(0,".");
     return data;
 }
@@ -1147,10 +1172,8 @@ void seek_mouse_event(void)
   mouse_pending=0;
 
   if (!cops_mouse||contrast==0xff || !mousequeuelen)
-        { DEBUG_LOG(0,"skipping seek_mouse_event because:%d,%d,%d\n",cops_mouse,contrast,mousequeuelen);
+        { DEBUG_LOG(0,"skipping seek_mouse_event because: cops_mouse:%d, contrast:%d,mousequeuelen:%d\n",cops_mouse,contrast,mousequeuelen);
           return;}
-
-
 
   if (!is_lisa_mouse_on())
         {   DEBUG_LOG(0,"skipping because lisa isn't listening to the mouse");
@@ -1162,6 +1185,7 @@ void seek_mouse_event(void)
   abort_opcode=2;
   GET_RAT_XY(0);
 
+#ifdef DEBUG
   if ( abort_opcode==1)
   {
     DEBUG_LOG(0,"Got abort opcode while reading the mouse - this should never happen");
@@ -1171,7 +1195,8 @@ void seek_mouse_event(void)
     DEBUG_LOG(0,"abort_opcode while reading mouse");
     //exit(36);
   }
-
+#endif
+  
   dx=mousequeue[1].x-(int16)(ratx);
   dy=mousequeue[1].y-(int16)(raty);
   DEBUG_LOG(0,"ratx,y: %d,%d mousequeue:%d,%d dx,dy",ratx,raty,mousequeue[1].x,mousequeue[1].y,dx,dy);
@@ -1239,8 +1264,11 @@ void seek_mouse_event(void)
      }
   //DEBUG_LOG(0,"mouse dx,dy is (%d,%d) button is %d so we might send it.",dx,dy,mousequeue[1].button);
 
+// new code 2018.12
+set_mouse_button(mousequeue[1].button); //DEBUG_LOG(0,"mouse button set to 0 (up)");   // mouse is now up
+last_mouse_button_state=mousequeue[1].button;
 
-
+/*
   switch ( mousequeue[1].button)
   { case -1 : if (last_mouse_button_state!=0)
               {
@@ -1257,7 +1285,7 @@ void seek_mouse_event(void)
     case  0 : break;
     default: EXIT(352,0,"Bug in mousequeue 1 button is %d",mousequeue[1].button);
   }
-
+*/
   // shift the mouse queue over
   if (mousequeuelen>1)
      {
@@ -1272,8 +1300,6 @@ void seek_mouse_event(void)
 }
 
 
-
-
 void set_loram_clk(void)
 {
 // $1BA-1BF : Clock setting (Ey,dd,dh,hm,ms,st)
@@ -1284,11 +1310,7 @@ void set_loram_clk(void)
    lisa_ram_safe_setbyte(1,0x1be, (((lisa_clock.mins_l)&0x0f)<<4 ) | (lisa_clock.secs_h  &0x0f));
    lisa_ram_safe_setbyte(1,0x1bf, (((lisa_clock.secs_l)&0x0f)<<4 ) | (lisa_clock.tenths  &0x0f));
 
-
-
-
 }
-
 
 
 // "Devastation is on the way" - In memory of Dimebag Darrell 2004.12.08

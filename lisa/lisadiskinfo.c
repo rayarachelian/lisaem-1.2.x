@@ -71,10 +71,16 @@ int main(int argc, char *argv[])
 
      if (!valid)
        {
+          int count=0;
           FILE *file;
           unsigned char buffer[256];
           file=fopen(argv[i],"rb");
-          fread(buffer,256,1,file);
+          count=fread(buffer,256,1,file);
+          if (count!=1) 
+             {
+                if (errno) {perror("Failed to read 1 item from file");}
+                else       {fprintf(stderr,"Error reading header, count should be 1\n");}
+             }
           fclose(file);
 
           if (buffer[0]=='S' && buffer[1]=='I' && buffer[2]=='T' && buffer[3]=='!')

@@ -71,7 +71,7 @@ uint8 IRQRingGet(void)
 
     DEBUG_LOG(0,"irq.c:: about to signal IRQ:%d fliflo has %d items queued pc24=%08x\n\n",irql,fliflo_buff_size(&IRQq),pc24);
     if (irql<7) // Is this a normal autovctor.
-	{
+    {
         DEBUG_LOG(0,"IRQ Get: autovector %d: fliflo has %d items queued\n",irql,fliflo_buff_size(&IRQq));
 
         //bandaid
@@ -80,9 +80,9 @@ uint8 IRQRingGet(void)
 
         if (irql) {DEBUG_LOG(0,"irc.c:: firing IRQ:%d",irql);
                    reg68k_external_autovector(irql); }
-	}
-	else // no, then we need special handling (FDIR)
-	{
+    }
+    else // no, then we need special handling (FDIR)
+    {
        if (  (floppy_irq_top && floppy_ram[DRIVE]==0x80) || (floppy_irq_bottom && floppy_ram[DRIVE]==00)  )
        {
         // FDIR may have been suppressed by 68k code clearing the IRQ, so don't fire if FDIR=0!
@@ -95,7 +95,7 @@ uint8 IRQRingGet(void)
                 }
        }
     }
-	return irql;
+    return irql;
 }
 
 
@@ -108,10 +108,10 @@ int8 IRQRingBufferAdd(uint8 irql, uint32 address)
 
 
     if (fliflo_buff_is_full(&IRQq))
-	{
+    {
         DEBUG_LOG(0,"Too many IRQ's have occured! Either Lisa is ignoring IRQ's, or is crashed!!!\n\n");
-		return -1;
-	}
+        return -1;
+    }
 
     DEBUG_LOG(0,"irq.c:: about to add IRQ:%d fliflo has %d items queued\n",irql,fliflo_buff_size(&IRQq));
 
@@ -121,7 +121,7 @@ int8 IRQRingBufferAdd(uint8 irql, uint32 address)
     fliflo_buff_add(&IRQq,irql);
     DEBUG_LOG(0,"irq.c:: added IRQ:%d to fliflo which now has %d items queued\n",irql,fliflo_buff_size(&IRQq));
     fliflo_dump(&IRQq,"irq post-add");
-	return 0;
+    return 0;
 
 }
 
@@ -427,7 +427,6 @@ void flag_via_t2_irq(int i)
      }
 
 
-
    // handle timer 2 code //////////////////////////////////////////////////////////////////////////////////////
    if (V->via[IER]&    VIA_IRQ_BIT_T2)
    {
@@ -478,6 +477,7 @@ void flag_via_t1_irq(int i)
         case   0:                   break;     // 00 Timed IRQ each time T1 loaded, one shot PB7 disabled
         case   2: V->via[IRB]|=128; break;     // 10 Timed IRQ each time T1 loaded, one shot PB7 high on expire
         case   3: V->via[IRB]^=128;            // continous irq PB7 square wave output (fall through)
+                  /* FALLTHROUGH */
         case   1: V->via[T1CL]=V->via[T1LL];   // continous irq PB7 disabled -- just reload timer
                   V->via[T1CH]=V->via[T1LH];
                   V->t1_e=get_via_te_from_timer((V->via[T1CH]<<8) | V->via[T1CL]);
@@ -668,13 +668,13 @@ void decisecond_clk_tick(void)
 
    // correct time as needed
    while (tenths > 9)  {
-	                    tenths -=10;  seconds++;
+                        tenths -=10;  seconds++;
                         if (lisa_alarm>0)         // alarm decrements every second if turned on.
                            if (0==(--lisa_alarm))
                            {cops_timer_alarm();
                             DEBUG_LOG(0,"copsclk: ALARM fired.");
-						   }
-					    }
+                           }
+                        }
    while (seconds>59)  {seconds-=60;  minutes++; }
    while (minutes>59)  {minutes-=60;  hours++;   }
    while (hours  >23)  {hours  -=24;  days++;    }
@@ -759,7 +759,7 @@ void check_current_timer_irq(void)
              DEBUG_LOG(0,"Vertical Retrace Phase:%d, VTIR is %d:",vcount,videoirq);
              switch(vcount)
              {
-             case 0:       {    DEBUG_LOG(0,"vertical retrace phase 0");
+             case 0:            { DEBUG_LOG(0,"vertical retrace phase 0");
 
                 //                if ( (screenrefreshcount=(screenrefreshcount+1) & 0x01)==0 ) LisaScreenRefresh();  // entering refresh cycle, so update screen with changes
                                   
@@ -772,7 +772,7 @@ void check_current_timer_irq(void)
                                 }
 
              // entering vertical retrace, signal IRQ if enabled
-             case 1:    {          DEBUG_LOG(0,"vertical retrace phase 1, VIDEOIRQ PHASE/ENABLED is:%d",videoirq);
+             case 1:            { DEBUG_LOG(0,"vertical retrace phase 1, VIDEOIRQ PHASE/ENABLED is:%d",videoirq);
                                   virq_start=cpu68k_clocks + VERT_RETRACE_ON;
                                   vertical=1;
                                   verticallatch=1;
@@ -952,7 +952,7 @@ if ((next_expired_timer & 0x7f)==CYCLE_TIMER_FDIR)
 void printlisatime(FILE *out) //printclock
 {
        //              year  days___  h h  m m  s s tenths
- fprintf(out,"%d.%02x%1x-%d%d:%d%d:%d%d.%d alarm:%ld clk:%016llx ",
+ if (out) fprintf(out,"%d.%02x%1x-%d%d:%d%d:%d%d.%d alarm:%ld clk:%016llx ",
 
         1980+(lisa_clock.year & 0x0f),
         lisa_clock.days_h,lisa_clock.days_l,

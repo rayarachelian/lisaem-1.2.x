@@ -292,13 +292,15 @@ uint32 dc42_get_datachecksum(DC42ImageType *F)
   DC42_CHECK_VALID_F(F)
 
   if (!F->mmappedio) {
+                       int count=0;
                        if ( F->fd>2)  {
                                         lseek(F->fd,72,SEEK_SET);
-                                         read(F->fd,&F->RAM[72],(79-72) );
+                                        count=read(F->fd,&F->RAM[72],(79-72) );
                                       }
                        if ( F->fh  )  { fseek(F->fh,72,SEEK_SET);
-                                             fread(&F->RAM[72],(79-72),1,F->fh);
+                                        count=fread(&F->RAM[72],(79-72),1,F->fh);
                                       }
+                       if (!count  )  return 0xffff;            
                      }
 
 
@@ -313,14 +315,15 @@ uint32 dc42_get_tagchecksum(DC42ImageType *F)
 {
   DC42_CHECK_VALID_F(F)
 
-  if (!F->mmappedio) {
+  if (!F->mmappedio) { int count=0;
                        if ( F->fd>2)  {
                                         lseek(F->fd,72,SEEK_SET);
-                                         read(F->fd,&F->RAM[72],(79-72) );
+                                        count=read(F->fd,&F->RAM[72],(79-72) );
                                       }
                        if ( F->fh  )  { fseek(F->fh,72,SEEK_SET);
-                                             fread(&F->RAM[72],(79-72),1,F->fh);
+                                        count=fread(&F->RAM[72],(79-72),1,F->fh);
                                       }
+                       if ( !count )  return 0xffffffff;
                      }
 
 
@@ -353,14 +356,15 @@ int dc42_recalc_checksums(DC42ImageType *F)
   F->RAM[78]=(( newtagchks>> 8) & 0xff);
   F->RAM[79]=(( newtagchks    ) & 0xff);
 
-  if (!F->mmappedio) {
+  if (!F->mmappedio) { int count=0;
                        if ( F->fd>2)  {
                                         lseek(F->fd,72,SEEK_SET);
-                                        write(F->fd,&F->RAM[72],(79-72) );
+                                        count=write(F->fd,&F->RAM[72],(79-72) );
                                       }
                        if ( F->fh  )  { fseek(F->fh,72,SEEK_SET);
-                                             fwrite(&F->RAM[72],(79-72),1,F->fh);
+                                        count=fwrite(&F->RAM[72],(79-72),1,F->fh);
                                       }
+                       if ( !count )    return -1;
                      }
 
   return 0;
@@ -408,27 +412,26 @@ int dc42_sync_to_disk(DC42ImageType *F)                                    // re
   #endif
 
   if (F->mmappedio==2 && F->readonly==0)
-                       {
+     {
+     int count=0;
+     if (F->fd>2)
+        {   count=0;
+            lseek(      F->fd,F->dc42seekstart,SEEK_SET);   // locate the dc42 image inside the FD
+            count=write(F->fd,F->RAM,F->size);              // save the whole file
+        }
+     if (F->fh)
+        {  fseek(       F->fh,F->dc42seekstart,SEEK_SET);   // locate the dc42 image inside the FD
+           count=fwrite(F->RAM,F->size,1,F->fh);            // save the whole file
+        }
+     if (!count) return -1;
+     }                                                      // should do this with a dirty map instead as this is too slow.
 
-                        if (F->fd>2)
-                           {  lseek(F->fd,F->dc42seekstart,SEEK_SET);   // locate the dc42 image inside the FD
-                              write(F->fd,F->RAM,F->size);              // save the whole file
-                           }
-
-                        if (F->fh)
-                           {  fseek(F->fh,F->dc42seekstart,SEEK_SET);   // locate the dc42 image inside the FD
-                              fwrite(     F->RAM,F->size,1,F->fh);      // save the whole file
-                           }
-
-                       }                                                // should do this with a dirty map instead as this is too slow.
-
-
-   if (F->fh) fflush(F->fh);
-#ifndef __MSVCRT__
-   if (F->fd) fsync( F->fd);
-#else
-   if (F->fd) _commit( F->fd);          // fucking microsoft!
-#endif
+  if (F->fh) fflush(F->fh);
+  #ifndef __MSVCRT__
+     if (F->fd) fsync( F->fd);
+  #else
+     if (F->fd) _commit( F->fd);          // fucking microsoft!
+  #endif
 
   return 0;
 }
@@ -501,24 +504,20 @@ uint8 *dc42_read_sector_tags(DC42ImageType *F, uint32 sectornumber)
    if (sectornumber   > F->numblocks ) { DC42_RET_CODE(F,999,"invalid sector #",return NULL);}
 
    if (F->mmappedio==0)
-      {
+      {  int count=0;
          if (F->fd>2)
             {
              lseek(F->fd,GET_TAG_POS(sectornumber),SEEK_SET);
-              read(F->fd,&F->RAM[F->datasize],F->tagsize);         // put tags at the end of the buffer so we can overlap reads of tags
-
+             count=read(F->fd,&F->RAM[F->datasize],F->tagsize);         // put tags at the end of the buffer so we can overlap reads of tags
               //fprintf(stderr,"fd-read tag %4d at loc:%08x PTR:%p\n",sectornumber,GET_TAG_POS(sectornumber),F);
-
             }
          if (F->fh)
             {
              fseek(F->fh,GET_TAG_POS(sectornumber),SEEK_SET);
-             fread(      &F->RAM[F->datasize],F->tagsize,1,F->fh); // put tags at the end of the buffer so we can overlap reads of tags
-
+             count=fread(      &F->RAM[F->datasize],F->tagsize,1,F->fh); // put tags at the end of the buffer so we can overlap reads of tags
               //fprintf(stderr,"fh-read tag %4d at loc:%08x PTR:%p\n",sectornumber,GET_TAG_POS(sectornumber),F);
-
             }
-
+         if (!count) return NULL;
          return &F->RAM[F->datasize];                         // with reads of sectors.
       }
 
@@ -542,24 +541,21 @@ uint8 *dc42_read_sector_data(DC42ImageType *F, uint32 sectornumber)
 
 
    if (!F->mmappedio)
-      {
+      { int count=0;
         if (F->fd>2)
          {
           lseek(F->fd,GET_DATA_POS(sectornumber),SEEK_SET);
-           read(F->fd,F->RAM,F->sectorsize);
-
+          count=read(F->fd,F->RAM,F->sectorsize);
            //fprintf(stderr,"fd-read data %4d at loc:%08x PTR:%p\n",sectornumber,GET_DATA_POS(sectornumber),F);
-
          }
 
         if (F->fh)
          {
           fseek(F->fh,GET_DATA_POS(sectornumber),SEEK_SET);
-          fread(      F->RAM,F->sectorsize,1,F->fh);
-
+          count=fread(      F->RAM,F->sectorsize,1,F->fh);
           //fprintf(stderr,"fh-read data %4d at loc:%08x PTR:%p\n",sectornumber,GET_DATA_POS(sectornumber),F);
          }
-
+         if (!count) return NULL;
         return F->RAM;
       }
 
@@ -581,25 +577,23 @@ int dc42_write_sector_data(DC42ImageType *F, uint32 sectornumber, uint8 *data)
    if (sectornumber   > F->numblocks ) { DC42_RET_CODE(F,999,"invalid sector #",return 999);}
 
    if (!F->mmappedio)
-      {
+      {  int count=0;
          //{fprintf(stderr,"libdc42.c::wrote DIRECT! to block#%ld, returning:%ld\n",sectornumber, F->retval); fflush(stderr);}
          if (F->fd)
          {
             lseek(F->fd,GET_DATA_POS(sectornumber),SEEK_SET);
-            write(F->fd,data,F->sectorsize);
-
+            count=write(F->fd,data,F->sectorsize);
             //fprintf(stderr,"fd-write data %4d at loc:%08x PTR:%p\n",sectornumber,GET_DATA_POS(sectornumber),F);
          }
          if (F->fh)
          {
             fseek(F->fh,GET_DATA_POS(sectornumber),SEEK_SET);
-            fwrite(    data,F->sectorsize,1,F->fh);
+            count=fwrite(    data,F->sectorsize,1,F->fh);
             //fprintf(stderr,"fh-write data %4d at loc:%08x PTR:%p\n",sectornumber,GET_DATA_POS(sectornumber),F);
          }
-
+         if (!count) DC42_RET_CODE(F,111,"Error reading from file",return 111);
          DC42_RET_CODE(F,0,"Sector Written",return F->retval);
       }
-
    //fprintf(stderr,"mem-write data %4d at loc:%08x  PTR:%p\n",sectornumber,GET_DATA_IDX(sectornumber),F);
    memcpy( &F->RAM[GET_DATA_IDX(sectornumber)], data ,F->sectorsize);
 
@@ -623,21 +617,21 @@ int dc42_write_sector_tags(DC42ImageType *F, uint32 sectornumber, uint8 *tagdata
   if (sectornumber   > F->numblocks ) { DC42_RET_CODE(F,999,"invalid sector #",return 999);}
 
   if (!F->mmappedio)
-     {
+     {   int count=0;
          if (F->fd>2)
             {
              lseek(F->fd,GET_TAG_POS(sectornumber),SEEK_SET);
-             write(F->fd,tagdata,F->tagsize);
+             count=write(F->fd,tagdata,F->tagsize);
              //fprintf(stderr,"fd-write tag %4d at loc:%08x PTR:%p\n",sectornumber,GET_TAG_POS(sectornumber),F);
             }
 
          if (F->fh)
             {
              fseek(F->fh,GET_TAG_POS(sectornumber),SEEK_SET);
-             fwrite(     tagdata,F->tagsize,1,F->fh);
+             count=fwrite(     tagdata,F->tagsize,1,F->fh);
              //fprintf(stderr,"fh-write tag %4d at loc:%08x PTR:%p\n",sectornumber,GET_TAG_POS(sectornumber),F);
             }
-
+         if (!count) { DC42_RET_CODE(F,111,"Error writing to file",return 111);}
          return 0;
      }
 
@@ -646,7 +640,7 @@ int dc42_write_sector_tags(DC42ImageType *F, uint32 sectornumber, uint8 *tagdata
      memcpy( &F->RAM[ GET_TAG_IDX(sectornumber) ],  tagdata, F->tagsize);
   else {
         //{fprintf(stderr,"libdc42.c::FAILED TO WRITE %d tag bytes to block#%ld, returning:%d\n",F->tagsize, sectornumber, -4); fflush(stderr);}
-                    return -4;
+        return -4;
        }
 
   if (F->synconwrite && F->readonly==0 ) dc42_sync_to_disk(F);
@@ -757,63 +751,64 @@ int dc42_is_valid_image(char *filename)
 
     if (F->fd>2)
        {
-	    uint16 extras=0;
+        int count=0;
+        uint16 extras=0;
 
-		 if (is_macbin) 
-		    {
-			  uint8 buf[2];
-			  lseek(F->fd,120,SEEK_SET);
-			  read(F->fd,buf,2);
-			  //  Length of a secondary header. If this is non-zero, skip this many bytes (rounded up to the next multiple of 128). 
-			  extras=(buf[0]<<8) | (buf[1]);
-			  if (extras & 127) extras=(extras|127)+1;
-		    }
+         if (is_macbin) 
+            {
+              uint8 buf[2];
+              lseek(F->fd,120,SEEK_SET);
+              count=read(F->fd,buf,2);
+              if (count!=2) DC42_RET_CODE(F,0,"Failed to read two bytes.",return F->retval);
+              //  Length of a secondary header. If this is non-zero, skip this many bytes (rounded up to the next multiple of 128). 
+              extras=(buf[0]<<8) | (buf[1]);
+              if (extras & 127) extras=(extras|127)+1;
+            }
 
          filesizetotal=lseek(F->fd,0,SEEK_END);
          filesizetotal=lseek(F->fd,0,SEEK_CUR);
                        lseek(F->fd,is_macbin ? 128+extras: 0,SEEK_SET);
-		 if (is_macbin) filesizetotal-=(128+extras);
+         if (is_macbin) filesizetotal-=(128+extras);
 
        }
 
     if (F->fh)
        {
-		uint16 extras=0;
-	
-		 if (is_macbin) 
-		    {
-			  uint8 ch, cl;
+        uint16 extras=0;
+    
+         if (is_macbin) 
+            {
+              uint8 ch, cl;
 
-			  //  Length of a secondary header. If this is non-zero, skip this many bytes (rounded up to the next multiple of 128). 
-			  fseek(F->fh,120,SEEK_SET);  ch=fgetc(F->fh); cl=fgetc(F->fh);
-			  extras=(ch<<8) | (cl);
-			  if (extras & 127) extras=(extras|127)+1;
-		    }
+              //  Length of a secondary header. If this is non-zero, skip this many bytes (rounded up to the next multiple of 128). 
+              fseek(F->fh,120,SEEK_SET);  ch=fgetc(F->fh); cl=fgetc(F->fh);
+              extras=(ch<<8) | (cl);
+              if (extras & 127) extras=(extras|127)+1;
+            }
 
                        fseek(F->fh,0,SEEK_END);
          filesizetotal=ftell(F->fh);
                        fseek(F->fh,0,SEEK_CUR);
                        fseek(F->fh,is_macbin ? 128+extras:0,SEEK_SET);
 
-		 if (is_macbin) filesizetotal-=(128+extras);
+         if (is_macbin) filesizetotal-=(128+extras);
        }
-
-
-
-
 
     if (filesizetotal>(1024*1024*64)) DC42_RET_CODE(F,0,"File too large to be valid disk image",return F->retval);
 
     if (F->fd>2)
        {
-
-        read(F->fd,tempbuf,2048);  // read 1st 2k of image
-        close(F->fd);  F->fd=0;
+          int count=read(F->fd,tempbuf,2048);  // read 1st 2k of image
+          close(F->fd);
+          F->fd=0;
+          if (count!=2048) {DC42_RET_CODE(F,0,"Failed to read 2KB",return F->retval);}
        }
+
     if (F->fh)
        {
-        fread(     tempbuf,2048,1,F->fh);  // read 1st 2k of image
-        fclose(F->fh); F->fh=NULL;
+          int count=fread(tempbuf,2048,1,F->fh);  // read 1st 2k of image
+          fclose(F->fh); F->fh=NULL;
+          if (count!=1) {DC42_RET_CODE(F,0,"Failed to read 2KB",return F->retval);}
        }
 
 
@@ -835,8 +830,10 @@ int dc42_is_valid_image(char *filename)
     F->datasizetotal=(tempbuf[64+0]<<24)|(tempbuf[64+1]<<16)|(tempbuf[64+2]<<8)|tempbuf[64+3];
     F->tagsizetotal =(tempbuf[68+0]<<24)|(tempbuf[68+1]<<16)|(tempbuf[68+2]<<8)|tempbuf[68+3];
 
+#ifdef DISABLING_FOR_COMPATIBILITY // see: https://github.com/stepleton/bootloader/blob/master/dc42_build_bootable_disk.py#L52 --clip option
     if (labs(DC42_HEADERSIZE+F->datasizetotal+F->tagsizetotal-filesizetotal) > 1024)
               DC42_RET_CODE(F,0,"File size does not match headers",return F->retval);
+#endif
 
     DC42_RET_CODE(F,1+is_macbin,"Is valid DC42 Image",return F->retval);
     return F->retval;                   // suppress dumb compiler warnings.
@@ -847,7 +844,7 @@ int dc42_is_valid_image(char *filename)
 
 int dc42_open(DC42ImageType *F, char *filename, char *options)
 {
-
+    int count=0;
     int i, flag;
     int32 filesizetotal=0;
     uint8 tempbuf[2048];
@@ -892,13 +889,18 @@ int dc42_open(DC42ImageType *F, char *filename, char *options)
 
     if (F->fd>2)
        {
-        read(F->fd,tempbuf,2048);  // read 1st 2k of image
-        close(F->fd);  F->fd=0;
+        count=read(F->fd,tempbuf,2048);  // read 1st 2k of image
+        close(F->fd);
+        F->fd=0;
+        if (count!=2048) {DC42_RET_CODE(F,-61,"Failed to read 2KB of image for header",return F->retval);}
        }
     if (F->fh)
        {
-        fread(     tempbuf,2048,1,F->fh);  // read 1st 2k of image
-        fclose(F->fh); F->fh=NULL;
+        count=fread(     tempbuf,2048,1,F->fh);  // read 1st 2k of image
+        fclose(F->fh); 
+        F->fh=NULL;
+        if (count!=1) {DC42_RET_CODE(F,-61,"Failed to read 2KB of image for header",return F->retval);}
+
        }
 
     // make sure that this is a DC42 image
@@ -922,6 +924,7 @@ int dc42_open(DC42ImageType *F, char *filename, char *options)
     F->tagsizetotal =(tempbuf[68+0]<<24)|(tempbuf[68+1]<<16)|(tempbuf[68+2]<<8)|tempbuf[68+3];
 
 
+#ifdef DISABLING_FOR_COMPATIBILITY // see: https://github.com/stepleton/bootloader/blob/master/dc42_build_bootable_disk.py#L52 --clip option
     if (labs(DC42_HEADERSIZE+F->datasizetotal+F->tagsizetotal-filesizetotal) > 1024)
              {
               if (F->fd>2) { close(F->fd); F->fd=0;    }
@@ -930,9 +933,10 @@ int dc42_open(DC42ImageType *F, char *filename, char *options)
 
               DC42_RET_CODE(F,89,"File size does not match headers",return F->retval);
              }
+#endif
 
     F->datasize=512;
-	F->sectorsize=512;
+    F->sectorsize=512;
 
     //F->numblocks=F->datasizetotal/F->sectorsize;   // for 400k disks=800 blocks, 800k disks=1600 - but get this from the image.  This is in bytes 1st
     F->numblocks=F->datasizetotal/F->sectorsize;
@@ -1042,33 +1046,31 @@ int dc42_open(DC42ImageType *F, char *filename, char *options)
         #endif
     }
 
-    if (F->mmappedio==0) {
+    if (F->mmappedio==0)
+       {
+         F->RAM=calloc(1, (F->tagsize + F->sectorsize) );
+        {fprintf(stderr,"Direct to disk image\n"); fflush(stderr);}
+       }
 
-                           F->RAM=malloc( (F->tagsize + F->sectorsize) );
-
-                            //{fprintf(stderr,"Direct to disk image\n"); fflush(stderr);}
-                         }
-    if (F->mmappedio==2) {
-
-
-                           F->RAM=malloc(F->size);
-                           if (F->RAM)
-                              {
-                                 if (F->fd>2)
-                                 {
-                                   lseek(F->fd,F->dc42seekstart,SEEK_SET);
-                                   read(F->fd,F->RAM,F->size);
-                                 }
-                                 if (F->fh)
-                                 {
-                                   fseek(F->fh,F->dc42seekstart,SEEK_SET);
-                                   fread(     F->RAM,F->size,1,F->fh);
-                                 }
-                              }
-
-
-                         }
-
+    if (F->mmappedio==2) 
+       {
+              F->RAM=calloc(1,F->size);
+              if (F->RAM)
+              {
+                  int count=0;
+                  if (F->fd>2)
+                  {
+                     lseek(F->fd,F->dc42seekstart,SEEK_SET);
+                     count=read(F->fd,F->RAM,F->size);
+                  }
+                  if (F->fh)
+                  {
+                     fseek(F->fh,F->dc42seekstart,SEEK_SET);
+                     count=fread(     F->RAM,F->size,1,F->fh);
+                  }
+                  if (count==0) DC42_RET_CODE(F,-61,"Could read from file, or EOF",return F->retval);
+              }
+        }
 
     // oops! no ram, or mmap failed.
     if ( !F->RAM || (F->RAM==(void *)(-1)) )
@@ -1106,10 +1108,11 @@ int dc42_open_by_handle(DC42ImageType *F, int fd, FILE *fh, long seekstart, char
     // if we were given a start, use that, otherwise get the current position inside the fd.
     F->dc42seekstart= (seekstart!=0) ? seekstart :   lseek(F->fd, 0, 0);
 
-
-    if (F->fd>2)        read(F->fd,tempbuf,2048);  // read 1st 2k of image
-    if (F->fh)         fread(      tempbuf,2048,1,F->fh);  // read 1st 2k of image
-
+    int count=0;
+    if (F->fd>2)       count =read(F->fd,tempbuf,2048);  // read 1st 2k of image
+    if (F->fh)         count=fread(      tempbuf,2048,1,F->fh);  // read 1st 2k of image
+    if (count==0)      DC42_RET_CODE(F,-61,"Could not read the 1st 2K of the image",return F->retval);
+    /////////////////////////////////////////////////////////
 
     // make sure that this is a DC42 image
 
@@ -1121,16 +1124,17 @@ int dc42_open_by_handle(DC42ImageType *F, int fd, FILE *fh, long seekstart, char
 
     F->datasizetotal=(tempbuf[64+0]<<24)|(tempbuf[64+1]<<16)|(tempbuf[64+2]<<8)|tempbuf[64+3];
     F->tagsizetotal =(tempbuf[68+0]<<24)|(tempbuf[68+1]<<16)|(tempbuf[68+2]<<8)|tempbuf[68+3];
-
+#ifdef DISABLING_FOR_COMPATIBILITY // see: https://github.com/stepleton/bootloader/blob/master/dc42_build_bootable_disk.py#L52 --clip option
     if (labs(DC42_HEADERSIZE+F->datasizetotal+F->tagsizetotal-filesizetotal) > 1024)
        {
          if (F->fd>2) F->fd=0;
          if (F->fd>2) F->fh=NULL;
          DC42_RET_CODE(F,89,"File size does not match headers",return F->retval);
        }
+#endif
 
     F->datasize=512;
-	F->sectorsize=512;
+    F->sectorsize=512;
 
     //F->numblocks=F->datasizetotal/F->sectorsize;   // for 400k disks=800 blocks, 800k disks=1600 - but get this from the image.  This is in bytes 1st
     F->numblocks=(F->datasizetotal)>>9;
@@ -1204,7 +1208,7 @@ int dc42_open_by_handle(DC42ImageType *F, int fd, FILE *fh, long seekstart, char
     if (F->mmappedio) F->RAM=mmap(0,F->size,PROT_READ|PROT_WRITE,MAP_PRIVATE,F->fd,0);  // read only/private
     else
     #endif
-                      F->RAM=malloc(F->numblocks * (F->tagsize + F->sectorsize) );
+                      F->RAM=calloc(1,F->numblocks * (F->tagsize + F->sectorsize) );
 
 
     // if we can't read the whole disk image in ram, give up
@@ -1297,12 +1301,14 @@ int dc42_set_volname(DC42ImageType *F,char *name)
        if (F->fd)
        {
         lseek(F->fd,F->dc42seekstart,SEEK_SET);
-        write(F->fd,F->RAM,64);
+        int count=write(F->fd,F->RAM,64);
+        if (!count) DC42_RET_CODE(F,-61,"Could not write volume name to file",return F->retval);
        }
        if (F->fh)
        {
         fseek(F->fh,F->dc42seekstart,SEEK_SET);
-        fwrite(     F->RAM,64,1,F->fh);
+        int count=fwrite(     F->RAM,64,1,F->fh);
+        if (!count) DC42_RET_CODE(F,-61,"Could not write volume name to file",return F->retval);
        }
      }
 
@@ -1318,20 +1324,23 @@ char *dc42_get_volname(DC42ImageType *F)
   DC42_CHECK_VALID_F_NUL(F);
   memset(volname,0,64);
 
-  if (!F->mmappedio)
-     {
-       if (F->fd>2)
-       {
-         lseek(F->fd,F->dc42seekstart,SEEK_SET);
-          read(F->fd,F->RAM,64);
-       }
-       if (F->fh  )
-       {
-         fseek(F->fh,F->dc42seekstart,SEEK_SET);
-         fread(      F->RAM,64,1,F->fh);
-       }
+  if  (!F->mmappedio)
+      {
+        if (F->fd>2)
+        {
+          lseek(F->fd,F->dc42seekstart,SEEK_SET);
+          int count= read(F->fd,F->RAM,64);
+          if (!count) return NULL;
 
-     }
+        }
+        if (F->fh  )
+        {
+          fseek(F->fh,F->dc42seekstart,SEEK_SET);
+          int count=fread(      F->RAM,64,1,F->fh);
+          if (!count) return NULL;
+        }
+      }
+
   slen=F->RAM[0];
   if (slen>63) slen=63;
 
@@ -1352,17 +1361,15 @@ int dc42_create(char *filename, char *volname, uint32 datasize, uint32 tagsize) 
   newimage=fopen(filename,"wb");
   if (!newimage) return -86;
 
-
    // fprintf(stderr,"\nlibdc42:Creating disk image:%s\n",filename); fflush(stderr);
-
-
   i=strlen(volname);  if (i>62) i=62;
   pascalstring[0]=i;                      // pstr length
   do
      {pascalstring[i+1]=volname[i];}      // copy the volume name
   while (i--);
 
-  fwrite(pascalstring,64,1,newimage);     // filename
+  int count=fwrite(pascalstring,64,1,newimage);     // filename
+  if (!count) return -61;
 
   fputc((datasize>>24) & 0xff,newimage);  // datasize
   fputc((datasize>>16) & 0xff,newimage);
@@ -1409,8 +1416,8 @@ int dc42_create(char *filename, char *volname, uint32 datasize, uint32 tagsize) 
   return 0;
 }
 
-// This does not open an image, do not use this on an already opened image.
 
+// This does not open an image, do not use this on an already opened image
 int dc42_add_tags(char *filename, uint32 tagsize) // tagsize is in bytes.  for a 400K disk use 400*1024 for datasize and, 400*2*12 for tagsize
 {
   FILE *image;
@@ -1428,21 +1435,21 @@ int dc42_add_tags(char *filename, uint32 tagsize) // tagsize is in bytes.  for a
   if (tagsize==0)                              // if tagsize=0, then we automatically add 12 tag bytes for every sector
       tagsize=(olddatasize/512)*12;
 
-  if (oldtagsize<tagsize)                      // if the existing tag size is smaller than what we want, rewrite the size.
-     {
-       fseek(image,68,SEEK_SET);
-       fputc(( tagsize>>24) & 0xff,image);  // tagsize
-       fputc(( tagsize>>16) & 0xff,image);
-       fputc(( tagsize>>8 ) & 0xff,image);
-       fputc(( tagsize    ) & 0xff,image);
-     }
+  if  (oldtagsize<tagsize)                      // if the existing tag size is smaller than what we want, rewrite the size.
+      {
+          fseek(image,68,SEEK_SET);
+          fputc(( tagsize>>24) & 0xff,image);  // tagsize
+          fputc(( tagsize>>16) & 0xff,image);
+          fputc(( tagsize>>8 ) & 0xff,image);
+          fputc(( tagsize    ) & 0xff,image);
+      }
 
   fseek(image,0,SEEK_END);                     // go to the end of the file, find out it's size
   filesize=ftell(image);
   newfilesize=84+tagsize+olddatasize;
 
-  if (filesize<newfilesize)                    // if the current file size is too small, grow it so that mmap will work properly
-     {fseek(image,newfilesize-1,SEEK_SET); fputc(0,image);}
+  if  (filesize<newfilesize)                    // if the current file size is too small, grow it so that mmap will work properly
+      {fseek(image,newfilesize-1,SEEK_SET); fputc(0,image);}
 
   fclose(image);
 
@@ -1473,17 +1480,15 @@ int dart_is_valid_image(char *dartfilename)
  // if the DART image is wrapped inside a MacBinary header, skip over the 1st 128 bytes + optional extra header before reading the DART header
  if (is_macbin) 
     {
-	  uint16 extras; uint8 ch, cl;
+      uint16 extras; uint8 ch, cl;
 
-	  //  Length of a secondary header. If this is non-zero, skip this many bytes (rounded up to the next multiple of 128). 
-	  fseek(dart,120,SEEK_SET);  ch=fgetc(dart); cl=fgetc(dart);
-	  extras=(ch<<8) | (cl);
- 	  if ((extras & 127)) extras=(extras|127)+1;
+      //  Length of a secondary header. If this is non-zero, skip this many bytes (rounded up to the next multiple of 128). 
+      fseek(dart,120,SEEK_SET);  ch=fgetc(dart); cl=fgetc(dart);
+      extras=(ch<<8) | (cl);
+      if ((extras & 127)) extras=(extras|127)+1;
 
-	  fseek(dart,128+extras,SEEK_SET);
+      fseek(dart,128+extras,SEEK_SET);
     }
-
-
 
  dart_compression_type=fgetc(dart); if (dart_compression_type>2) return 0;
  dart_disk_type=fgetc(dart);        if ((dart_disk_type>3 && dart_disk_type<16) || (dart_disk_type>18)) return 0;
@@ -1522,7 +1527,7 @@ int dart_to_dc42(char *dartfilename, char *dc42filename)
  DC42ImageType FL, *F=&FL;
  FILE *dart;
  int i,j;
-
+ int count=0;
 
  uint32 totalsizes=0, totalsizesec=0, sectornum=0;
 
@@ -1538,9 +1543,9 @@ int dart_to_dc42(char *dartfilename, char *dc42filename)
 
  uint8  dart_block_in[DART_CHUNK];
  uint8  dart_block_out[DART_CHUNK];
- char volname[65];
- char *volname_ptr=NotAMacintoshDisk;
- int is_macbin=dc42_is_valid_macbinii(dartfilename,NULL);
+ char   volname[65];
+ char  *volname_ptr=NotAMacintoshDisk;
+ int    is_macbin=dc42_is_valid_macbinii(dartfilename,NULL);
 
  dart=fopen(dartfilename,"rb");
  if (!dart) return -86; //DC42_RET_CODE(F,-86,"Cannot open DART file for writing",return F->retval);
@@ -1548,23 +1553,22 @@ int dart_to_dc42(char *dartfilename, char *dc42filename)
  // if the DART image is wrapped inside a MacBinary header, skip over the 1st 128 bytes + optional extra header before reading the DART header
  if (is_macbin) 
     {
-	  uint16 extras; uint8 ch, cl;
+      uint16 extras; uint8 ch, cl;
 
-	  //  Length of a secondary header. If this is non-zero, skip this many bytes (rounded up to the next multiple of 128). 
-	  fseek(dart,120,SEEK_SET);  ch=fgetc(dart); cl=fgetc(dart);
-	  extras=(ch<<8) | (cl);
-	  if (extras & 127) extras=(extras|127)+1;
+      //  Length of a secondary header. If this is non-zero, skip this many bytes (rounded up to the next multiple of 128). 
+      fseek(dart,120,SEEK_SET);  ch=fgetc(dart); cl=fgetc(dart);
+      extras=(ch<<8) | (cl);
+      if (extras & 127) extras=(extras|127)+1;
 
-	  fseek(dart,128+extras,SEEK_SET);
+      fseek(dart,128+extras,SEEK_SET);
     }
  dart_compression_type=fgetc(dart); if (dart_compression_type>2) return -10;
  dart_disk_type=fgetc(dart);        if ((dart_disk_type>3 && dart_disk_type<16) || (dart_disk_type>18))
-                                        return 10; //;DC42_RET_CODE(F,10,"Unrecognized DART image disk type",return F->retval);
+                                        return 10;
 
  dart_size=((fgetc(dart)<<8) | (fgetc(dart)));  // size is in kb
 
  dart_blocks=(dart_size<801) ? 40:72;
-
 
  for (i=0; i<dart_blocks; i++)                                // read the DART chunk sizes
  {
@@ -1583,12 +1587,11 @@ int dart_to_dc42(char *dartfilename, char *dc42filename)
  //printf("\n creating %s as %s \n",dc42filename,volname);
 
  i=dc42_create(dc42filename,
-               volname,
-               totalsizes,
-               ((totalsizesec==1440 || totalsizesec==2880) ? 0:(totalsizesec*12) )             );
+                volname,
+                totalsizes,
+                ((totalsizesec==1440 || totalsizesec==2880) ? 0:(totalsizesec*12) )             );
 
  if (i) return i;
-
 
  // open the DC42 image
 
@@ -1604,13 +1607,12 @@ int dart_to_dc42(char *dartfilename, char *dc42filename)
 
    memset(dart_block_out,0x00,DART_CHUNK);  // empty the block
 
-
-
    if (dart_blocksizes[i]<0 || dart_compression_type==2)
       {
             // read the uncompressed block directly to the out buffer
             //printf("Blocksize <0:(%d %04x) so reading %d bytes direct\n",dart_blocksizes[i],dart_blocksizes[i],DART_CHUNK);
-            fread(dart_block_out,DART_CHUNK,1,dart);
+            count=fread(dart_block_out,DART_CHUNK,1,dart);
+            if (!count) return -61; 
             //printf("Uncompressed block:%d sec:%d\n",i,sectornum);
       }
    else
@@ -1618,8 +1620,9 @@ int dart_to_dc42(char *dartfilename, char *dc42filename)
 
             memset(dart_block_in,0x33,DART_CHUNK);
 
-            if (dart_compression_type==0)    fread(dart_block_in,dart_blocksizes[i]*2,1,dart);
-            else                             fread(dart_block_in,dart_blocksizes[i]  ,1,dart);
+            if (dart_compression_type==0) count=fread(dart_block_in,dart_blocksizes[i]*2,1,dart);
+            else                          count=fread(dart_block_in,dart_blocksizes[i]  ,1,dart);
+            if (!count) return -61; 
 
             //printf("expanding blocks (#%d-%d) of type %d(0=RLE,2=uncompressed) size:%d \n",
             //        sectornum,
@@ -1640,14 +1643,15 @@ int dart_to_dc42(char *dartfilename, char *dc42filename)
             #endif
       }
 
-
    // transfer tags and data to the DC42 image in 40 sector chunks at a time.
    for (j=0; j<40; j++)                 // 40 sectors in each DART chunk (512+12)*40=DART_CHUNK 20960)
     {
       //printf("transferring tags sec:%d j:%d\n",sectornum,j);
-      if (sectornum<=totalsizesec) //400K images have 0'ed out sectors at the end so this fixes them.
-         { dc42_write_sector_tags(F,sectornum,&dart_block_out[DART_CHUNK_TAGS+(j*12)]);
-           dc42_write_sector_data(F,sectornum,&dart_block_out[j*512]); }
+      if  (sectornum<=totalsizesec) //400K images have 0'ed out sectors at the end so this fixes them.
+          {
+            dc42_write_sector_tags(F,sectornum,&dart_block_out[DART_CHUNK_TAGS+(j*12)]);
+            dc42_write_sector_data(F,sectornum,&dart_block_out[j*512]); 
+          }
 
       sectornum++;
     }
@@ -1663,12 +1667,14 @@ int dart_to_dc42(char *dartfilename, char *dc42filename)
 // 1 if it is, 0 if it's not
 int dc42_is_valid_macbinii(char *infilename, char *creatortype)
 {
-FILE *infile;
+int count=0;
+FILE         *infile;
 unsigned char buffer[128];
-char *filename=infilename;
+char         *filename=infilename;
 infile=fopen(filename,"rb"); if (!infile) return 0;
-fread(buffer,128,1,infile);
+count=fread(buffer,128,1,infile);
 fclose(infile);
+if (!count) return -61;
 
 if (!buffer[0] && buffer[1] && buffer[1]<64 && !buffer[74] && !buffer[82])
 {
@@ -1689,7 +1695,6 @@ if (!buffer[0] && buffer[1] && buffer[1]<64 && !buffer[74] && !buffer[82])
        for (i=65; i<73; i++) creatortype[i-65]=buffer[i];
        creatortype[8]=0;
    }
-
 
    return 1;
 }
@@ -1712,8 +1717,8 @@ FILE *infile;
 char buffer[65536];
 char *filename=infilename;
 infile=fopen(filename,"rb");                       if (!infile) return 0;
-fread(buffer,128,1,infile);
-
+int count=fread(buffer,128,1,infile);
+if (!count) {fclose(infile); return -1;}
 
 if (!buffer[0] && buffer[1] && buffer[1]<64 && !buffer[74] && !buffer[82])
 {
@@ -1729,38 +1734,34 @@ if (!buffer[0] && buffer[1] && buffer[1]<64 && !buffer[74] && !buffer[82])
    if (datasize>0x800000 || resrsize>0x800000)                  {fclose(infile);return 0;}
 
    // valid MacBinII image - we extract only the data fork!
-   for (j=0,i=2; i<buffer[1]; i++,j++)
-       {// normalize filename.
-        if (buffer[i]=='/' || buffer[i]==' ' || buffer[i]=='\\' || buffer[i]=='<' ||
-            buffer[i]=='*' || buffer[i]=='"' || buffer[i]=='?'  || buffer[i]=='>'   )
+   for  (j=0,i=2; i<buffer[1]; i++,j++)
+        {// normalize filename.
+          if (buffer[i]=='/' || buffer[i]==' ' || buffer[i]=='\\' || buffer[i]=='<' ||
+              buffer[i]=='*' || buffer[i]=='"' || buffer[i]=='?'  || buffer[i]=='>'   )
                        filename[j]='_';
-        else           filename[j]=buffer[i];
-       }
+          else           filename[j]=buffer[i];
+        }
    filename[j]=0; // cstr end.
 
-   FILE *datafork=fopen(filename,"wb"); if (!datafork)          {fclose(infile);return -3;}
+   FILE *datafork=fopen(filename,"wb"); if (!datafork) {fclose(infile);return -3;}
    fseek(infile,128+header2,SEEK_SET);
 
    int32 datasz=(int32)datasize;
 
    while(datasz>=0)
-   {
-     fread( buffer,datasz>=65536 ? 65536:datasize,1,infile);
-     fwrite(buffer,datasz>=65536 ? 65536:datasize,1,datafork);
-     datasz-=65536;
-   }
+    {
+      count=fread( buffer,datasz>=65536 ? 65536:datasize,1,infile);   if (!count) {fclose(infile); fclose(datafork); return -1;}
+      count=fwrite(buffer,datasz>=65536 ? 65536:datasize,1,datafork); if (!count) {fclose(infile); fclose(datafork); return -1;}
+      datasz-=65536;
+    }
    fclose(infile);
    fclose(datafork);
-
    return 1;
 }
 
 fclose(infile);
 return 0;
 }
-
-
-
 
 
 // opens a DC42 image automatically converting it from DART, and/or stripping MacBinII headers if needed
@@ -1930,7 +1931,7 @@ static FILE *infile, *outfile;
 
 static void Error(char *message)
 {
-	printf("\n%s\n", message);
+    printf("\n%s\n", message);
     exit(EXIT_FAILED);
 }
 
@@ -1938,8 +1939,8 @@ static void Error(char *message)
 
 #define N       4096 //was 4096    /* Size of string buffer */
 #define F       60 //was 60  /* Size of look-ahead buffer */
-#define THRESHOLD	2
-#define NIL		N	/* End of tree's node  */
+#define THRESHOLD    2
+#define NIL        N    /* End of tree's node  */
 
 static uint8        text_buf[N + F - 1];
 static int16         match_position, match_length,    lson[N + 1], rson[N + 257], dad[N + 1];
@@ -1957,10 +1958,10 @@ static void InitTree(void)  /* Initializing tree */
 {
     int16  i;
 
-	for (i = N + 1; i <= N + 256; i++)
-		rson[i] = NIL;			/* root */
-	for (i = 0; i < N; i++)
-		dad[i] = NIL;			/* node */
+    for (i = N + 1; i <= N + 256; i++)
+        rson[i] = NIL;            /* root */
+    for (i = 0; i < N; i++)
+        dad[i] = NIL;            /* node */
 }
 
 static void InsertNode(int16 r)  /* Inserting node to the tree */
@@ -1969,99 +1970,99 @@ static void InsertNode(int16 r)  /* Inserting node to the tree */
     uint8       *key;
     uint16 c;
 
-	cmp = 1;
-	key = &text_buf[r];
-	p = N + 1 + key[0];
-	rson[r] = lson[r] = NIL;
-	match_length = 0;
-	for ( ; ; ) {
-		if (cmp >= 0) {
-			if (rson[p] != NIL)
-				p = rson[p];
-			else {
-				rson[p] = r;
-				dad[r] = p;
-				return;
-			}
-		} else {
-			if (lson[p] != NIL)
-				p = lson[p];
-			else {
-				lson[p] = r;
-				dad[r] = p;
-				return;
-			}
-		}
-		for (i = 1; i < F; i++)
-			if ((cmp = key[i] - text_buf[p + i]) != 0)
-				break;
-		if (i > THRESHOLD) {
-			if (i > match_length) {
-				match_position = ((r - p) & (N - 1)) - 1;
-				if ((match_length = i) >= F)
-					break;
-			}
-			if (i == match_length) {
-				if ((c = ((r - p) & (N - 1)) - 1) < match_position) {
-					match_position = c;
-				}
-			}
-		}
-	}
-	dad[r] = dad[p];
-	lson[r] = lson[p];
-	rson[r] = rson[p];
-	dad[lson[p]] = r;
-	dad[rson[p]] = r;
-	if (rson[dad[p]] == p)
-		rson[dad[p]] = r;
-	else
-		lson[dad[p]] = r;
-	dad[p] = NIL;  /* remove p */
+    cmp = 1;
+    key = &text_buf[r];
+    p = N + 1 + key[0];
+    rson[r] = lson[r] = NIL;
+    match_length = 0;
+    for ( ; ; ) {
+        if (cmp >= 0) {
+            if (rson[p] != NIL)
+                p = rson[p];
+            else {
+                rson[p] = r;
+                dad[r] = p;
+                return;
+            }
+        } else {
+            if (lson[p] != NIL)
+                p = lson[p];
+            else {
+                lson[p] = r;
+                dad[r] = p;
+                return;
+            }
+        }
+        for (i = 1; i < F; i++)
+            if ((cmp = key[i] - text_buf[p + i]) != 0)
+                break;
+        if (i > THRESHOLD) {
+            if (i > match_length) {
+                match_position = ((r - p) & (N - 1)) - 1;
+                if ((match_length = i) >= F)
+                    break;
+            }
+            if (i == match_length) {
+                if ((c = ((r - p) & (N - 1)) - 1) < match_position) {
+                    match_position = c;
+                }
+            }
+        }
+    }
+    dad[r] = dad[p];
+    lson[r] = lson[p];
+    rson[r] = rson[p];
+    dad[lson[p]] = r;
+    dad[rson[p]] = r;
+    if (rson[dad[p]] == p)
+        rson[dad[p]] = r;
+    else
+        lson[dad[p]] = r;
+    dad[p] = NIL;  /* remove p */
 }
 
 static void DeleteNode(int16 p)  /* Deleting node from the tree */
 {
     int16 q;
 
-	if (dad[p] == NIL)
-		return;			/* unregistered */
-	if (rson[p] == NIL)
-		q = lson[p];
-	else
-	if (lson[p] == NIL)
-		q = rson[p];
-	else {
-		q = lson[p];
-		if (rson[q] != NIL) {
-			do {
-				q = rson[q];
-			} while (rson[q] != NIL);
-			rson[dad[q]] = lson[q];
-			dad[lson[q]] = dad[q];
-			lson[q] = lson[p];
-			dad[lson[p]] = q;
-		}
-		rson[q] = rson[p];
-		dad[rson[p]] = q;
-	}
-	dad[q] = dad[p];
-	if (rson[dad[p]] == p)
-		rson[dad[p]] = q;
-	else
-		lson[dad[p]] = q;
-	dad[p] = NIL;
+    if (dad[p] == NIL)
+        return;            /* unregistered */
+    if (rson[p] == NIL)
+        q = lson[p];
+    else
+    if (lson[p] == NIL)
+        q = rson[p];
+    else {
+        q = lson[p];
+        if (rson[q] != NIL) {
+            do {
+                q = rson[q];
+            } while (rson[q] != NIL);
+            rson[dad[q]] = lson[q];
+            dad[lson[q]] = dad[q];
+            lson[q] = lson[p];
+            dad[lson[p]] = q;
+        }
+        rson[q] = rson[p];
+        dad[rson[p]] = q;
+    }
+    dad[q] = dad[p];
+    if (rson[dad[p]] == p)
+        rson[dad[p]] = q;
+    else
+        lson[dad[p]] = q;
+    dad[p] = NIL;
 }
 
 /* Huffman coding parameters */
 
-#define N_CHAR  	(256 - THRESHOLD + F)
-				/* character code (= 0..N_CHAR-1) */
-#define T 		(N_CHAR * 2 - 1)	/* Size of table */
-#define R 		(T - 1)			/* root position */
-#define MAX_FREQ	0x8000
-					/* update when cumulative frequency */
-					/* reaches to this value */
+#define N_CHAR      (256 - THRESHOLD + F)
+                /* character code (= 0..N_CHAR-1) */
+#define T         (N_CHAR * 2 - 1)    /* Size of table */
+#define R         (T - 1)            /* root position */
+#define MAX_FREQ    0x8000
+                    /* update when cumulative frequency */
+                    /* reaches to this value */
 
 typedef unsigned char uchar;
 
@@ -2071,96 +2072,96 @@ typedef unsigned char uchar;
  */
 /* encoder table */
 static uchar p_len[64] = {
-	0x03, 0x04, 0x04, 0x04, 0x05, 0x05, 0x05, 0x05,
-	0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
-	0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
-	0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
-	0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
-	0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
-	0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08
+    0x03, 0x04, 0x04, 0x04, 0x05, 0x05, 0x05, 0x05,
+    0x05, 0x05, 0x05, 0x05, 0x06, 0x06, 0x06, 0x06,
+    0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
+    0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+    0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+    0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+    0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
+    0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08
 };
 
 static uchar p_code[64] = {
-	0x00, 0x20, 0x30, 0x40, 0x50, 0x58, 0x60, 0x68,
-	0x70, 0x78, 0x80, 0x88, 0x90, 0x94, 0x98, 0x9C,
-	0xA0, 0xA4, 0xA8, 0xAC, 0xB0, 0xB4, 0xB8, 0xBC,
-	0xC0, 0xC2, 0xC4, 0xC6, 0xC8, 0xCA, 0xCC, 0xCE,
-	0xD0, 0xD2, 0xD4, 0xD6, 0xD8, 0xDA, 0xDC, 0xDE,
-	0xE0, 0xE2, 0xE4, 0xE6, 0xE8, 0xEA, 0xEC, 0xEE,
-	0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7,
-	0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF
+    0x00, 0x20, 0x30, 0x40, 0x50, 0x58, 0x60, 0x68,
+    0x70, 0x78, 0x80, 0x88, 0x90, 0x94, 0x98, 0x9C,
+    0xA0, 0xA4, 0xA8, 0xAC, 0xB0, 0xB4, 0xB8, 0xBC,
+    0xC0, 0xC2, 0xC4, 0xC6, 0xC8, 0xCA, 0xCC, 0xCE,
+    0xD0, 0xD2, 0xD4, 0xD6, 0xD8, 0xDA, 0xDC, 0xDE,
+    0xE0, 0xE2, 0xE4, 0xE6, 0xE8, 0xEA, 0xEC, 0xEE,
+    0xF0, 0xF1, 0xF2, 0xF3, 0xF4, 0xF5, 0xF6, 0xF7,
+    0xF8, 0xF9, 0xFA, 0xFB, 0xFC, 0xFD, 0xFE, 0xFF
 };
 
 /* decoder table */
 static uchar d_code[256] = {
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-	0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
-	0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
-	0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
-	0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
-	0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
-	0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
-	0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
-	0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
-	0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
-	0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09,
-	0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A,
-	0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B,
-	0x0C, 0x0C, 0x0C, 0x0C, 0x0D, 0x0D, 0x0D, 0x0D,
-	0x0E, 0x0E, 0x0E, 0x0E, 0x0F, 0x0F, 0x0F, 0x0F,
-	0x10, 0x10, 0x10, 0x10, 0x11, 0x11, 0x11, 0x11,
-	0x12, 0x12, 0x12, 0x12, 0x13, 0x13, 0x13, 0x13,
-	0x14, 0x14, 0x14, 0x14, 0x15, 0x15, 0x15, 0x15,
-	0x16, 0x16, 0x16, 0x16, 0x17, 0x17, 0x17, 0x17,
-	0x18, 0x18, 0x19, 0x19, 0x1A, 0x1A, 0x1B, 0x1B,
-	0x1C, 0x1C, 0x1D, 0x1D, 0x1E, 0x1E, 0x1F, 0x1F,
-	0x20, 0x20, 0x21, 0x21, 0x22, 0x22, 0x23, 0x23,
-	0x24, 0x24, 0x25, 0x25, 0x26, 0x26, 0x27, 0x27,
-	0x28, 0x28, 0x29, 0x29, 0x2A, 0x2A, 0x2B, 0x2B,
-	0x2C, 0x2C, 0x2D, 0x2D, 0x2E, 0x2E, 0x2F, 0x2F,
-	0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
-	0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+    0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+    0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+    0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02,
+    0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+    0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+    0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
+    0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
+    0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
+    0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+    0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
+    0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09, 0x09,
+    0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A, 0x0A,
+    0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B, 0x0B,
+    0x0C, 0x0C, 0x0C, 0x0C, 0x0D, 0x0D, 0x0D, 0x0D,
+    0x0E, 0x0E, 0x0E, 0x0E, 0x0F, 0x0F, 0x0F, 0x0F,
+    0x10, 0x10, 0x10, 0x10, 0x11, 0x11, 0x11, 0x11,
+    0x12, 0x12, 0x12, 0x12, 0x13, 0x13, 0x13, 0x13,
+    0x14, 0x14, 0x14, 0x14, 0x15, 0x15, 0x15, 0x15,
+    0x16, 0x16, 0x16, 0x16, 0x17, 0x17, 0x17, 0x17,
+    0x18, 0x18, 0x19, 0x19, 0x1A, 0x1A, 0x1B, 0x1B,
+    0x1C, 0x1C, 0x1D, 0x1D, 0x1E, 0x1E, 0x1F, 0x1F,
+    0x20, 0x20, 0x21, 0x21, 0x22, 0x22, 0x23, 0x23,
+    0x24, 0x24, 0x25, 0x25, 0x26, 0x26, 0x27, 0x27,
+    0x28, 0x28, 0x29, 0x29, 0x2A, 0x2A, 0x2B, 0x2B,
+    0x2C, 0x2C, 0x2D, 0x2D, 0x2E, 0x2E, 0x2F, 0x2F,
+    0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37,
+    0x38, 0x39, 0x3A, 0x3B, 0x3C, 0x3D, 0x3E, 0x3F,
 };
 
 static uchar d_len[256] = {
-	0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
-	0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
-	0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
-	0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
-	0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
-	0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
-	0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
-	0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
-	0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
-	0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
-	0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
-	0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
-	0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
-	0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
-	0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
-	0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
-	0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
-	0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
-	0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
-	0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
-	0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
-	0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
-	0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
-	0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
-	0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
-	0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
-	0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
+    0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+    0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+    0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+    0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03, 0x03,
+    0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
+    0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
+    0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
+    0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
+    0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
+    0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
+    0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
+    0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
+    0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
+    0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
+    0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
+    0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
+    0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
+    0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05, 0x05,
+    0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
+    0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
+    0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
+    0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
+    0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
+    0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06, 0x06,
+    0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+    0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+    0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+    0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+    0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+    0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07, 0x07,
+    0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
+    0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
 };
 
 static uint16 freq[T + 1];  /* cumulative freq table */
@@ -2181,15 +2182,15 @@ static int16 GetBit(void)    /* get one bit */
 {
     int16 i;
 
-	while (getlen <= 8) {
-		if ((i = getc(infile)) < 0) i = 0;
-		getbuf |= i << (8 - getlen);
-		getlen += 8;
-	}
-	i = getbuf;
-	getbuf <<= 1;
-	getlen--;
-	return (i < 0);
+    while (getlen <= 8) {
+        if ((i = getc(infile)) < 0) i = 0;
+        getbuf |= i << (8 - getlen);
+        getlen += 8;
+    }
+    i = getbuf;
+    getbuf <<= 1;
+    getlen--;
+    return (i < 0);
 }
 
 static int16 GetByte(void)   /* get a byte */
@@ -2197,16 +2198,16 @@ static int16 GetByte(void)   /* get a byte */
     uint16 i;
         int q;
 
-	while (getlen <= 8) {
-		if ((q = getc(infile)) < 0) q = 0;
-		i=q;
-		getbuf |= i << (8 - getlen);
-		getlen += 8;
-	}
-	i = getbuf;
-	getbuf <<= 8;
-	getlen -= 8;
-	return i >> 8;
+    while (getlen <= 8) {
+        if ((q = getc(infile)) < 0) q = 0;
+        i=q;
+        getbuf |= i << (8 - getlen);
+        getlen += 8;
+    }
+    i = getbuf;
+    getbuf <<= 8;
+    getlen -= 8;
+    return i >> 8;
 }
 
 static uint16 putbuf = 0;
@@ -2214,19 +2215,19 @@ static uchar putlen = 0;
 
 static void Putcode(int16 l, uint16 c)        /* output c bits */
 {
-	putbuf |= c >> putlen;
-	if ((putlen += l) >= 8) {
-		putc(putbuf >> 8, outfile);
-		if ((putlen -= 8) >= 8) {
-			putc(putbuf, outfile);
-			codesize += 2;
-			putlen -= 8;
-			putbuf = c << (l - putlen);
-		} else {
-			putbuf <<= 8;
-			codesize++;
-		}
-	}
+    putbuf |= c >> putlen;
+    if ((putlen += l) >= 8) {
+        putc(putbuf >> 8, outfile);
+        if ((putlen -= 8) >= 8) {
+            putc(putbuf, outfile);
+            codesize += 2;
+            putlen -= 8;
+            putbuf = c << (l - putlen);
+        } else {
+            putbuf <<= 8;
+            codesize++;
+        }
+    }
 }
 
 
@@ -2236,20 +2237,20 @@ static void StartHuff(void)
 {
     int16 i, j;
 
-	for (i = 0; i < N_CHAR; i++) {
-		freq[i] = 1;
-		son[i] = i + T;
-		prnt[i + T] = i;
-	}
-	i = 0; j = N_CHAR;
-	while (j <= R) {
-		freq[j] = freq[i] + freq[i + 1];
-		son[j] = i;
-		prnt[i] = prnt[i + 1] = j;
-		i += 2; j++;
-	}
-	freq[T] = 0xffff;
-	prnt[R] = 0;
+    for (i = 0; i < N_CHAR; i++) {
+        freq[i] = 1;
+        son[i] = i + T;
+        prnt[i + T] = i;
+    }
+    i = 0; j = N_CHAR;
+    while (j <= R) {
+        freq[j] = freq[i] + freq[i + 1];
+        son[j] = i;
+        prnt[i] = prnt[i + 1] = j;
+        i += 2; j++;
+    }
+    freq[T] = 0xffff;
+    prnt[R] = 0;
 }
 
 
@@ -2260,41 +2261,41 @@ static void reconst(void)
     int16 i, j, k;
     uint16 f, l;
 
-	/* halven cumulative freq for leaf nodes */
-	j = 0;
-	for (i = 0; i < T; i++) {
-		if (son[i] >= T) {
-			freq[j] = (freq[i] + 1) / 2;
-			son[j] = son[i];
-			j++;
-		}
-	}
-	/* make a tree : first, connect children nodes */
-	for (i = 0, j = N_CHAR; j < T; i += 2, j++) {
-		k = i + 1;
-		f = freq[j] = freq[i] + freq[k];
-		for (k = j - 1; f < freq[k]; k--);
-		k++;
-		l = (j - k) * 2;
+    /* halven cumulative freq for leaf nodes */
+    j = 0;
+    for (i = 0; i < T; i++) {
+        if (son[i] >= T) {
+            freq[j] = (freq[i] + 1) / 2;
+            son[j] = son[i];
+            j++;
+        }
+    }
+    /* make a tree : first, connect children nodes */
+    for (i = 0, j = N_CHAR; j < T; i += 2, j++) {
+        k = i + 1;
+        f = freq[j] = freq[i] + freq[k];
+        for (k = j - 1; f < freq[k]; k--);
+        k++;
+        l = (j - k) * 2;
 
-		/* movmem() is Turbo-C dependent
-		   rewritten to memmove() by Kenji */
+        /* movmem() is Turbo-C dependent
+           rewritten to memmove() by Kenji */
 
-		/* movmem(&freq[k], &freq[k + 1], l); */
-		(void)memmove(&freq[k + 1], &freq[k], l);
-		freq[k] = f;
-		/* movmem(&son[k], &son[k + 1], l); */
-		(void)memmove(&son[k + 1], &son[k], l);
-		son[k] = i;
-	}
-	/* connect parent nodes */
-	for (i = 0; i < T; i++) {
-		if ((k = son[i]) >= T) {
-			prnt[k] = i;
-		} else {
-			prnt[k] = prnt[k + 1] = i;
-		}
-	}
+        /* movmem(&freq[k], &freq[k + 1], l); */
+        (void)memmove(&freq[k + 1], &freq[k], l);
+        freq[k] = f;
+        /* movmem(&son[k], &son[k + 1], l); */
+        (void)memmove(&son[k + 1], &son[k], l);
+        son[k] = i;
+    }
+    /* connect parent nodes */
+    for (i = 0; i < T; i++) {
+        if ((k = son[i]) >= T) {
+            prnt[k] = i;
+        } else {
+            prnt[k] = prnt[k + 1] = i;
+        }
+    }
 }
 
 
@@ -2304,34 +2305,34 @@ static void update(int16 c)
 {
     int16 i, j, k, l;
 
-	if (freq[R] == MAX_FREQ) {
-		reconst();
-	}
-	c = prnt[c + T];
-	do {
-		k = ++freq[c];
+    if (freq[R] == MAX_FREQ) {
+        reconst();
+    }
+    c = prnt[c + T];
+    do {
+        k = ++freq[c];
 
-		/* swap nodes to keep the tree freq-ordered */
-		if (k > freq[l = c + 1]) {
-			while (k > freq[++l]);
-			l--;
-			freq[c] = freq[l];
-			freq[l] = k;
+        /* swap nodes to keep the tree freq-ordered */
+        if (k > freq[l = c + 1]) {
+            while (k > freq[++l]);
+            l--;
+            freq[c] = freq[l];
+            freq[l] = k;
 
-			i = son[c];
-			prnt[i] = l;
-			if (i < T) prnt[i + 1] = l;
+            i = son[c];
+            prnt[i] = l;
+            if (i < T) prnt[i + 1] = l;
 
-			j = son[l];
-			son[l] = i;
+            j = son[l];
+            son[l] = i;
 
-			prnt[j] = c;
-			if (j < T) prnt[j + 1] = c;
-			son[c] = j;
+            prnt[j] = c;
+            if (j < T) prnt[j + 1] = c;
+            son[c] = j;
 
-			c = l;
-		}
-	} while ((c = prnt[c]) != 0);	/* do it until reaching the root */
+            c = l;
+        }
+    } while ((c = prnt[c]) != 0);    /* do it until reaching the root */
 }
 
 static uint16 code, len;
@@ -2341,82 +2342,82 @@ static void EncodeChar(uint16 c)
     uint16 i;
     int16 j, k;
 
-	i = 0;
-	j = 0;
-	k = prnt[c + T];
+    i = 0;
+    j = 0;
+    k = prnt[c + T];
 
-	/* search connections from leaf node to the root */
-	do {
-		i >>= 1;
+    /* search connections from leaf node to the root */
+    do {
+        i >>= 1;
 
-		/*
-		if node's address is odd, output 1
-		else output 0
-		*/
-		if (k & 1) i += 0x8000;
+        /*
+        if node's address is odd, output 1
+        else output 0
+        */
+        if (k & 1) i += 0x8000;
 
-		j++;
-	} while ((k = prnt[k]) != R);
-	Putcode(j, i);
-	code = i;
-	len = j;
-	update(c);
+        j++;
+    } while ((k = prnt[k]) != R);
+    Putcode(j, i);
+    code = i;
+    len = j;
+    update(c);
 }
 
 static void EncodePosition(uint16 c)
 {
     uint16 i;
 
-	/* output upper 6 bits with encoding */
-	i = c >> 6;
+    /* output upper 6 bits with encoding */
+    i = c >> 6;
     Putcode(p_len[i], (uint16)p_code[i] << 8);
 
-	/* output lower 6 bits directly */
-	Putcode(6, (c & 0x3f) << 10);
+    /* output lower 6 bits directly */
+    Putcode(6, (c & 0x3f) << 10);
 }
 
 static void EncodeEnd(void)
 {
-	if (putlen) {
-		putc(putbuf >> 8, outfile);
-		codesize++;
-	}
+    if (putlen) {
+        putc(putbuf >> 8, outfile);
+        codesize++;
+    }
 }
 
 static int16 DecodeChar(void)
 {
     uint16 c;
 
-	c = son[R];
+    c = son[R];
 
-	/*
-	 * start searching tree from the root to leaves.
-	 * choose node #(son[]) if input bit == 0
-	 * else choose #(son[]+1) (input bit == 1)
-	 */
-	while (c < T) {
-		c += GetBit();
-		c = son[c];
-	}
-	c -= T;
-	update(c);
-	return c;
+    /*
+     * start searching tree from the root to leaves.
+     * choose node #(son[]) if input bit == 0
+     * else choose #(son[]+1) (input bit == 1)
+     */
+    while (c < T) {
+        c += GetBit();
+        c = son[c];
+    }
+    c -= T;
+    update(c);
+    return c;
 }
 
 static int16 DecodePosition(void)
 {
     uint16 i, j, c;
 
-	/* decode upper 6 bits from given table */
-	i = GetByte();
+    /* decode upper 6 bits from given table */
+    i = GetByte();
     c = (uint16)d_code[i] << 6;
-	j = d_len[i];
+    j = d_len[i];
 
-	/* input lower 6 bits directly */
-	j -= 2;
-	while (j--) {
-		i = (i << 1) + GetBit();
-	}
+    /* input lower 6 bits directly */
+    j -= 2;
+    while (j--) {
+        i = (i << 1) + GetBit();
+    }
     return c | (i & 0x3f);      //RA 20061214 - not 100% sure if this is (c|i) or c | (i & 0x3f) - tests seem to indicate this is right.
 }
 
@@ -2426,59 +2427,59 @@ static void Encode(void)  /* Encoding/Compressing */
 {
     int16  i, c, len, r, s, last_match_length;
 
-	fseek(infile, 0L, 2);
-	textsize = ftell(infile);
-	if (fwrite(&textsize, sizeof textsize, 1, outfile) < 1)
-		Error("Unable to write");	/* write size of original text */
-	if (textsize == 0)
-		return;
-	rewind(infile);
-	textsize = 0;			/* rewind and rescan */
-	StartHuff();
-	InitTree();
-	s = 0;
-	r = N - F;
-	for (i = s; i < r; i++)
-		text_buf[i] = ' ';
-	for (len = 0; len < F && (c = getc(infile)) != EOF; len++)
-		text_buf[r + len] = c;
-	textsize = len;
-	for (i = 1; i <= F; i++)
-		InsertNode(r - i);
-	InsertNode(r);
-	do {
-		if (match_length > len)
-			match_length = len;
-		if (match_length <= THRESHOLD) {
-			match_length = 1;
-			EncodeChar(text_buf[r]);
-		} else {
-			EncodeChar(255 - THRESHOLD + match_length);
-			EncodePosition(match_position);
-		}
-		last_match_length = match_length;
-		for (i = 0; i < last_match_length &&
-				(c = getc(infile)) != EOF; i++) {
-			DeleteNode(s);
-			text_buf[s] = c;
-			if (s < F - 1)
-				text_buf[s + N] = c;
-			s = (s + 1) & (N - 1);
-			r = (r + 1) & (N - 1);
-			InsertNode(r);
-		}
-		if ((textsize += i) > printcount) {
+    fseek(infile, 0L, 2);
+    textsize = ftell(infile);
+    if (fwrite(&textsize, sizeof textsize, 1, outfile) < 1)
+        Error("Unable to write");    /* write size of original text */
+    if (textsize == 0)
+        return;
+    rewind(infile);
+    textsize = 0;            /* rewind and rescan */
+    StartHuff();
+    InitTree();
+    s = 0;
+    r = N - F;
+    for (i = s; i < r; i++)
+        text_buf[i] = ' ';
+    for (len = 0; len < F && (c = getc(infile)) != EOF; len++)
+        text_buf[r + len] = c;
+    textsize = len;
+    for (i = 1; i <= F; i++)
+        InsertNode(r - i);
+    InsertNode(r);
+    do {
+        if (match_length > len)
+            match_length = len;
+        if (match_length <= THRESHOLD) {
+            match_length = 1;
+            EncodeChar(text_buf[r]);
+        } else {
+            EncodeChar(255 - THRESHOLD + match_length);
+            EncodePosition(match_position);
+        }
+        last_match_length = match_length;
+        for (i = 0; i < last_match_length &&
+                (c = getc(infile)) != EOF; i++) {
+            DeleteNode(s);
+            text_buf[s] = c;
+            if (s < F - 1)
+                text_buf[s + N] = c;
+            s = (s + 1) & (N - 1);
+            r = (r + 1) & (N - 1);
+            InsertNode(r);
+        }
+        if ((textsize += i) > printcount) {
             //printf("%12ld\r", textsize);
-			printcount += 1024;
-		}
-		while (i++ < last_match_length) {
-			DeleteNode(s);
-			s = (s + 1) & (N - 1);
-			r = (r + 1) & (N - 1);
-			if (--len) InsertNode(r);
-		}
-	} while (len > 0);
-	EncodeEnd();
+            printcount += 1024;
+        }
+        while (i++ < last_match_length) {
+            DeleteNode(s);
+            s = (s + 1) & (N - 1);
+            r = (r + 1) & (N - 1);
+            if (--len) InsertNode(r);
+        }
+    } while (len > 0);
+    EncodeEnd();
     // printf("input: %ld bytes\n", textsize);
     // printf("output: %ld bytes\n", codesize);
     // printf("output/input: %.3f\n", (double)codesize / textsize);
@@ -2490,63 +2491,63 @@ static void Decode(void)  // Decoding/Uncompressing
     int16  i, j, k, r, c;
     uint32          count;
 
-	if (fread(&textsize, sizeof textsize, 1, infile) < 1)
+    if (fread(&textsize, sizeof textsize, 1, infile) < 1)
         Error("Unable to read");  // read size of original text
-	if (textsize == 0)
-		return;
-	StartHuff();
-	for (i = 0; i < N - F; i++)
-		text_buf[i] = ' ';
-	r = N - F;
-	for (count = 0; count < textsize; ) {
-		c = DecodeChar();
-		if (c < 256) {
-			putc(c, outfile);
-			text_buf[r++] = c;
-			r &= (N - 1);
-			count++;
-		} else {
-			i = (r - DecodePosition() - 1) & (N - 1);
-			j = c - 255 + THRESHOLD;
-			for (k = 0; k < j; k++) {
-				c = text_buf[(i + k) & (N - 1)];
-				putc(c, outfile);
-				text_buf[r++] = c;
-				r &= (N - 1);
-				count++;
-			}
-		}
-		if (count > printcount) {
+    if (textsize == 0)
+        return;
+    StartHuff();
+    for (i = 0; i < N - F; i++)
+        text_buf[i] = ' ';
+    r = N - F;
+    for (count = 0; count < textsize; ) {
+        c = DecodeChar();
+        if (c < 256) {
+            putc(c, outfile);
+            text_buf[r++] = c;
+            r &= (N - 1);
+            count++;
+        } else {
+            i = (r - DecodePosition() - 1) & (N - 1);
+            j = c - 255 + THRESHOLD;
+            for (k = 0; k < j; k++) {
+                c = text_buf[(i + k) & (N - 1)];
+                putc(c, outfile);
+                text_buf[r++] = c;
+                r &= (N - 1);
+                count++;
+            }
+        }
+        if (count > printcount) {
             //printf("%12ld\r", count);
-			printcount += 1024;
-		}
-	}
+            printcount += 1024;
+        }
+    }
     //printf("%12ld\n", count);
 }
 
 
 int main(int argc, char *argv[])
 {
-	char  *s;
+    char  *s;
 
-	if (argc != 4) {
-		printf("Usage:lzhuf e(compression)|d(uncompression)"
-			" infile outfile\n");
-		return EXIT_FAILED;
-	}
-	if ((s = argv[1], s[1] || strpbrk(s, "DEde") == NULL)
-	 || (s = argv[2], (infile  = fopen(s, "rb")) == NULL)
-	 || (s = argv[3], (outfile = fopen(s, "wb")) == NULL)) {
-		printf("$@HHH(J %s\n", s);
-		return EXIT_FAILED;
-	}
-	if (toupper(*argv[1]) == 'E')
-		Encode();
-	else
-		Decode();
-	fclose(infile);
-	fclose(outfile);
-	return EXIT_OK;
+    if (argc != 4) {
+        printf("Usage:lzhuf e(compression)|d(uncompression)"
+            " infile outfile\n");
+        return EXIT_FAILED;
+    }
+    if ((s = argv[1], s[1] || strpbrk(s, "DEde") == NULL)
+     || (s = argv[2], (infile  = fopen(s, "rb")) == NULL)
+     || (s = argv[3], (outfile = fopen(s, "wb")) == NULL)) {
+        printf("$@HHH(J %s\n", s);
+        return EXIT_FAILED;
+    }
+    if (toupper(*argv[1]) == 'E')
+        Encode();
+    else
+        Decode();
+    fclose(infile);
+    fclose(outfile);
+    return EXIT_OK;
 }
 */
 
@@ -2575,26 +2576,26 @@ int LZHExpandBlock(uint8 *in, uint8 *out, int16 size, int sector)
     //StartHuff();   //RA20060915 - speedup hack
     restore_huff();
     for (i = 0; i < N - F; i++)    text_buf[i] = ' ';
-	r = N - F;
-	for (count = 0; count < textsize; ) {
-		c = DecodeChar();
-		if (c < 256) {
-			putc(c, outfile);
-			text_buf[r++] = c;
-			r &= (N - 1);
-			count++;
-		} else {
-			i = (r - DecodePosition() - 1) & (N - 1);
-			j = c - 255 + THRESHOLD;
-			for (k = 0; k < j; k++) {
-				c = text_buf[(i + k) & (N - 1)];
-				putc(c, outfile);
-				text_buf[r++] = c;
-				r &= (N - 1);
-				count++;
-			}
-		}
-	}
+    r = N - F;
+    for (count = 0; count < textsize; ) {
+        c = DecodeChar();
+        if (c < 256) {
+            putc(c, outfile);
+            text_buf[r++] = c;
+            r &= (N - 1);
+            count++;
+        } else {
+            i = (r - DecodePosition() - 1) & (N - 1);
+            j = c - 255 + THRESHOLD;
+            for (k = 0; k < j; k++) {
+                c = text_buf[(i + k) & (N - 1)];
+                putc(c, outfile);
+                text_buf[r++] = c;
+                r &= (N - 1);
+                count++;
+            }
+        }
+    }
 return 0;
 }
 
@@ -2602,12 +2603,12 @@ return 0;
 // RA20060915
 static void save_huff(void)
 {
- if (!saved_lson )  {saved_lson = malloc((N +   1) *sizeof(int16));  memcpy(saved_lson, lson  ,(N +   1) *sizeof(int16) );  }
- if (!saved_rson )  {saved_rson = malloc((N + 257) *sizeof(int16));  memcpy(saved_rson, rson  ,(N + 257) *sizeof(int16) );  }
- if (!saved_dad  )  {saved_dad  = malloc((N +   1) *sizeof(int16));  memcpy(saved_dad , dad   ,(N +   1) *sizeof(int16) );  }
- if (!saved_freq )  {saved_freq = malloc((T + 1)   *sizeof(uint16)); memcpy(saved_freq, freq  ,(T + 1)   *sizeof(uint16));  }
- if (!saved_son  )  {saved_son  = malloc((T)       *sizeof(int16));  memcpy(saved_son , son   ,(T)       *sizeof(int16) );  }
- if (!saved_prnt )  {saved_prnt = malloc((T+N_CHAR)*sizeof(int16));  memcpy(saved_prnt, prnt  ,(T+N_CHAR)*sizeof(int16));  }
+ if (!saved_lson )  {saved_lson = calloc((N +   1) ,sizeof(int16));  memcpy(saved_lson, lson  ,(N +   1) *sizeof(int16) );  }
+ if (!saved_rson )  {saved_rson = calloc((N + 257) ,sizeof(int16));  memcpy(saved_rson, rson  ,(N + 257) *sizeof(int16) );  }
+ if (!saved_dad  )  {saved_dad  = calloc((N +   1) ,sizeof(int16));  memcpy(saved_dad , dad   ,(N +   1) *sizeof(int16) );  }
+ if (!saved_freq )  {saved_freq = calloc((T + 1)   ,sizeof(uint16)); memcpy(saved_freq, freq  ,(T + 1)   *sizeof(uint16));  }
+ if (!saved_son  )  {saved_son  = calloc((T)       ,sizeof(int16));  memcpy(saved_son , son   ,(T)       *sizeof(int16) );  }
+ if (!saved_prnt )  {saved_prnt = calloc((T+N_CHAR),sizeof(int16));  memcpy(saved_prnt, prnt  ,(T+N_CHAR)*sizeof(int16));  }
 }
 
 // RA20060915
@@ -2650,6 +2651,234 @@ static void restore_huff(void)
 
 
 
+
+#endif
+
+
+
+// TODO: This libxad implementation might be faster.
+
+#if LZH_LIBXAD
+
+/* Note: compare with LZSS decoding in lharc! */
+#define SITLZAH_N       314
+#define SITLZAH_T       (2*SITLZAH_N-1)
+/*      Huffman table used for first 6 bits of offset:
+        #bits   codes
+        3       0x000
+        4       0x040-0x080
+        5       0x100-0x2c0
+        6       0x300-0x5c0
+        7       0x600-0xbc0
+        8       0xc00-0xfc0
+*/
+
+
+static const uint8 SITLZAH_HuffCode[] = {  // this is totally different from the previous version
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+  0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
+  0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04, 0x04,
+  0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
+  0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08, 0x08,
+  0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c,
+  0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c, 0x0c,
+  0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10, 0x10,
+  0x14, 0x14, 0x14, 0x14, 0x14, 0x14, 0x14, 0x14,
+  0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18, 0x18,
+  0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c,
+  0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20,
+  0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24, 0x24,
+  0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28, 0x28,
+  0x2c, 0x2c, 0x2c, 0x2c, 0x2c, 0x2c, 0x2c, 0x2c,
+  0x30, 0x30, 0x30, 0x30, 0x34, 0x34, 0x34, 0x34,
+  0x38, 0x38, 0x38, 0x38, 0x3c, 0x3c, 0x3c, 0x3c,
+  0x40, 0x40, 0x40, 0x40, 0x44, 0x44, 0x44, 0x44,
+  0x48, 0x48, 0x48, 0x48, 0x4c, 0x4c, 0x4c, 0x4c,
+  0x50, 0x50, 0x50, 0x50, 0x54, 0x54, 0x54, 0x54,
+  0x58, 0x58, 0x58, 0x58, 0x5c, 0x5c, 0x5c, 0x5c,
+  0x60, 0x60, 0x64, 0x64, 0x68, 0x68, 0x6c, 0x6c,
+  0x70, 0x70, 0x74, 0x74, 0x78, 0x78, 0x7c, 0x7c,
+  0x80, 0x80, 0x84, 0x84, 0x88, 0x88, 0x8c, 0x8c,
+  0x90, 0x90, 0x94, 0x94, 0x98, 0x98, 0x9c, 0x9c,
+  0xa0, 0xa0, 0xa4, 0xa4, 0xa8, 0xa8, 0xac, 0xac,
+  0xb0, 0xb0, 0xb4, 0xb4, 0xb8, 0xb8, 0xbc, 0xbc,
+  0xc0, 0xc4, 0xc8, 0xcc, 0xd0, 0xd4, 0xd8, 0xdc,
+  0xe0, 0xe4, 0xe8, 0xec, 0xf0, 0xf4, 0xf8, 0xfc};
+
+static const uint8 SITLZAH_HuffLength[] = {   // this is different between my lzh and xad!
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7,
+    8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8};
+
+struct SITLZAHData {
+  uint8 buf[4096];
+  uint32 Frequ[1000];
+  uint32 ForwTree[1000];
+  uint32 BackTree[1000];
+};
+
+static void SITLZAH_move(uint32 *p, uint32 *q, uint32 n)
+{
+  if(p > q)
+  {
+    while(n-- > 0)
+      *q++ = *p++;
+  }
+  else
+  {
+    p += n;
+    q += n;
+    while(n-- > 0)
+      *--q = *--p;
+  }
+}
+
+static int32 SIT_lzah(struct xadInOut *io)
+{
+  int32 i, i1, j, k, l, ch, byte, offs, skip;
+  uint32 bufptr = 0;
+  struct SITLZAHData *dat;
+  //struct xadMasterBase *xadMasterBase = io->xio_xadMasterBase;
+
+  if((dat = (struct SITLZAHData *) xadAllocVec(XADM sizeof(struct SITLZAHData), XADMEMF_CLEAR|XADMEMF_PUBLIC)))
+  {
+    /* init buffer */
+    for(i = 0; i < SITLZAH_N; i++)
+    {
+      dat->Frequ[i] = 1;
+      dat->ForwTree[i] = i + SITLZAH_T;
+      dat->BackTree[i + SITLZAH_T] = i;
+    }
+    for(i = 0, j = SITLZAH_N; j < SITLZAH_T; i += 2, j++)
+    {
+      dat->Frequ[j] = dat->Frequ[i] + dat->Frequ[i + 1];
+      dat->ForwTree[j] = i;
+      dat->BackTree[i] = j;
+      dat->BackTree[i + 1] = j;
+    }
+    dat->Frequ[SITLZAH_T] = 0xffff;
+    dat->BackTree[SITLZAH_T - 1] = 0;
+
+    for(i = 0; i < 4096; i++)
+      dat->buf[i] = ' ';   //******* FILL ******//
+
+    while(!(io->xio_Flags & (XADIOF_LASTOUTBYTE|XADIOF_ERROR)))
+    {
+      ch = dat->ForwTree[SITLZAH_T - 1];
+      while(ch < SITLZAH_T)
+        ch = dat->ForwTree[ch + xadIOGetBitsHigh(io, 1)];
+      ch -= SITLZAH_T;
+      if(dat->Frequ[SITLZAH_T - 1] >= 0x8000) /* need to reorder */
+      {
+        j = 0;
+        for(i = 0; i < SITLZAH_T; i++)
+        {
+          if(dat->ForwTree[i] >= SITLZAH_T)
+          {
+            dat->Frequ[j] = ((dat->Frequ[i] + 1) >> 1);
+            dat->ForwTree[j] = dat->ForwTree[i];
+            j++;
+          }
+        }
+        j = SITLZAH_N;
+        for(i = 0; i < SITLZAH_T; i += 2)
+        {
+          k = i + 1;
+          l = dat->Frequ[i] + dat->Frequ[k];
+          dat->Frequ[j] = l;
+          k = j - 1;
+          while(l < dat->Frequ[k])
+            k--;
+          k = k + 1;
+          SITLZAH_move(dat->Frequ + k, dat->Frequ + k + 1, j - k);
+          dat->Frequ[k] = l;
+          SITLZAH_move(dat->ForwTree + k, dat->ForwTree + k + 1, j - k);
+          dat->ForwTree[k] = i;
+          j++;
+        }
+        for(i = 0; i < SITLZAH_T; i++)
+        {
+          k = dat->ForwTree[i];
+          if(k >= SITLZAH_T)
+            dat->BackTree[k] = i;
+          else
+          {
+            dat->BackTree[k] = i;
+            dat->BackTree[k + 1] = i;
+          }
+        }
+      }
+
+      i = dat->BackTree[ch + SITLZAH_T];
+      do
+      {
+        j = ++dat->Frequ[i];
+        i1 = i + 1;
+        if(dat->Frequ[i1] < j)
+        {
+          while(dat->Frequ[++i1] < j)
+            ;
+          i1--;
+          dat->Frequ[i] = dat->Frequ[i1];
+          dat->Frequ[i1] = j;
+
+          j = dat->ForwTree[i];
+          dat->BackTree[j] = i1;
+          if(j < SITLZAH_T)
+            dat->BackTree[j + 1] = i1;
+          dat->ForwTree[i] = dat->ForwTree[i1];
+          dat->ForwTree[i1] = j;
+          j = dat->ForwTree[i];
+          dat->BackTree[j] = i;
+          if(j < SITLZAH_T)
+            dat->BackTree[j + 1] = i;
+          i = i1;
+        }
+        i = dat->BackTree[i];
+      } while(i != 0);
+
+      if(ch < 256)
+      {
+        dat->buf[bufptr++] = xadIOPutChar(io, ch);
+        bufptr &= 0xFFF;
+      }
+      else
+      {
+        byte = xadIOGetBitsHigh(io, 8);
+        skip = SITLZAH_HuffLength[byte] - 2;
+        offs = (SITLZAH_HuffCode[byte]<<4) | (((byte << skip)  + xadIOGetBitsHigh(io, skip)) & 0x3f);
+        offs = ((bufptr - offs - 1) & 0xfff);
+        ch = ch - 253;
+        while(ch-- > 0)
+        {
+          dat->buf[bufptr++] = xadIOPutChar(io, dat->buf[offs++ & 0xfff]);
+          bufptr &= 0xFFF;
+        }
+      }
+    }
+    xadFreeObjectA(XADM dat, 0);
+  }
+  else
+    return XADERR_NOMEMORY;
+
+  return io->xio_Error;
+}
 
 #endif
 

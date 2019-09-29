@@ -63,7 +63,12 @@
 
 // This forces each executed opcode to have it's IPC re-created - used to see if IPC cache
 // isn't working properly, or if we're hitting self-modifying code  -- very slow, do not use
+// enabling this exposes cache sanitation issues 
+// - LPW: run one program, then when you run another, get bus error.
 //#define EVALUATE_EACH_IPC 1
+
+// Verify that free ipcts are accessible and don't cause segfaults
+#define TEST_FREE_IPCTS_ARE_EMPTY 1
 
 //enable a read after write to ensure we get back the same data we wrote - no longer supported
 //#define VERIFY_WRITES 1
@@ -71,24 +76,8 @@
 
 //do not use this ever//#define ALLOW_1536K_RAM 1 -- no longer
 
-
 // Enable this if you want all of the Lisa Status register bits to be set. - slower, but more acurate.
 #define FULL_STATREG 1
-
-// Enable this to disassemble skipped opcodes to the log that weren't executed - might be buggy!
-//#define DISASM_SKIPPED_OPCODES 1
-
-// Same as above, but specific to a single block of code instead of every chunk of code.
-// //0xd27a-0xddff for LisaTest  *REMOVE*
-//#define LOOKAHEAD 1
-//#define LOOKSTARTADDR    0x00b848d0
-//#define LOOKENDADDR      0x00b849cc
-
-// If enabled, what screenhash value to turn debugging on
-//#define DEBUG_ON_SCREENHASH  {0,0,0,0,0,0,0,0,       0x7f,0x19,0xcc,0x88,0x87,0x5f,0xca,0x64,0xff,0xfc,0xff,0x5c,0x00,0x00}
-//#define DEBUG_OFF_SCREENHASH {0,0,0,0,0,0,0,0,       0xff,0xff,0x9b,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xef,0xdf}
-
-//{0x7f,0xcb,0xe7,0xbd,0xe0,0xf3,0x2b,0xcd,0x7f,0xf3,0xff,0x5d,0x00,0x00}
 
 // If this is turned on, the VIA timers will no longer be tied to the CPU speed, rather,
 // they'll be adjusted to match the throttle. So if the throttle is 10Mhz, these will take
@@ -96,8 +85,8 @@
 // text cursor to a reasonable value so it doesn't flicker.  It might not work with all
 // OS's - will certainly cause LisaTest to complain if its run at throttle >5.0Mhz
 //#define TIE_VIA_TIMER_TO_HOST 1
+// DO NOT ENABLE THIS
 // above does not work and instead throws error 93 on the dual parallel slot's power on self test.
-
 
 
 // How close do we need to be in order to declare a matching the screen hash?
@@ -105,6 +94,10 @@
 
 // Do read-only memory violations cause bus errors?
 #define ROMEMCAUSESBUSERROR 1
+#define NO_BUS_ERR_ON_NULL_IO_WRITE 1
+//^2018 turns out that on the lisa, writes to undefined I/O space should not cause bus errors
+// Thanks to Gilles Fetis for this. (seen in Gemdos)
+// define this to re-enable the bus errors.
 
 // Do physical memory over/underflows cause MMU exceptions?
 //#define PHYS_UNDER_BUSERR 1
@@ -120,25 +113,48 @@
 
 // If this is enabled, and debug log is enabled, it will attempt to suppress loop disassembly
 // by keeping track of the last MAX_LOOP_REGS and will only output the changed registers.
-#define SUPPRESS_LOOP_DISASM 1
-#define MAX_LOOP_REGS 10
+//#define SUPPRESS_LOOP_DISASM 1
+//#define MAX_LOOP_REGS 10
+
+// turn tracelog on/off using right mouse click
+#define RIGHT_CLICK_TRACELOG 1
+
+// Enable this to disassemble skipped opcodes to the log that weren't executed - might be buggy!
+//#define DISASM_SKIPPED_OPCODES 1
+
+// Same as above, but specific to a single block of code instead of every chunk of code.
+// //0xd27a-0xddff for LisaTest  *REMOVE*
+//#define LOOKAHEAD 1
+//#define LOOKSTARTADDR    0x00b848d0
+//#define LOOKENDADDR      0x00b849cc
+
+// If enabled, what screenhash value to turn debugging on
+//#define DEBUG_ON_SCREENHASH  {0,0,0,0,0,0,0,0,       0x7f,0x19,0xcc,0x88,0x87,0x5f,0xca,0x64,0xff,0xfc,0xff,0x5c,0x00,0x00}
+//#define DEBUG_OFF_SCREENHASH {0,0,0,0,0,0,0,0,       0xff,0xff,0x9b,0xff,0xff,0xff,0xff,0xff,0xff,0xff,0xef,0xdf}
+//                             {0x7f,0xcb,0xe7,0xbd,0xe0,0xf3,0x2b,0xcd,0x7f,0xf3,0xff,0x5d,0x00,0x00}
 
 // switches to fn's that log memory calls, if undefined, these are macros, so they're much faster.
 // only turn this on if you need it.
-#define DEBUGMEMCALLS 1
+//#define DEBUGMEMCALLS 1
+// this 2nd one also enables mmu table output
+//#define DEBUGMEMCHKMMU
+
+// Useful for recording what's plotted to the display.
+#define DEBUGVIDMEMWRITES 1
+
+// This leaves mouse droppings on the screen
+//#define DEBUG_HOTBUTTONS
+
+// This logs the mouse coordinates in stderr
+//#define DEBUG_MOUSE_LOG 1 
 
 // this enables the cpucoretester.c which is runs multiple cores in parallel and tests them
 //#define CPU_CORE_TESTER 1
 
-// If this is enabled, it will force the Instruction Parameter Cache to be invalidated on
-// for that address on each write to memory.  This is to correct problems with self-modifying code
-// I'm not sure whether or not there are any such problems, but it is provided as a compile itme option.
-//#define FORCE_MEMWRITE_TO_INVALIDATE_IPC 1
-
 // If debugging is turned on, this option can be turned on to provide a dump of the
 // instruction cache and also the current cpu clock value when debugging is enabled.
 // useful for extra long opcodes, and the debuggng of the 68K core.
-#define ICACHE_DEBUG 1
+//#define ICACHE_DEBUG 1
 
 // Detect procedure entry into LisaOS
 #define PROCNAME_DEBUG 1
@@ -147,28 +163,52 @@
 // The above options are only for DEBUG enabled compiles
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+// If this is enabled, it will force the Instruction Parameter Cache to be invalidated on
+// for that address on each write to memory.  This is to correct problems with self-modifying code
+// turns out this is needed - at least for LPW to work, because it will load a new program in the
+// same space another one used to occupy, causing issues.
+#define FORCE_MEMWRITE_TO_INVALIDATE_IPC 1
+
+
 //-----------------------------------------------------------------------------------------------------------------------------
 
 #ifndef IN_VARS_H
 #define IN_VARS_H 1
 
-#define BIT0  1
-#define BIT1  2
-#define BIT2  4
-#define BIT3  8
-#define BIT4  16
-#define BIT5  32
-#define BIT6  64
-#define BIT7  128
-#define BIT8  256
-#define BIT9  512
-#define BIT10 1024
-#define BIT11 2048
-#define BIT12 4096
-#define BIT13 8192
-#define BIT14 16384
-#define BIT15 32768
-
+#define BIT0           1
+#define BIT1           2
+#define BIT2           4
+#define BIT3           8
+#define BIT4          16
+#define BIT5          32
+#define BIT6          64
+#define BIT7         128
+#define BIT8         256
+#define BIT9         512
+#define BIT10       1024
+#define BIT11       2048
+#define BIT12       4096
+#define BIT13       8192
+#define BIT14      16384
+#define BIT15      32768
+#define BIT16      65536
+#define BIT17     131072
+#define BIT18     262144
+#define BIT19     524288
+#define BIT20    1048576
+#define BIT21    2097152
+#define BIT22    4194304
+#define BIT23    8388608
+#define BIT24   16777216
+#define BIT25   33554432
+#define BIT26   67108864
+#define BIT27  134217728
+#define BIT28  268435456
+#define BIT29  536870912
+#define BIT30 1073741824
+#define BIT31 2147483648
+#define BIT32 4294967296
 
 // Allow C to call C++
 
@@ -239,6 +279,8 @@
 // include all the includes we'll (might) need (and want)
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdarg.h>
+
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -333,7 +375,7 @@
 
 
 #ifdef CPU_CORE_TESTER
-extern 				void corecpu_get_start_masterregs(void);
+extern                 void corecpu_get_start_masterregs(void);
 extern              void corecpu_complete_opcode(int endmmucx);
 #endif
 
@@ -424,17 +466,17 @@ ACGLOBAL(uint8,highest_bit_val_inv[],
 #define SERIAL_PORT_A_CONTROL 0xFCD243
 #define SERIAL_PORT_B_DATA    0xFCD245
 #define SERIAL_PORT_B_CONTROL 0xFCD241
-#define IRQ_FLOPPY     1			// run of the mill floppy IRQ's.
+#define IRQ_FLOPPY     1            // run of the mill floppy IRQ's.
 #define IRQ_VIDEO      1            // not sure if this is correct
 #define IRQ_FDIR_ON    40           // special cases.  These are for floppy fdir=1, fdir=0
 #define IRQ_FDIR_OFF   41
 #define IRQ_GOBYTE_0   42           // zero gobyte after some time
 
 #define IRQ_SCC        6            // Serial port
-#define IRQ_VIA1       2			// Keyboard/Mouse/Clock (COPS controller)
+#define IRQ_VIA1       2            // Keyboard/Mouse/Clock (COPS controller)
 #define IRQ_COPS       2            // Keyboard/Mouse/Clock (COPS controller)
-#define IRQ_VIA2       1 			// Parallel Port VIA
-#define IRQ_SLOT0      5			// Expasion Slot IRQ's
+#define IRQ_VIA2       1             // Parallel Port VIA
+#define IRQ_SLOT0      5            // Expasion Slot IRQ's
 #define IRQ_SLOT1      4
 #define IRQ_SLOT2      3
 
@@ -594,14 +636,14 @@ ACGLOBAL(uint8,highest_bit_val_inv[],
 #define FIX_VIA_IFR(vianum)  {                                                               \
                                if ( via[vianum].via[IFR] & 127) via[vianum].via[IFR]|=128;   \
                                else via[vianum].via[IFR]=0;                                  \
-	                         }
+                             }
 
 #define FIX_VIAP_IFR()       {                                                               \
                                if ( V->via[IFR] & 127) V->via[IFR]|=128;                     \
                                else V->via[IFR]=0;                                           \
- 	                         }
+                              }
 
-#define IS_PARALLEL_PORT_ENABLED(vianum) (profile_power & (1<<(vianum-2)) ) 
+#define IS_PARALLEL_PORT_ENABLED(vianum) (profile_power & (1<<(vianum-2)) )
 
 
 #define  VIA_IRQ_BIT_CA2          1  // cleared by read/write of reg1 (ora) unless CA2/CB2 in PCR set as independent irq - only writing to ifr will then clear it
@@ -734,12 +776,15 @@ GLOBAL(uint8,*lisaram,NULL);                 // pointer to Lisa RAM
 
 // this enables a hack that tricks the lisa into skipping the full ram test, thus speeding up
 // the boot process - this sets a PRAM variable saying RAM test is done.
-GLOBAL(int,cheat_ram_test,1);
+GLOBAL(int,cheat_ram_test,1);  // careful if we change the type of this: `extern "C" float hidpi_scale;` in LisaConfigFrame.cpp also
 GLOBAL(int,romless,0);
 
-// othe globally saved defaults
+// other globally saved defaults
 GLOBAL(int,sound_effects_on,1);
 GLOBAL(int,profile_power,127);
+
+DECLARE(float,hidpi_scale); //,1.0);    // time to support HiDPI displays and "Retina" displays, yeay!  Party like it's 2012!
+
 DECLARE(int,hide_host_mouse);
 DECLARE(int,skins_on);
 DECLARE(int,skins_on_next_run);
@@ -766,8 +811,6 @@ typedef struct
       } mousequeue_t;
 
 
-
-
 typedef struct
 {
     int8   Command;                      // what command is the profile doing:
@@ -778,7 +821,7 @@ typedef struct
     uint8   DataBlock[4+8+532+8+2];      // 4 status bytes, command block, data block, 2 for good luck ;)
 
     uint16  indexread;                   // indeces into the buffer for the Lisa to Read or Write
-	uint16  indexwrite;
+    uint16  indexwrite;
     uint32  blocktowrite;                // used by the write command to store the block number to write
 
   //uint32  numblocks;                   // (24 bit value!) size of this profile in blocks.
@@ -804,17 +847,56 @@ typedef struct
     XTIMER   alarm_len_e;                 // used for timeouts - how long was the delay set for in clock_e event expiration
 
 
-	int      vianum;
-	int      last_cmd;
+    int      vianum;
+    uint16   last_cmd;
 }  ProFileType;
 
+typedef struct
+{
+    int8   Command;                      // what command is the profile doing:
+                                         // -1=disabled, -2=idle, 1=read, 2=write, 3=write verify
+                                         //
+    uint8   StateMachineStep;            // what step of Command is the state machine of this profile in?
+
+    uint8   DataBlock[4+8+532+8+2];      // 4 status bytes, command block, data block, 2 for good luck ;)
+
+    uint16  indexread;                   // indeces into the buffer for the Lisa to Read or Write
+    uint16  indexwrite;
+    uint32  blocktowrite;                // used by the write command to store the block number to write
+
+  //uint32  numblocks;                   // (24 bit value!) size of this profile in blocks.
+                                         //   (9728=5mb, 532 bytes/sector)
+                                         // We shouldn't make this more than 10Mb until we've tried it.
+
+                                         // Control Lines from 6522 (except OCDLine which is Command=-1)
+    uint8   CMDLine;                     // set by Lisa
+    uint8   BSYLine;                     // set by ProFile
+    uint8   DENLine;                     // set by Lisa (drive enabled)
+    uint8   RRWLine;                     // set by Lisa (read or write)
+
+    uint8   VIA_PA;                      // data to from VIA PortA (copied to/from V->via[0])
+    uint8   last_a_accs;
+    int32   last_reset_cpuclk;           // last reset occured at what cpu clock?
+
+    DC42ImageType DC42;                  // actual storage container
+
+    // DC42 contains the ProFilename and file handler
+    //char  ProFileFileName[FILENAME_MAX]; // the file name for this Profile disk image to open;
+
+    XTIMER   clock_e;                     // used for timeouts - this is in relation to cpu68k_clocks
+    XTIMER   alarm_len_e;                 // used for timeouts - how long was the delay set for in clock_e event expiration
+
+
+    int      vianum;
+    uint16   last_cmd;
+}  WidgetType;
 
 
 
 typedef struct
 {
-	uint8 active;           		// is this VIA active? (except via1 and via2 s/b always active)
-                                 	// make sure that the initialization code sets these anyway!!!
+    uint8 active;                   // is this VIA active? (except via1 and via2 s/b always active)
+                                     // make sure that the initialization code sets these anyway!!!
 
     uint8 vianum;                   // Which VIA is this?
 
@@ -838,7 +920,7 @@ typedef struct
     XTIMER sr_e;
     XTIMER sr_fired;
 
-	XTIMER last_pa_write;           // used to find the end of print jobs
+    XTIMER last_pa_write;           // used to find the end of print jobs
 
     //#ifdef DEBUG
     XTIMER t1_set_cpuclk;
@@ -850,14 +932,14 @@ typedef struct
     ProFileType *ProFile;           // If there's a ProFile attached, this structure deals with it.
     int ADMP;                       // If there's an Apple Dot Matrix Printer (same as IW, but parallel)
 
-	uint8 irqnum;           		// Interrupt number for this VIA
-	uint8 srcount;
+    uint8 irqnum;                   // Interrupt number for this VIA
+    uint8 srcount;
     uint8 ca1, ca2, cb1, cb2;       // port A,B control lines
 
-	uint8 (*irb)(uint8 vianum, uint8 reg);		    // Function Pointers to the Handlers for what's connected to the VIA's.
-	void  (*orb)(uint8 vianum,uint8 data, uint8 reg);
-	uint8 (*ira)(uint8 vianum, uint8 reg);
-	void  (*ora)(uint8 vianum,uint8 data, uint8 reg);
+    uint8 (*irb)(uint8 vianum, uint8 reg);            // Function Pointers to the Handlers for what's connected to the VIA's.
+    void  (*orb)(uint8 vianum,uint8 data, uint8 reg);
+    uint8 (*ira)(uint8 vianum, uint8 reg);
+    void  (*ora)(uint8 vianum,uint8 data, uint8 reg);
 }   viatype;
 
 // What can I say, I'm a lazy fuck, I don't like to worry about the case of these.
@@ -905,7 +987,7 @@ GLOBAL(uint32,lisa_os_mouse_y_ptr,0x488);
 GLOBAL(uint32,lisa_os_boot_mouse_x_ptr,0x486);
 GLOBAL(uint32,lisa_os_boot_mouse_y_ptr,0x488);
 GLOBAL(int8,floppy_picked,1);                         //2006.06.11 - if 1 enable profile access immediately
-
+GLOBAL(uint8,floppy_iorom,0);
 typedef struct _lisa_clock
 {
  uint8 year;
@@ -923,7 +1005,7 @@ GLOBAL(uint8,lisa_clock_set_idx,0);
 GLOBAL(uint8,lisa_alarm_power,0);
 GLOBAL(uint8,lisa_clock_on,1);
 DECLARE(uint8,eparity[256]);
-DECLARE(uint8,lisa_clock_set[8]);
+DECLARE(uint8,lisa_clock_set[16]);
 
 // Instruction Parameter Cache
 typedef struct _t_ipc {
@@ -944,6 +1026,7 @@ typedef struct _t_ipc {
 
     uint16 reg;                            //2      // for cpu68k-inline idx_val macros/inlines replacing the bug that causes the
                                                     // high octet in PC (bits 31-24) to be filled, then causes negative PC on sign ext.
+    
     uint8  clks;                           //1      // might be able to remove this if I can get this from iib without too much of a slowdown - maybe
 
     struct _t_ipc *next;                   //8/4    // next ipc in chain. we could get rid of this, but then things would run slower
@@ -955,25 +1038,18 @@ typedef struct _t_ipc {
 
 typedef struct _t_ipc_table
 {
-	// Pointers to all the IPC's in this page.  Since the min 68k opcode is 2 bytes in size
-	// the most you can have are 256 instructions per page.  We thus no longer need a hash table
-	// nor any linked list of IPC's as this is a direct pointer to the IPC.  Ain't life grand?
+    // Pointers to all the IPC's in this page.  Since the min 68k opcode is 2 bytes in size
+    // the most you can have are 256 instructions per page.  We thus no longer need a hash table
+    // nor any linked list of IPC's as this is a direct pointer to the IPC.  Ain't life grand?
 
     t_ipc ipc[256];                            // only need this, the rest I think is junk
-
-	// These are merged together so that on machines with 32 bit architectures we can
-	// save four bytes.  It will still save 2 bytes on 64 bit machines.
-    union t
-    {   uint32 clocks;                  // can I get rid of this one? - it's used in cpu68k.c - but can be gotten rid of
-
-                                        // we still use the *next pointer to keep track of IPC's.
-        struct _t_ipc_table *next;      // try to get rid of these as they're not really needed, only used for free list!
-    } t;
+    struct _t_ipc_table *next;
+//    } t;
 
 
 #ifdef PROCESSOR_ARM
-	void (*compiled)(struct _t_ipc *ipc);
-	//uint8 norepeat;	// what's this do? this only gets written to, but not read.  Maybe Arm needs it?
+    void (*compiled)(struct _t_ipc *ipc);
+    //uint8 norepeat;    // what's this do? this only gets written to, but not read.  Maybe Arm needs it?
 #endif
 } t_ipc_table;
 
@@ -998,11 +1074,11 @@ typedef struct _t_ipc_table
 // Note that the IPC's point to the virtual, not physical pages.
 
 typedef struct _mmu_trans_t
-{	int32 address;	     /* quick ea translation. Just add to lower bits  - needs to be signed 	*/
+{    int32 address;         /* quick ea translation. Just add to lower bits  - needs to be signed     */
     //uint32 sor9;
-	lisa_mem_t readfn;   /* index to read and write fn's for that segment, that way I			*/
-	lisa_mem_t writefn;  /* can have read only segments without doing special checking.		*/
-	t_ipc_table *table;  /* Pointer to a table of IPC's or NULL if one hasn't been assigned.	*/
+    lisa_mem_t readfn;   /* index to read and write fn's for that segment, that way I            */
+    lisa_mem_t writefn;  /* can have read only segments without doing special checking.        */
+    t_ipc_table *table;  /* Pointer to a table of IPC's or NULL if one hasn't been assigned.    */
 } mmu_trans_t;
 
 
@@ -1011,11 +1087,9 @@ typedef struct
 {
     uint16 sor, slr;          // real sor, slr
     //uint16 newsor, newslr;    // used when updating - won't change to this until both are written to.
-	uint8  changed;   		  // this is a flag to let us know that an mmu segment has changed.
-		                  	  // come back later to correct it. bit 0=newslr set, bit 1=newsor set.
+    uint8  changed;             // this is a flag to let us know that an mmu segment has changed.
+                                // come back later to correct it. bit 0=newslr set, bit 1=newsor set.
 } mmu_t;
-
-
 
 
 
@@ -1086,7 +1160,20 @@ GLOBAL(long,*dtc_rom_fseeks,NULL);
 GLOBAL(FILE,*rom_source_file,NULL);
 
 GLOBAL(int,debug_log_enabled,0);
+GLOBAL(int,debug_log_onclick,0);
+GLOBAL(int,dbx,0);
 GLOBAL(FILE,*buglog,NULL);
+
+#ifdef DEBUG
+
+
+#define PAUSE_DEBUG_MESSAGES()  {dbx|=debug_log_enabled; debug_log_enabled=0;}
+#define RESUME_DEBUG_MESSAGES() {debug_log_enabled|=dbx; dbx=0;}
+#else
+#define PAUSE_DEBUG_MESSAGES()  {;}
+#define RESUME_DEBUG_MESSAGES() {;}
+#endif
+
 
 #ifdef DEBUG
 #ifdef DEBUG_ON_SCREENHASH
@@ -1096,9 +1183,6 @@ GLOBAL(uint8,debug_hash[],DEBUG_ON_SCREENHASH);
 GLOBAL(uint8,debug_hash_off[],DEBUG_OFF_SCREENHASH);
 #endif
 #endif
-
-
-
 
 // hexadecimal conversion table table.
 ACGLOBAL(char,*hex,"0123456789abcdef");
@@ -1126,11 +1210,11 @@ GLOBAL(int16, mousequeuelen,0);
 DECLARE(mousequeue_t,mousequeue[MAXMOUSEQUEUE]);
 
 
-// How many percent of the current IPCT's should we allocate. ** MUST MATCH WHAT'S IN vars.c!!!!!!! ***
+// How many percent of the current IPCT's should we allocate.
 #define IPCT_ALLOC_PERCENT 20
 
 // What's the maximum time's we'll call malloc?
-#define MAX_IPCT_MALLOCS 8
+#define MAX_IPCT_MALLOCS 32
 
 // we should never need to even do more than the initial malloc if initial_ipcts=4128.
 DECLARE(t_ipc_table,*ipct_mallocs[MAX_IPCT_MALLOCS]);
@@ -1142,8 +1226,8 @@ DECLARE(t_ipc_table,*ipct_mallocs[MAX_IPCT_MALLOCS]);
 DECLARE(uint32,sipct_mallocs[MAX_IPCT_MALLOCS]);
 GLOBAL(uint32,iipct_mallocs ,0);
 GLOBAL(uint32,ipcts_allocated,0);
-GLOBAL(uint32,ipcts_used,0);
-GLOBAL(uint32,ipcts_free,0);
+GLOBAL(int64,ipcts_used,0);
+GLOBAL(int64,ipcts_free,0);
 GLOBAL(t_ipc_table,*ipct_free_head,NULL);
 GLOBAL(t_ipc_table, *ipct_free_tail,NULL);
 
@@ -1381,10 +1465,37 @@ DECLARE(char,_msg_alert2[1024]);
 //#define DEBUG_LOG( level, fmt, args... ) { if ( level <= DEBUGLEVEL ) {fprintf(buglog,"%s:%s:%d: ",__FILE__,__FUNCTION__,__LINE__); fprintf(buglog,  fmt , ## args); fprintf(buglog,"\n"); fflush(buglog);if (do_iib_check) my_check_iib(__FILE__,__FUNCTION__,__LINE__);} }
 // don't do iib sanity check - speed things up
 
-   #define DEBUG_LOG( level, fmt, args... ) { if ( (level <= DEBUGLEVEL) && debug_log_enabled)                        \
-   {fprintf(buglog,"%s:%s:%d:",__FILE__,__FUNCTION__,__LINE__); fprintf(buglog,  fmt , ## args);                      \
-    fprintf(buglog,"\n"); fflush(buglog); fflush(stdout);}                                                            }
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+   #define DEBUG_LOG( level, fmt, args... )                                                                          \
+   { if ( (level <= (DEBUGLEVEL)) && (debug_log_enabled && !!buglog ) )                                              \
+        {  fprintf(buglog,"%s:%s:%d:",__FILE__,__FUNCTION__,__LINE__);                                               \
+           fprintf(buglog,  fmt , ## args);                                                                          \
+           fprintf(buglog,"| %x%x:%x%x:%x%x.%x %ld\n",                                                               \
+                          lisa_clock.hours_h,lisa_clock.hours_l,                                                     \
+                          lisa_clock.mins_h,lisa_clock.mins_l,                                                       \
+                          lisa_clock.secs_h,lisa_clock.secs_l,                                                       \
+                          lisa_clock.tenths, cpu68k_clocks);                                                         \
+            fflush(buglog);                                                                                          \
+            fflush(stdout);                                                                                          \
+         }                                                                                                           \
+   }
 
+   #define MEMDEBUG_LOG( level, fmt, args... )                                                                       \
+   { if ( (level <= DEBUGLEVEL) && debug_log_enabled && !!buglog && abort_opcode!=2)                                 \
+        {fprintf(buglog,"%s:%s:%d:",__FILE__,__FUNCTION__,__LINE__);                                                 \
+         fprintf(buglog,  fmt , ## args);                                                                            \
+         fprintf(buglog,"| %x%x:%x%x:%x%x.%x %ld\n",                                                                 \
+                        lisa_clock.hours_h,lisa_clock.hours_l,                                                       \
+                        lisa_clock.mins_h,lisa_clock.mins_l,                                                         \
+                        lisa_clock.secs_h,lisa_clock.secs_l,                                                         \
+                        lisa_clock.tenths, cpu68k_clocks);                                                           \
+          fflush(buglog);                                                                                            \
+          fflush(stdout);                                                                                            \
+        }                                                                                                            \
+   }
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 /*
      if (mmu_trans!=mmu_trans_all[context] || mmu!=mmu_all[context] || (start && context))
         { fprintf(buglog,"\n\n\nBUGCHK: context:%d start:%d seg1/2:%d/%d\n",context,start,segment1,segment2);
@@ -1398,45 +1509,57 @@ fprintf(buglog,"context:%d videoram @ %08x\n",context,videolatchaddress); fflush
 #else
   #define DEBUG_LOG( level, fmt, args... )  {}
   #define check_iib() {}
+  #define MEMDEBUG_LOG( level, fmt, args... )  {}}
 #endif
 
 // this is needed because gdb doesn't tell you where your program quit from, just gives you the octal version of the exit
 // parameter which is chopped to 9 bits for some oddball reason.
-#define EXIT(x,cmd,fmt,args...) { char msg[1024], msg2[1024];                                                                              \
-                    snprintf(msg2,1024, fmt, ## args);                                                                                     \
-	                snprintf(msg,1024,"We've encountered a problem!\n%s\nStopped at %s:%s:%d with code :%d",                               \
-	                       msg2,                                                                                                           \
-	                       __FILE__,__FUNCTION__,__LINE__,x);                                                                              \
-				    if (!cmd) strncat(msg,"\nLisaEM will now quit.",1024);                                                                 \
-                    fprintf(buglog,"%s:%s:%d: exit with code :%d\n%s\n",__FILE__,__FUNCTION__,__LINE__,x,msg2);                            \
-					messagebox(msg,"Emulation aborted!");                                                                                  \
-					fflush(buglog); if (!cmd) exit(x); else return;                                                                        \
+#define EXIT(x,cmd,fmt,args...) \
+                   {            \
+                      char msg[1024], msg2[1024];                                                                          \
+                      snprintf(msg2,1024, fmt, ## args);                                                                   \
+                      snprintf(msg,1024,"We've encountered a problem!\n%s\nStopped at %s:%s:%d with code :%d", msg2,       \
+                            __FILE__,__FUNCTION__,__LINE__,x);                                                             \
+                      if (!cmd) strncat(msg,"\nLisaEM will now quit.",1024);                                               \
+                      fprintf(buglog,"%s:%s:%d: exit with code :%d\n%s\n",__FILE__,__FUNCTION__,__LINE__,x,msg2);          \
+                      messagebox(msg,"Emulation aborted!");                                                                \
+                      fflush(buglog); if (!cmd) exit(x); else return;                                                      \
                     }
 
-#define EXITR(x,cmd,fmt,args...) { char msg[1024], msg2[1024];                                                                             \
-                    snprintf(msg2, 1024, fmt, ## args);                                                                                    \
-	                snprintf(msg,1024,"I'm sorry, the emulation has aborted due to a fatal error\n%s\nStopped at %s:%s:%d with code :%d",  \
-	                       msg2,                                                                                                           \
-	                       __FILE__,__FUNCTION__,__LINE__,x);                                                                              \
-				    if (!cmd) strncat(msg,"\nLisaEM will now quit.",1024);                                                                 \
-                    fprintf(buglog,"%s:%s:%d: exit with code :%d\n%s\n",__FILE__,__FUNCTION__,__LINE__,x,msg2);                            \
-					messagebox(msg,"Emulation aborted!");                                                                                  \
-					fflush(buglog); if (!cmd) exit(x); else return cmd-1;                                                                  \
+#define EXITR(x,cmd,fmt,args...)                                                                                                                  \
+                    {                                                                                                                             \
+                      char msg[1024], msg2[1024];                                                                                                 \
+                      snprintf(msg2, 1024, fmt, ## args);                                                                                         \
+                      snprintf(msg,1024,"I'm sorry, the emulation has aborted due to a fatal error\n%s\nStopped at %s:%s:%d with code :%d", msg2, \
+                           __FILE__,__FUNCTION__,__LINE__,x);                                                                                     \
+                      if (!cmd) strncat(msg,"\nLisaEM will now quit.",1024);                                                                      \
+                      fprintf(buglog,"%s:%s:%d: exit with code :%d\n%s\n",__FILE__,__FUNCTION__,__LINE__,x,msg2);                                 \
+                      messagebox(msg,"Emulation aborted!");                                                                                       \
+                      fflush(buglog); if (!cmd) exit(x); else return cmd-1;                                                                       \
                     }
 
-
-
-
-
-   #define ALERT_LOG( level, fmt, args... ) { if ( (level <= DEBUGLEVEL) )                                            \
-   {                                                                                                                  \
-    fprintf(stderr,"%s:%s:%d:",__FILE__,__FUNCTION__,__LINE__); fprintf(stderr,  fmt , ## args);                      \
-    fprintf(stderr,"\n"); fflush(stderr);                                                                             \
-    if (buglog && buglog!=stderr)  {                                                                                  \
-    fprintf(buglog,"%s:%s:%d:",__FILE__,__FUNCTION__,__LINE__); fprintf(buglog,  fmt , ## args);                      \
-    fprintf(buglog,"\n"); fflush(buglog);  }                                                                          \
-   }                                        }
-
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+   #define ALERT_LOG( level, fmt, args... )                                                                                \
+   { if ( (level <= DEBUGLEVEL) )                                                                                          \
+        {                                                                                                                  \
+         fprintf(stderr,"%s:%s:%d:",__FILE__,__FUNCTION__,__LINE__); fprintf(stderr,  fmt , ## args);                      \
+         fprintf(stderr,"| %x%x:%x%x:%x%x.%x %ld\n",                                                                       \
+                          lisa_clock.hours_h,lisa_clock.hours_l,                                                           \
+                          lisa_clock.mins_h,lisa_clock.mins_l,                                                             \
+                          lisa_clock.secs_h,lisa_clock.secs_l,                                                             \
+                          lisa_clock.tenths, cpu68k_clocks);                                                               \
+         fflush(stderr);                                                                                                   \
+         if (buglog && buglog!=NULL)  {                                                                                    \
+            fprintf(buglog,"%s:%s:%d:",__FILE__,__FUNCTION__,__LINE__); fprintf(buglog,  fmt , ## args);                   \
+            fprintf(buglog,"| %x%x:%x%x:%x%x.%x %ld\n",                                                                    \
+                            lisa_clock.hours_h,lisa_clock.hours_l,                                                         \
+                            lisa_clock.mins_h,lisa_clock.mins_l,                                                           \
+                            lisa_clock.secs_h,lisa_clock.secs_l,                                                           \
+                            lisa_clock.tenths, cpu68k_clocks);                                                             \
+            fflush(buglog);  }                                                                                             \
+         }                                                                                                                 \
+   }
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////// Memory access macros//////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1519,8 +1642,7 @@ t_sr reg68k_sr;
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-
-DECLARE(viatype,via[9]);
+DECLARE(viatype,via[10]);
 GLOBAL(uint8,via_running,0); // If any VIA has a runing timer/SHIFTREG, then this is set (using bitmap of vianumber)
 
 extern uint32 pc24;
@@ -1713,7 +1835,7 @@ extern void floppy_go6504(void);
 extern void ProfileLoop(ProFileType *P, int event);
 extern void ProfileReset(ProFileType *P);
 extern void ProfileResetOff(ProFileType *P);
-extern void get_profile_spare_table(ProFileType *P);
+extern void get_structure_identity_table(ProFileType *P);
 
 #endif
 
@@ -1822,25 +1944,25 @@ GLOBAL(int32,physaddr,0);
 // Regular (non-special) I/O address space.  Subject to MMU mapping.
 
 #define OxERROR           0     /* This should never be used - it indicates a bug in our code */
-#define OxUnused	 	  1     /* unused I/O space address (only used in I/O space map) */
-#define Ox0000_slot1	  2
-#define Ox2000_slot1	  3
-#define Ox4000_slot2	  4
-#define Ox6000_slot2	  5
-#define Ox8000_slot3	  6
-#define Oxa000_slot3	  7
-#define Oxc000_flopmem	  8
+#define OxUnused           1     /* unused I/O space address (only used in I/O space map) */
+#define Ox0000_slot1      2
+#define Ox2000_slot1      3
+#define Ox4000_slot2      4
+#define Ox6000_slot2      5
+#define Ox8000_slot3      6
+#define Oxa000_slot3      7
+#define Oxc000_flopmem      8
 #define Oxd000_ff_space   9
-#define Oxd200_sccz8530	 10
-#define Oxd800_par_via2	 11
+#define Oxd200_sccz8530     10
+#define Oxd800_par_via2     11
 #define Oxdc00_cops_via1 12
-#define Oxe000_latches	 13
+#define Oxe000_latches     13
 #define Oxe800_videlatch 14
 #define Oxf000_memerror  15
-#define Oxf800_statreg	 16
+#define Oxf800_statreg     16
 
 // Real Lisa memory
-#define ram		         17     /* Plain old RAM, or stack access.                                   */
+#define ram                 17     /* Plain old RAM, or stack access.                                   */
 #define vidram           18     /* same as ram, but flag on write that screen needs refreshing       */
 #define ro_violn         19     /* Read only violation - what trap should I call? See schematic      */
 #define bad_page         20     /* Bad page or unallocated segment - what trap here?                 */
@@ -1870,30 +1992,30 @@ GLOBAL(int32,physaddr,0);
 // I/O Address Maps.  These are used to initialize the fn pointers on the OUTPUT side of the mmu.
 GLOBAL(char,*memspaces[],
 {
-	"00-OxERROR",
-	"01-OxUnused",
-	"02-Ox0000_slot1",
-	"03-Ox2000_slot1",
-	"04-Ox4000_slot2",
-	"05-Ox6000_slot2",
-	"06-Ox8000_slot3",
-	"07-Oxa000_slot3",
-	"08-Oxc000_flopmem",
+    "00-OxERROR",
+    "01-OxUnused",
+    "02-Ox0000_slot1",
+    "03-Ox2000_slot1",
+    "04-Ox4000_slot2",
+    "05-Ox6000_slot2",
+    "06-Ox8000_slot3",
+    "07-Oxa000_slot3",
+    "08-Oxc000_flopmem",
     "09-0xd000_ff_space",
-	"10-Oxd200_sccz8530",
-	"11-Oxd800_par_via2",
-	"12-Oxdc00_cops_via1",
-	"13-Oxe000_latches",
-	"14-Oxe800_videlatch",
-	"15-Oxf000_memerror",
-	"16-Oxf800_statreg",
-	"17-ram",
-	"18-vidram",
-	"19-ro_violn",
-	"20-bad_page",
-	"21-sio_rom",
-	"22-sio_mrg",
-	"23-sio_mmu",
+    "10-Oxd200_sccz8530",
+    "11-Oxd800_par_via2",
+    "12-Oxdc00_cops_via1",
+    "13-Oxe000_latches",
+    "14-Oxe800_videlatch",
+    "15-Oxf000_memerror",
+    "16-Oxf800_statreg",
+    "17-ram",
+    "18-vidram",
+    "19-ro_violn",
+    "20-bad_page",
+    "21-sio_rom",
+    "22-sio_mrg",
+    "23-sio_mmu",
     "24-io",
     "25-Oxd400_amd9512",
     "26-OxVoid"
@@ -2010,10 +2132,6 @@ GLOBAL(int,dispmemready,0);
 #define STATREG_UNUSEDBIT 128           /* lisa doesn't use this bit */
 
 
-
-
-
-
 #ifndef IN_CPU68K_C
 extern void free_ipct(t_ipc_table *ipct);
 #endif
@@ -2041,19 +2159,9 @@ GLOBAL(int,(*get_exs0_pending_irq)(void),&get_exs0_pending_irq_empty);
 GLOBAL(int,(*get_exs1_pending_irq)(void),&get_exs1_pending_irq_empty);
 GLOBAL(int,(*get_exs2_pending_irq)(void),&get_exs2_pending_irq_empty);
 
-
-/* These macro "functions" are used by generator.  I use the above macro's in here just to avoid
-   macro soup insanity.  Yeah, so they're probably not super duper optimized, but there's time
-   for that once the emulator is debugged and working. -- RA */
-//define fetchaddr(addr) mem68k_memptr[RFN_MMU_TRANS](addr)
-//define fetchbyte(addr) mem68k_fetch_byte[RFN_MMU_TRANS](addr)
-//define fetchword(addr) mem68k_fetch_word[RFN_MMU_TRANS](addr)
-//define fetchlong(addr) mem68k_fetch_long[RFN_MMU_TRANS](addr)
-//define storebyte(addr,data) mem68k_store_byte[WFN_MMU_TRANS ](addr,data)
-//define storeword(addr,data) mem68k_store_word[WFN_MMU_TRANS ](addr,data)
-//define storelong(addr,data) mem68k_store_long[WFN_MMU_TRANS ](addr,data)
-
 extern void   lisa_ram_safe_setbyte(uint8 context, uint32 address,uint8 data);
+extern void   lisa_ram_safe_setword(uint8 context, uint32 address,uint16 data);
+extern void   lisa_ram_safe_setlong(uint8 context, uint32 address,uint32 data);
 extern uint8  lisa_ram_safe_getbyte(uint8 context, uint32 address);
 extern uint16 lisa_ram_safe_getword(uint8 context, uint32 address);
 extern uint32 lisa_ram_safe_getlong(uint8 context, uint32 address);
@@ -2670,5 +2778,40 @@ GLOBAL(uint32,minlisaram,0);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+#endif
+
+// memory.c RAM macros.
+#ifdef FORCE_MEMWRITE_TO_INVALIDATE_IPC
+
+#define INVALIDATE_IPC()                                    \
+        {                                                   \
+         uint32 iA9=(addr & 0x00ffffff)>>9;                 \
+         int32  iAD=mmu_trans[iA9].address;                 \
+         for (int iCTX=0; iCTX<5; iCTX++)                   \
+           if (mmu_trans_all[iCTX][iA9].address==iAD &&     \
+               mmu_trans_all[iCTX][iA9].table!=NULL )       \
+               free_ipct(mmu_trans_all[iCTX][iA9].table);   \
+        }
+// was:{if (mmu_trans[(addr)>>9].table != NULL ) free_ipct(mmu_trans[(addr)>>9].table );}
+// might need to walk all segments and see if iAD9<<9 + .address = iAD9<<9 + address
+// but that will be expensive.
+#else
+#define INVALIDATE_IPC() {}
+#endif
+
+#ifdef DEBUG
+  #define HIGH_BYTE_FILTER()  {if (addr>0xffffff) {DEBUG_LOG(0, "Access above 24 bits: %08x", addr);}     addr &=0x00ffffff; }
+
+  #ifdef MMUVALIDATE
+  #define IS_MMU_VALID_HERE() {if (VALIDATE_MMU(addr) != CHK_MMU_TRANS(addr)) { EXIT(1,0,"MMU VALIDATION FAILURE addr:%08x validates to:%08x but translated to %08x", addr,VALIDATE_MMU(addr),CHK_MMU_TRANS(addr));}}
+  #else
+  #define IS_MMU_VALID_HERE() {}
+  #endif
+
+#else
+  #define HIGH_BYTE_FILTER()  {  addr &=0x00ffffff; }
+
+#define IS_MMU_VALID_HERE() {}
 
 #endif

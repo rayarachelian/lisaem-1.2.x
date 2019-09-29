@@ -34,32 +34,30 @@ FILE *alertlogfh=NULL;
 
 extern void save_configs(void);
 
-
-/*
-void alertlog(char *alert)   // *** REPLACE ME ***
-{
-  //char *c;
-  if (!alertlogfh) alertlogfh=stdout; //popen("/usr/bin/write ray","w");
-  if (!alertlogfh) return;
-
-
-  //fprintf(stdout,"%s\n",alert);
-  if (buglog)      fprintf(buglog,"%s\n",alert);
-  if (alertlogfh)  fprintf(alertlogfh,"%s\n",alert);
-  if (alertlogfh)  fflush(alertlogfh);
-  if (buglog) fflush(buglog);
-  fflush(stdout);
-  //fclose(alertlogfh);
-}
-*/
-
-
 static int lognum=0;
+
+extern void tracelog_screenshot(char *filename);
+
+#ifdef DEBUG
+
+extern void dumpallmmu(void);
+
+char *debug_screenshot(void)
+{
+    static char filename[1024];
+    snprintf(filename,1024,"lisaem-output.%03d-%08x.%016llx.png",lognum,pc24,cpu68k_clocks);
+    tracelog_screenshot(filename);
+    DEBUG_LOG(0,"%s tracelog screenshot created",filename);
+    snprintf(filename,1024,"lisaem-output.%03d-%08x.%016llx.ram",lognum,pc24,cpu68k_clocks);
+    return filename;
+}
 
 void debug_on(char *reason)
 {
     char filename[1024];
     FILE *loglist=NULL;
+
+    if (!lisaram) return;
 
     if (buglog==NULL) buglog=stderr;                    // never set up properly
     if (buglog!=stderr) return;                         // already enabled?
@@ -71,21 +69,21 @@ void debug_on(char *reason)
     debug_log_enabled=1;
     lognum++;
 
-ALERT_LOG(0,".");
+    ALERT_LOG(0,"turning on debug log because %s",reason);
 
     //snprintf(filename,1024,"bzip2 -1 > ./lisaem-output.%03d-%08x.%016llx.txt.bz2",lognum,pc24,cpu68k_clocks);
     //snprintf(filename,1024,"gzip -1 > ./lisaem-output.%03d-%08x.%016llx.txt.gz",lognum,pc24,cpu68k_clocks);
-    snprintf(filename,1024,"./lisaem-output.%03d-%08x.%016llx.txt",lognum,pc24,cpu68k_clocks);
+    snprintf(filename,1024,"lisaem-output.%03d-%08x.%016llx.txt",lognum,pc24,cpu68k_clocks);
 
-	ALERT_LOG(0,filename);
+    ALERT_LOG(0,filename);
 
 
     //buglog=popen(filename,"w");
-	buglog=fopen(filename,"w");
+    buglog=fopen(filename,"w");
 
     if (!buglog)
-	       {
-		ALERT_LOG(0,".");
+           {
+        ALERT_LOG(0,".");
          fprintf(stderr,"ERROR: Could not create buglog:%s:",filename); perror(""); fprintf(stderr,"\n");
          ALERT_LOG(0,"could not create buglog");
          buglog=stderr;
@@ -93,14 +91,14 @@ ALERT_LOG(0,".");
     else
     {
      //ALERT_LOG(0," ./lisaem-output.%03d-%08x-%016llx.txt.bz2 on %s",lognum,pc24,cpu68k_clocks,reason);
-       ALERT_LOG(0," ./lisaem-output.%03d-%08x-%016llx.txt.gz on %s",lognum,pc24,cpu68k_clocks,reason);
-	ALERT_LOG(0,".");
+     ALERT_LOG(0," lisaem-output.%03d-%08x-%016llx.txt on %s",lognum,pc24,cpu68k_clocks,reason);
+     ALERT_LOG(0,".");
 
-     loglist=fopen("./lisaem-output.logfiles.txt","at");
+     loglist=fopen("lisaem-output.logfiles.txt","at");
 
-     if (loglist) fprintf(loglist,"%s\n  ./lisaem-output.%03d-%08x.%016llx.txt created\n",
+     if (loglist) fprintf(loglist,"%s\n lisaem-output.%03d-%08x.%016llx.txt created\n",
             reason,lognum,pc24,cpu68k_clocks);
-		ALERT_LOG(0,".");
+        ALERT_LOG(0,".");
 
      if (loglist) fflush(loglist);
      if (loglist) fclose(loglist);
@@ -108,7 +106,8 @@ ALERT_LOG(0,".");
     }
 
    ALERT_LOG(0,"Turned log on.");
-  save_configs();
+   save_configs();
+   dumpallmmu();
 }
 
 void debug_off(void)
@@ -116,20 +115,18 @@ void debug_off(void)
 #ifdef __WXMSW__
      return;
 #endif
-
-   if (buglog!=stderr && buglog)
+   ALERT_LOG(0,"dumping mmu because shutting down log");
+   if (buglog)
     {
+     dumpallmmu();
      ALERT_LOG(0,"Shutting debug log pipe off");
      fflush(buglog);
-     pclose(buglog);
-     buglog=stderr;
-
-     ALERT_LOG(0,"done.");
+     fclose(buglog);
     }
-   buglog=stderr;
+   buglog=NULL;
    debug_log_enabled=0;
 }
-
+#endif
 
 void  mc68k_reset(void)
 {
@@ -144,12 +141,12 @@ void  mc68k_reset(void)
 //for RC parsing
 char *rstrip(char *s)
 {
-	char space=' ';
-	int32 i;
-	i=strlen(s)-1;
-	if (i<=0) return s;
-	while (s[i]<=space && i>0) {s[i]=0; i--;}
-	return s;
+    char space=' ';
+    int32 i;
+    i=strlen(s)-1;
+    if (i<=0) return s;
+    while (s[i]<=space && i>0) {s[i]=0; i--;}
+    return s;
 }
 
 /* strip white space at the left (start) of a string.
@@ -162,16 +159,16 @@ char *rstrip(char *s)
 // for RC parsing
 char *lstrip(char *s, uint32 n)            // n=size_t in C
 {
-	char space=' ';
-	uint32 i=0, j=0;
+    char space=' ';
+    uint32 i=0, j=0;
 
-	if (*s>space) return s; // nothing to do, no ws leftmost
+    if (*s>space) return s; // nothing to do, no ws leftmost
 
-	while (s[i]<=space && i<n) i++; // find first nonspace.
-	while (s[i] && i<n)	s[j++]=s[i++]; // move the string over
+    while (s[i]<=space && i<n) i++; // find first nonspace.
+    while (s[i] && i<n)    s[j++]=s[i++]; // move the string over
 
-	s[j++]=0; // make sure that we terminate string properly.
-	return s;
+    s[j++]=0; // make sure that we terminate string properly.
+    return s;
 }
 
 /*-----------------12/14/2006 1:39PM----------------
@@ -180,15 +177,15 @@ char *lstrip(char *s, uint32 n)            // n=size_t in C
 // for RC parsing
 int isalphanumeric(char *s)
 {
-	while (*s)
-	{ if (isalnum((int)(*s))) s++; else return 0; }
-	return 1;
+    while (*s)
+    { if (isalnum((int)(*s))) s++; else return 0; }
+    return 1;
 }
 
 // for RC parsing
 char *stringtoupper(char *s)
 {
-	while ( (*s=toupper(*s)) ) s++; return s;
+    while ( (*s=toupper(*s)) ) s++; return s;
 }
 **********************************************************/
 
@@ -275,11 +272,11 @@ void switch_mouse_vector(void)
  mouse_vector_selector++;
  switch(mouse_vector_selector)
  {
-        default:  mouse_vector_selector=0;
-         case 0 :  lisa_os_mouse_x_ptr=0x486;    lisa_os_mouse_y_ptr=0x488; break;
+        default:  mouse_vector_selector=0;                                /* FALLTHRU */
+         case 0 :  lisa_os_mouse_x_ptr=0x486;    lisa_os_mouse_y_ptr=0x488;    break;
          case 1 :  lisa_os_mouse_x_ptr=0xcc00f0; lisa_os_mouse_y_ptr=0xcc00f2; break;
-         case 2 :  lisa_os_mouse_x_ptr=0xfec;    lisa_os_mouse_y_ptr=0xfee; break;
-         case 3 :  lisa_os_mouse_x_ptr=0x82e;    lisa_os_mouse_y_ptr=0x82c; break;
+         case 2 :  lisa_os_mouse_x_ptr=0xfec;    lisa_os_mouse_y_ptr=0xfee;    break;
+         case 3 :  lisa_os_mouse_x_ptr=0x82e;    lisa_os_mouse_y_ptr=0x82c;    break;
  }
 }
 
@@ -304,65 +301,69 @@ int check_running_lisa_os(void)
    mouse_x_tolerance=1;           mouse_y_tolerance=1;
    mouse_x_halfing_tolerance=1;   mouse_y_halfing_tolerance=1;
 
-
    v1=lisa_ram_safe_getlong((uint8)1,(uint32)0x0064);  v2=lisa_ram_safe_getlong((uint8)1,(uint32)0x0068);
 
 
    //crapcycles++;
    //if (crapcycles>20) {fprintf(stderr,"v1:%08x v2:%08x @%08x\n",v1,v2,pc24); crapcycles=0;}
 
-   if ((v1 & 0x00ff0000) ==0x00fe0000  && (v2 & 0x00ff0000)==0x00fe0000)      // Lisa ROM
+   if ((v1 & 0x00ff0000) ==0x00fe0000  && (v2 & 0x00ff0000)==0x00fe0000)           // Lisa ROM
       {
-           if (lisa_os_mouse_x_ptr!=0x00000486) //ALERT_LOG(0,"Mouse vector changed from %08x,%08x to 486",lisa_os_mouse_x_ptr,lisa_os_mouse_y_ptr);
-           lisa_os_mouse_x_ptr=0x00000486;   lisa_os_mouse_y_ptr=0x00000488;
-           running_lisa_os=LISA_ROM_RUNNING;
-           return running_lisa_os;
+            //if (lisa_os_mouse_x_ptr!=0x00000486) ALERT_LOG(0,"Mouse vector changed from %08x,%08x to 486",lisa_os_mouse_x_ptr,lisa_os_mouse_y_ptr);
+            lisa_os_mouse_x_ptr=0x00000486;   lisa_os_mouse_y_ptr=0x00000488;
+            running_lisa_os=LISA_ROM_RUNNING;
+            //ALERT_LOG(0,"Lisa ROM Running");
+            return running_lisa_os;
       }
    else
-   if ((v1 & 0x00ff0000) ==0x00520000  && (v2 & 0x00ff0000)==0x00520000)      // Lisa OS + Workshop
+   if ((v1 & 0x00ff0000) ==0x00520000  && (v2 & 0x00ff0000)==0x00520000)           // Lisa OS + Workshop
       {
-        if (lisa_os_mouse_x_ptr!=0x00cc00f0) //ALERT_LOG(0,"Mouse vector changed from %08x,%08x to cc00f0",lisa_os_mouse_x_ptr,lisa_os_mouse_y_ptr);
+        //if (lisa_os_mouse_x_ptr!=0x00cc00f0) ALERT_LOG(0,"Mouse vector changed from %08x,%08x to cc00f0",lisa_os_mouse_x_ptr,lisa_os_mouse_y_ptr);
             lisa_os_mouse_x_ptr =0x00cc00f0;   lisa_os_mouse_y_ptr=0x00cc00f2;
             mouse_x_tolerance=4;   mouse_y_tolerance=4;
             running_lisa_os=LISA_OFFICE_RUNNING;
+            //ALERT_LOG(0,"Lisa Office System Running");
             return running_lisa_os;}
    else
-   if ( ((v1 & 0x00ff0000) ==0x00ec0000  && (v2 & 0x00fff000)==0x00ec0000) ||       // LisaTest - this one might be wrong!
-        ((v1 & 0x000ff000) ==0x000ec000  && (v2 & 0x000ff000)==0x000ec000)  )       // LisaTest
+   if ( ((v1 & 0x00ff0000) ==0x00ec0000  && (v2 & 0x00fff000)==0x00ec0000) ||      // LisaTest - this one might be wrong!
+        ((v1 & 0x000ff000) ==0x000ec000  && (v2 & 0x000ff000)==0x000ec000)  )      // LisaTest for Peripherals v1=000ec92a v2=000eca7a
       {//                 v1:000ec92a                       v2:000eca7a
-        if (lisa_os_mouse_x_ptr!=0x00000fec) //ALERT_LOG(0,"Mouse vector changed from %08x,%08x to fec",lisa_os_mouse_x_ptr,lisa_os_mouse_y_ptr);
-           lisa_os_mouse_x_ptr=0x00000fec;   lisa_os_mouse_y_ptr=0x000000fee;
+        //if (lisa_os_mouse_x_ptr!=0x00000fec) ALERT_LOG(0,"Mouse vector changed from %08x,%08x to fec",lisa_os_mouse_x_ptr,lisa_os_mouse_y_ptr);
+            lisa_os_mouse_x_ptr=0x00000fec;   lisa_os_mouse_y_ptr=0x000000fee;
             running_lisa_os=LISA_TEST_RUNNING;
+           // ALERT_LOG(0,"Lisa Test Running: v1=%08x v2=%08x",v1,v2);
             return running_lisa_os;}
    else
-   if ((v1 & 0x000ff000) ==0x000d5000  && (v2 & 0x000fff00)==0x000e2500)      // Monitor OS (No mouse used)
+   if ((v1 & 0x000ff000) ==0x000d5000  && (v2 & 0x000fff00)==0x000e2500)            // Monitor OS (No mouse used)
       {
-        if (lisa_os_mouse_x_ptr!=0x00000fec) //ALERT_LOG(0,"Mouse vector changed from %08x,%08x to fec",lisa_os_mouse_x_ptr,lisa_os_mouse_y_ptr);
-           lisa_os_mouse_x_ptr=0x00000fec;   lisa_os_mouse_y_ptr=0x000000fee;
-           running_lisa_os=LISA_MONITOR_RUNNING;
-           return running_lisa_os;}
+           //if (lisa_os_mouse_x_ptr!=0x00000fec) ALERT_LOG(0,"Mouse vector changed from %08x,%08x to fec",lisa_os_mouse_x_ptr,lisa_os_mouse_y_ptr);
+            lisa_os_mouse_x_ptr=0x00000fec;   lisa_os_mouse_y_ptr=0x000000fee;
+            running_lisa_os=LISA_MONITOR_RUNNING;
+            //ALERT_LOG(0,"Lisa Monitor Running: v1=%08x v2=%08x",v1,v2);
+            return running_lisa_os;}
    else
-   if ((v1 & 0x00fff000) ==0x000e4000  && (v2 & 0x00fff000)==0x000e4000)      // Macworks XL 3.0
+   if ((v1 & 0x00fff000) ==0x000e4000  && (v2 & 0x00fff000)==0x000e4000)            // Macworks XL 3.0
       {
-           if (lisa_os_mouse_x_ptr!=0x0000082e) //ALERT_LOG(0,"Mouse vector changed from %08x,%08x to 82e",lisa_os_mouse_x_ptr,lisa_os_mouse_y_ptr);
-           lisa_os_mouse_x_ptr=0x0000082e;   lisa_os_mouse_y_ptr=0x00000082c;
-           mouse_x_tolerance=4;   mouse_y_tolerance=4;
-
-           running_lisa_os=LISA_MACWORKS_RUNNING;
-           return running_lisa_os;}
+           //if (lisa_os_mouse_x_ptr!=0x0000082e) ALERT_LOG(0,"Mouse vector changed from %08x,%08x to 82e",lisa_os_mouse_x_ptr,lisa_os_mouse_y_ptr);
+            lisa_os_mouse_x_ptr=0x0000082e;   lisa_os_mouse_y_ptr=0x00000082c;
+            mouse_x_tolerance=4;   mouse_y_tolerance=4;
+            //ALERT_LOG(0,"MacWorks Running");
+            running_lisa_os=LISA_MACWORKS_RUNNING;
+            return running_lisa_os;}
    else
-   if ((v1 & 0x00ffffff) ==0x000001c0  && (v2 & 0x00ffffff)==0x000001e0)      // Xenix
+   if ((v1 & 0x00ffffff) ==0x000001c0  && (v2 & 0x00ffffff)==0x000001e0)            // Xenix
       {
-           if (lisa_os_mouse_x_ptr!=0x0000082e) //ALERT_LOG(0,"Mouse vector changed from %08x,%08x to 82e",lisa_os_mouse_x_ptr,lisa_os_mouse_y_ptr);
-           lisa_os_mouse_x_ptr=0x0000082e;   lisa_os_mouse_y_ptr=0x00000082c;
-           running_lisa_os=LISA_XENIX_RUNNING;
-           return running_lisa_os;}
+            //if (lisa_os_mouse_x_ptr!=0x0000082e) ALERT_LOG(0,"Mouse vector changed from %08x,%08x to 82e",lisa_os_mouse_x_ptr,lisa_os_mouse_y_ptr);
+            lisa_os_mouse_x_ptr=0x0000082e;   lisa_os_mouse_y_ptr=0x00000082c;
+            running_lisa_os=LISA_XENIX_RUNNING;
+            //ALERT_LOG(0,"MicroSoft Xenix Running: v1=%08x v2=%08x",v1,v2);
+            return running_lisa_os;
+      }
 
    running_lisa_os=UNKNOWN_OS_RUNNING;
+   ALERT_LOG(0,"Unknown OS Running: v1=%08x v2=%08x",v1,v2);
    return running_lisa_os;
 }
-
-
 
 
 

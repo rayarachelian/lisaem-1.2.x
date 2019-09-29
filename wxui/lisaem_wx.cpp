@@ -1,9 +1,9 @@
 /**************************************************************************************\
 *                                                                                      *
-*              The Lisa Emulator Project  V1.2.6      DEV 2007.12.04                   *
+*              The Lisa Emulator Project  V1.2.7      DEV 2007.12.04                   *
 *                             http://lisaem.sunder.net                                 *
 *                                                                                      *
-*                  Copyright (C) 1998, 2007 Ray A. Arachelian                          *
+*                  Copyright (C) 1998, 2018 Ray A. Arachelian                          *
 *                                All Rights Reserved                                   *
 *                                                                                      *
 *           This program is free software; you can redistribute it and/or              *
@@ -24,24 +24,8 @@
 *                                                                                      *
 \**************************************************************************************/
 
-
-// RAW_BITMAP_ACCESS should be used in most cases as it proves much higher performance
-#ifdef NO_RAW_BITMAP_ACCESS
- #ifdef USE_RAW_BITMAP_ACCESS
-   #undef	USE_RAW_BITMAP_ACCESS
- #endif
-#endif
-
-#ifdef VERSION
-    static char *my_version=VERSION;
-#endif
-#ifdef BUILTBY
- static char *my_built_by=BUILTBY;
-#endif
-
-long emulation_tick=40;
-long emulation_time=25;
-
+// When the destroy method is just not enough, we ask our friendly neighborhood Dalek for help
+#define EXTERMINATE(x) {if (x) {delete x; x=NULL;}}
 
 // Some weird new changes to wxWidgets require newly created bitmaps to be filled,
 // otherwise the wx/rawbmp.h code won't work right (since the alpha mask in the bitmap
@@ -64,31 +48,33 @@ long emulation_time=25;
 #define EXTRABLUE 15  
 // minimum skinned window size, this is smaller on purpose so that it will work with 12"
 // notebook displays
-#define IWINSIZEX 1020
-#define IWINSIZEY 720
+
+#define IWINSIZEX   (1020*hidpi_scale)
+#define IWINSIZEY   ( 720*hidpi_scale)
 
 #define IWINSIZE IWINSIZEX,IWINSIZEY
 
 // the size of the skin
-#define ISKINSIZEX 1485
-#define ISKINSIZEY 1031
-#define ISKINSIZE  ISKINSIZEX,ISKINSIZEY
+#define ISKINSIZEX  ((int)(skin.width_size  * hidpi_scale))
+#define ISKINSIZEY  ((int)(skin.height_size * hidpi_scale))
+#define ISKINSIZE   ISKINSIZEX, ISKINSIZEY
 
-#define FLOPPY_LEFT 1099
-#define FLOPPY_TOP 481
+#define FLOPPY_LEFT _H(skin.floppy2_tl_x)
+#define FLOPPY_TOP  _H(skin.floppy2_tl_y)
 
-#define POWER_LEFT 0
-#define POWER_TOP 738
+#define POWER_LEFT  _H(skin.power_frame_left)
+#define POWER_TOP   _H(skin.power_frame_top)
 
 // padding for skinless mode
-#define WINXDIFF 30
-#define WINYDIFF 65
+#define WINXDIFF    (int)(  30*hidpi_scale)
+#define WINYDIFF    (int)(  65*hidpi_scale)
+
+
 
 // binary AND filter for how often to update
 // the skinless background filter.  has to be 3,7,15,31,63
 // larger the value the longer the delay between updates.
 #define SKINLESS_UPDATE_FILTER 3
-
 
 
 #include <wx/wx.h>
@@ -117,9 +103,35 @@ long emulation_time=25;
 #include <wx/aboutdlg.h>
 #include <wx/stdpaths.h>
 #include <wx/choicdlg.h>
+#include <wx/cmdline.h>
+
+
+// RAW_BITMAP_ACCESS should be used in most cases as it proves much higher performance
+#ifdef NO_RAW_BITMAP_ACCESS
+ #ifdef USE_RAW_BITMAP_ACCESS
+   #undef    USE_RAW_BITMAP_ACCESS
+ #endif
+#endif
+
+#ifdef VERSION
+    static char *my_version=VERSION;
+#else
+    static char *my_version="VERSIONLESS"
+#endif
+
+#include "../include/built_by.h"
+
+long emulation_tick=40;
+long emulation_time=25;
 
 #ifdef USE_RAW_BITMAP_ACCESS
 #include <wx/rawbmp.h>
+#endif
+
+#ifdef USE_HQ3X
+#include <wx/rawbmp.h>
+#include "hqx/hq3x.cpp"
+//include "hqx/hq2x.cpp"
 #endif
 
 #include "machine.h"
@@ -127,6 +139,7 @@ long emulation_time=25;
 
 #include "LisaConfig.h"
 #include "LisaConfigFrame.h"
+#include "LisaSkin.h"
 
 // sounds, images, etc.
 #include "lisaem_static_resources.h"
@@ -140,7 +153,6 @@ long emulation_time=25;
 #define DEPTH 24
 #endif
 
-
 #ifndef MAXPATHLEN
 #define MAXPATHLEN 1024
 #endif
@@ -150,7 +162,6 @@ extern "C"
  #include "vars.h"
  int32 reg68k_external_execute(int32 clocks);
  void unvars(void);
-
 }
 
 #if wxUSE_UNICODE
@@ -198,6 +209,89 @@ int asciikeyboard=1;
 #endif
 
 
+
+      //-----------------------------------------------------------------------------------------
+      //
+      // xh,xy - relative to wxWindow, hidpi corrected        
+      // x,y   - relative to Lisa display, passed to LOS  CRT in skin 
+      //
+      // CRT area: (xh,yh) on skin:6
+      //           216,184,1292,936 at 2.0x
+      //           213,182-1292,933 at 1.75x
+      //           226,195-1294,935 at 1.5x, 
+      //           220,182-1293,928 at 1.25x,
+      //           219,184-1293,935 at 1.0x 
+      //
+      // ideal should be around: 230,195 - 1285,925 (size of this is :1055,730)
+      //------------------------------------------------------------------------------------------
+
+// initial step towards un-hardcoding the skins
+// these and the related images are all in hidpi_scale=1.0 mode (i.e. lowdpi)
+/*
+struct Skins{
+    // box around the actual power button area  // 2587,1879 - 2673,1958 top left - 1724,1252 ->1782,834
+    // 2572,1877
+    int power_button_tl_x = 11434,
+        power_button_tl_y = 836,
+        power_button_br_x = 1185,
+        power_button_br_y = 876,
+
+        power_frame_left = 0,  // 4th segment of skin
+        power_frame_top = 736, //738
+
+        // floppy top left x,y (bottom right is calculated from the image)
+        // floppy 1 only exists on Lisa 1
+        floppy1_tl_x = 1099,
+        floppy1_tl_y = 481,
+        // floppy 2 is the only floppy on a Lisa 2 or XL
+        floppy2_tl_x = 1099,
+        floppy2_tl_y = 481,
+
+        screen_origin_x = 177, // was 205,175 // was 230,195 //was 140 not hidpi_scaled
+        screen_origin_y = 153,
+
+        default_screen_origin_x = 177, // was 205,175
+        default_screen_origin_y = 153,
+
+        width_size  = 1484, 
+        height_size = 1026;
+
+    char *lisaface0name = "lisaface0.png";
+    char *lisaface1name = "lisaface1.png";
+    char *lisaface2name = "lisaface2.png";
+    char *lisaface3name = "lisaface3.png";
+
+    // reserve for future
+    char *floppy1anim0 = NULL;
+    char *floppy1anim1 = NULL;
+    char *floppy1anim2 = NULL;
+    char *floppy1anim3 = NULL;
+    char *floppy1animN = NULL;
+
+    char *floppy2anim0 = "floppy0.png";
+    char *floppy2anim1 = "floppy1.png";
+    char *floppy2anim2 = "floppy2.png";
+    char *floppy2anim3 = "floppy3.png";
+    char *floppy2animN = "floppyN.png";
+
+    char *powerOn = "power_on.png";
+    char *powerOff = "power_off.png";
+
+    char *floppy_eject = "floppy_eject.wav";
+    char *floppy_insert = "floppy_insert_sound.wav";
+    char *floppy_motor1 = "floppy_motor1.wav";
+    char *floppy_motor2 = "floppy_motor2.wav";
+    char *lisa_power_switch01 = "lisa_power_switch01.wav";
+    char *lisa_power_switch02 = "lisa_power_switch02.wav";
+    char *poweroffclk = "poweroffclk.wav";            
+
+} skin;
+*/
+//struct Skins skin;
+
+wxFileConfig *skinconfig;
+LisaSkin skin;
+
 /*********************************************************************************************************************************/
 
 
@@ -205,19 +299,16 @@ int asciikeyboard=1;
  extern "C" void cpu68k_reset(void);
  extern "C" uint8 evenparity(uint8 data);
 
+char *get_title(void);
 
-
-int effective_lisa_vid_size_y=500; //364;
+int effective_lisa_vid_size_y=500; // these are hidpi_scale adjusted later in the code //364; - 500 here is the adjusted square-ified pixel size.
 int effective_lisa_vid_size_x=720;
+int o_effective_lisa_vid_size_y=500; // these ARE NOT hidpi_scale
+int o_effective_lisa_vid_size_x=720;
 
 wxPaintEvent nada;
 
 void black(void);
-
-
-// these need to be inside some sort of skin.rc file.
-int screen_origin_x=140;
-int screen_origin_y=130;
 
 
 
@@ -228,7 +319,6 @@ wxFileStream      *pConfigIS;            // config file
 
 LisaConfigFrame  *my_LisaConfigFrame=NULL;
 
-void updateThrottleMenus(float throttle);
 /*************************************************************************************************************************************/
 
 
@@ -238,6 +328,10 @@ class LisaEmApp : public wxApp
 public:
     // Called on application startup
     virtual bool OnInit();
+    bool OnCmdLineParsed(wxCmdLineParser& parser);
+    void OnInitCmdLine(wxCmdLineParser& parser);
+    void LisaSkinConfig(void);
+
     #ifndef __WXOSX__
     void OnQuit(wxCommandEvent& event);
     #endif
@@ -245,6 +339,30 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+static int on_start_poweron=0,
+           on_start_fullscreen=0,
+           on_start_skin=0,
+           on_start_harddisk=0,
+           on_start_quit_on_poweroff=0,
+           box_x=-1,box_y=-1, box_xh=-1, box_yh=-1; // used for screengrab
+static double on_start_zoom=0.0;           
+
+wxString   on_start_lisaconfig="",
+           on_start_floppy="";
+
+static const wxCmdLineEntryDesc cmdLineDesc[] =
+{
+    { wxCMD_LINE_SWITCH, "h", "help",       "show this help message",                            wxCMD_LINE_VAL_NONE,  wxCMD_LINE_OPTION_HELP},
+    { wxCMD_LINE_SWITCH, "p", "power",      "power on as soon as LisaEm is launched",            wxCMD_LINE_VAL_NONE,  wxCMD_LINE_PARAM_OPTIONAL},
+    { wxCMD_LINE_SWITCH, "q", "quit",       "quit after Lisa shuts down",                        wxCMD_LINE_VAL_NONE,  wxCMD_LINE_PARAM_OPTIONAL },
+    { wxCMD_LINE_OPTION, "f", "floppy",     "boot from which floppy image ROMless only",         wxCMD_LINE_VAL_STRING,wxCMD_LINE_PARAM_OPTIONAL },
+    { wxCMD_LINE_SWITCH, "d", "drive",      "boot from motherboard ProFile/Widget ROMless only", wxCMD_LINE_VAL_NONE,  wxCMD_LINE_PARAM_OPTIONAL },
+    { wxCMD_LINE_SWITCH, "F", "fullscreen", "fullscreen mode (add - at the end to turn off)",    wxCMD_LINE_VAL_NONE,  wxCMD_LINE_SWITCH_NEGATABLE|wxCMD_LINE_PARAM_OPTIONAL},
+    { wxCMD_LINE_OPTION, "z", "zoom",       "set zoom level (1.0, 1.25, 1.5, 1.75 ... 3.0)",     wxCMD_LINE_VAL_DOUBLE,wxCMD_LINE_PARAM_OPTIONAL },
+    { wxCMD_LINE_SWITCH, "s", "skin",       "turn on skin",                                      wxCMD_LINE_VAL_NONE,  wxCMD_LINE_SWITCH_NEGATABLE|wxCMD_LINE_PARAM_OPTIONAL},
+    { wxCMD_LINE_OPTION, "c", "config",     "Open which lisaem config file",                     wxCMD_LINE_VAL_STRING,wxCMD_LINE_PARAM_OPTIONAL },
+    { wxCMD_LINE_NONE,   ":",  "",          "",                                                  wxCMD_LINE_VAL_NONE,  wxCMD_LINE_PARAM_OPTIONAL }
+};
 
 #define FLOPPY_NEEDS_REDRAW    0x80
 #define FLOPPY_ANIMATING       0x40
@@ -268,11 +386,62 @@ public:
 #define REPAINT_NOTHING        0x00
 
 
+// yet another lookup table, I know, I know, but I've seen random cases where (int)(int*float) were off
+static int *hidpi_to_normal=NULL;
+static int *normal_to_hidpi=NULL;
+static int max_h=0;
+static int max_n=0;
+
+// fwd ref - this changes display settings.
+void set_hidpi_scale(void);
+
+// sets scaling lenses for hidpi, used to translate mouse and display coordinates from physical display to Lisa
+// gets called by set_hidpi_scale(), but only used for setting the lens
+void setup_hidpi(void)
+{
+  static float last_hidpi;
+  float scale;
+  scale=(hidpi_scale==0.0) ? 1.0 : hidpi_scale; // needed to prevent divide by zero at startup
+
+  if (last_hidpi != hidpi_scale || normal_to_hidpi==NULL || hidpi_to_normal==NULL )
+  {
+   int x,y,i,count;
+
+   DEBUG_LOG(0,"\n\n**** Changing scale from %f to %f ****\n\n",last_hidpi,hidpi_scale);
+
+   if (!!normal_to_hidpi) free(normal_to_hidpi);
+   if (!!hidpi_to_normal) free(hidpi_to_normal);
+
+   wxDisplaySize(&x,&y);
+   count=MAX(x,y)+1;
+   max_h=count;
+   hidpi_to_normal=(int*)calloc(count,sizeof(int));
+   for (i=0; i<count; i++) {hidpi_to_normal[i]=(int) ( (double)(i)/(double)(scale) );}
+
+   if (skin.width_size && skin.height_size)
+     count=MAX(skin.width_size,skin.height_size)+1;
+   else
+     count=MAX(ISKINSIZEX,ISKINSIZEY);
+   normal_to_hidpi=(int*)calloc(count,sizeof(int));
+   max_n=count;
+   for (i=0; i<count; i++) {normal_to_hidpi[i]=(int) ( (double)(i)*(double)(scale) );}
+
+  }
+  last_hidpi=hidpi_scale;
+}
+
+inline int _H(int n) { if (!normal_to_hidpi)  setup_hidpi(); if (n>=0 && n< max_n) return normal_to_hidpi[n]; else return 0xbadc0de; }
+inline int _N(int n) { if (!hidpi_to_normal)  setup_hidpi(); if (n>=0 && n< max_h) return hidpi_to_normal[n]; else return 0xbadc0d1; }
+
+#define DCTYPE wxBufferedPaintDC
+//#define DCTYPE wxPaintDC
+// or wxPaintDC // 20190831
+
 class LisaWin : public wxScrolledWindow
 {
 public:
      LisaWin(wxWindow *parent);
-     ~LisaWin();
+    ~LisaWin();
 
      int dirtyscreen;      // indicated dirty lisa vidram
      int doubley; 
@@ -297,13 +466,13 @@ public:
 
      void SetVideoMode(int mode);
 
-     void OnPaint_skinless(wxRect &rect);
-     void OnPaint_skins(wxRect &rect);
+     void OnPaint_skinless(wxRect &rect, DCTYPE &dc);
+     void OnPaint_skins(wxRect &rect, DCTYPE &dc);
      void OnPaint(wxPaintEvent &event);
 
      void OnErase(wxEraseEvent &event);
 
-	 long mousemoved;
+     long mousemoved;
 
      void OnMouseMove(wxMouseEvent &event);
      void OnKeyDown(wxKeyEvent& event);
@@ -314,7 +483,8 @@ public:
      void ContrastChange(void);
 
      int lastkeystroke;
-
+     int last_mouse_pos_y;
+     int last_mouse_pos_x;
 
      int repaintall;
      int ox,oy,ex,ey;
@@ -322,7 +492,6 @@ public:
 
      int rawcodes[128];
      int rawidx;
-
      uint8 bright[16];       // brightness levels for ContrastChange and repaint routines.
      
 private:
@@ -357,15 +526,16 @@ END_EVENT_TABLE()
 // Event table for LisaEmFrame
 enum
 {
-    ID_SCREENSHOT=10001,           // anti-aliased screenshot
-    ID_SCREENSHOT2,                // screenshot with screen
-    ID_SCREENSHOT3,                // raw screenshot - no aliasing
+    ID_SCREENSHOT = 10001, // anti-aliased screenshot
+    ID_SCREENSHOT2,        // screenshot with screen
+    ID_SCREENSHOT3,        // raw screenshot - no aliasing
 
     ID_FUSH_PRNT,
 
 #ifndef __WXMSW__
 #ifdef TRACE
     ID_DEBUG,
+    ID_DEBUG2,
 #endif
 #endif
 
@@ -382,9 +552,11 @@ enum
     ID_KEY_APL_3,
     ID_KEY_NMI,
 
-	ID_KEY_RESET,
+    ID_KEY_RESET,
 
     ID_PROFILEPWR,
+
+    ID_ZOOM,
 
     ID_PROFILE_ALL_ON,
     ID_PROFILE_ALL_OFF,
@@ -401,9 +573,10 @@ enum
     ID_FLOPPY,
     ID_NewFLOPPY,
 
-    ID_RUN,
     ID_PAUSE,
-
+#if DEBUG
+    ID_SCREENREGION,
+#endif
     ID_KEY_OPT_0,
     ID_KEY_OPT_4,
     ID_KEY_OPT_7,
@@ -414,12 +587,18 @@ enum
 
     ID_EMULATION_TIMER,
 
+    ID_THROTTLE1,
     ID_THROTTLE5,
     ID_THROTTLE8,
     ID_THROTTLE10,
     ID_THROTTLE12,
     ID_THROTTLE16,
     ID_THROTTLE32,
+    ID_THROTTLE48,
+    ID_THROTTLE64,
+    ID_THROTTLE100,
+    ID_THROTTLE128,
+    ID_THROTTLE256,
     ID_THROTTLEX,
 
     ID_ET100_75,
@@ -429,6 +608,7 @@ enum
 
     ID_LISAWEB,
     ID_LISAFAQ,
+    ID_LISALIST2,
 
     ID_VID_AA,
     ID_VID_AAG,
@@ -437,7 +617,8 @@ enum
     ID_VID_SY,
     ID_VID_2X3Y,
 
-  // reinstated as per request by Kallikak
+    // reinstated as per request by Kallikak
+    ID_REFRESH_SUB,
     ID_REFRESH_60Hz,
     ID_REFRESH_20Hz,
     ID_REFRESH_12Hz,
@@ -446,8 +627,21 @@ enum
 
     ID_HIDE_HOST_MOUSE,
 
-    ID_VID_SKINS_ON,
-    ID_VID_SKINS_OFF
+    ID_VID_SKINS,
+
+    ID_VID_SCALED_SUB,
+    ID_VID_SCALE_100,
+    ID_VID_SCALE_125,
+    ID_VID_SCALE_150,
+    ID_VID_SCALE_175,
+    ID_VID_SCALE_200,
+    ID_VID_SCALE_225,
+    ID_VID_SCALE_250,
+    ID_VID_SCALE_275,
+    ID_VID_SCALE_300,
+    ID_VID_SCALE_ZOOMIN,
+    ID_VID_SCALE_ZOOMOUT,
+    ID_VID_FULLSCREEN
 };
 
 // Declare our main frame class
@@ -457,9 +651,10 @@ enum
 // lisaframe::running states
 enum
 {
-	emulation_off=0,
-	emulation_running=1,
-	emulation_paused=10
+    emulation_off=0,
+    emulation_running=1,
+    emulation_paused=10,
+    emuation_paused_for_screen=12
 };
 
 class LisaEmFrame : public wxFrame
@@ -475,29 +670,35 @@ public:
     void UnloadImages(void);
 
     // Event handlers
-    #ifdef __WXOSX__
+//    #ifdef __WXOSX__
     void OnQuit(wxCommandEvent& event);
-    #endif
+//    #endif
 
     void OnAbout(wxCommandEvent& event);
 
     void OnLisaWeb(wxCommandEvent& event);
     void OnLisaFaq(wxCommandEvent& event);
+    void OnLisaList2(wxCommandEvent& event);
 
     void OnConfig(wxCommandEvent& event);
     void OnOpen(wxCommandEvent& event);
     void OnSaveAs(wxCommandEvent& event);
 
 
-    void OnRun(wxCommandEvent& event);
+//    void OnRun(wxCommandEvent& event);
     void OnPause(wxCommandEvent& event);
-
+#if DEBUG
+    void OnScreenRegion(wxCommandEvent& event);
+#endif
     void OnScreenshot(wxCommandEvent& event);
     void OnDebugger(wxCommandEvent& event);
 
     void OnPOWERKEY(wxCommandEvent& event);
     void OnAPPLEPOWERKEY(wxCommandEvent& event);
+#ifdef DEBUG    
     void OnTraceLog(wxCommandEvent& event);
+    void OnTraceLog2(wxCommandEvent& event);
+#endif
     void OnKEY_APL_DOT(wxCommandEvent& event);
     void OnKEY_APL_S(wxCommandEvent& event);
     void OnKEY_APL_ENTER(wxCommandEvent& event);
@@ -506,16 +707,16 @@ public:
     void OnKEY_APL_2(wxCommandEvent& event);
     void OnKEY_APL_3(wxCommandEvent& event);
     void OnKEY_NMI(wxCommandEvent& event);
-	void OnKEY_RESET(wxCommandEvent& event);
+    void OnKEY_RESET(wxCommandEvent& event);
 
 
-	void UpdateProfileMenu(void);
-	void OnProFilePowerX(int bit);
+    void UpdateProfileMenu(void);
+    void OnProFilePowerX(int bit);
 
-	void OnProFilePower(wxCommandEvent& event);
+    void OnProFilePower(wxCommandEvent& event);
 
     void OnProFilePwrOnAll(wxCommandEvent& event);
-	void OnProFilePwrOffAll(wxCommandEvent& event);
+    void OnProFilePwrOffAll(wxCommandEvent& event);
 
     void OnProFileS1LPwr(wxCommandEvent& event);
     void OnProFileS1UPwr(wxCommandEvent& event);
@@ -524,11 +725,7 @@ public:
     void OnProFileS3LPwr(wxCommandEvent& event);
     void OnProFileS3UPwr(wxCommandEvent& event);
 
-	void OnNewProFile(wxCommandEvent& event);
-
-
-
-
+    void OnNewProFile(wxCommandEvent& event);
 
     void OnFLOPPY(wxCommandEvent& event);
     void OnNewFLOPPY(wxCommandEvent& event);
@@ -552,7 +749,16 @@ public:
     void OnThrottle12(wxCommandEvent& event);
     void OnThrottle16(wxCommandEvent& event);
     void OnThrottle32(wxCommandEvent& event);
-    void OnThrottleX(wxCommandEvent& event);
+    void OnThrottle48(wxCommandEvent& event);
+    void OnThrottle64(wxCommandEvent& event);
+    void OnThrottle100(wxCommandEvent& event);
+    void OnThrottle128(wxCommandEvent& event);
+    void OnThrottle256(wxCommandEvent& event);
+
+    #ifdef DEBUG
+    void OnThrottle1(wxCommandEvent& event);
+    void OnThrottle512(wxCommandEvent& event);
+    #endif
 
     void OnET100_75(wxCommandEvent& event);
     void OnET50_30(wxCommandEvent& event);
@@ -562,15 +768,15 @@ public:
     void SetStatusBarText(wxString &msg);
     void Update_Status(long elapsed,long idleentry);
     void VidRefresh(long now);
-	int EmulateLoop(long idleentry);
+    int EmulateLoop(long idleentry);
 
     //void OnIdleEvent(wxIdleEvent& event);
     void OnEmulationTimer(wxTimerEvent& event);
 
-	void OnPasteToKeyboard(wxCommandEvent&event);
+    void OnPasteToKeyboard(wxCommandEvent&event);
 
 
-	void FloppyAnimation(void);
+    void FloppyAnimation(void);
     // menu commands that switch video mode
     void OnVideoAntiAliased(wxCommandEvent& event);
     void OnVideoAAGray(wxCommandEvent& event);
@@ -579,19 +785,36 @@ public:
     void OnVideoSingleY(wxCommandEvent& event);
     void OnVideo2X3Y(wxCommandEvent& event);
 
-    void OnSkinsOn(wxCommandEvent& event);
-    void OnSkinsOff(wxCommandEvent& event);
+    void OnSkins(wxCommandEvent& event);
 
-    void OnRefresh60Hz(wxCommandEvent& event);
-    void OnRefresh20Hz(wxCommandEvent& event);
-    void OnRefresh12Hz(wxCommandEvent& event);
-    void OnRefresh8Hz(wxCommandEvent& event);
-    void OnRefresh4Hz(wxCommandEvent& event);
+    void OnRefresh60(wxCommandEvent& event);
+    void OnRefresh20(wxCommandEvent& event);
+    void OnRefresh12(wxCommandEvent& event);
+    void OnRefresh8(wxCommandEvent& event);
+    void OnRefresh4(wxCommandEvent& event);
 
-    void OnFlushPrint(wxCommandEvent& event);
+    void OnScale100(wxCommandEvent& event);
+    void OnScale125(wxCommandEvent& event);
+    void OnScale150(wxCommandEvent& event);
+    void OnScale175(wxCommandEvent& event);
+    void OnScale200(wxCommandEvent& event);
+    void OnScale225(wxCommandEvent& event);
+    void OnScale250(wxCommandEvent& event);
+    void OnScale275(wxCommandEvent& event);
+    void OnScale300(wxCommandEvent& event);
+
+    #ifdef EVT_GESTURE_ZOOM
+    void OnZoom(wxZoomGestureEvent& event);
+    #endif
+    void OnZoomIn( wxCommandEvent& event);
+    void OnZoomOut(wxCommandEvent& event);
+
+    void OnFlushPrint(wxCommandEvent &event);
     void OnHideHostMouse(wxCommandEvent& event);
 
-
+    void OnFullScreen(wxCommandEvent& event);
+    
+    void resize_lisaframe(int newscale);
 
     //class LisaWin *win;
     int screensizex,screensizey;
@@ -611,7 +834,7 @@ public:
     int dwx,dwy;
 
     wxString       wspaste_to_keyboard;
-    char          paste_to_keyboard[8192];
+    char           paste_to_keyboard[8192];
     uint32         idx_paste_to_kb;
     float          throttle;
     float          clockfactor;
@@ -619,8 +842,8 @@ public:
 
     wxString floppy_to_insert;
     long lastcrtrefresh;
-	long hostrefresh;
-	long screen_paint_update;
+    long hostrefresh;
+    long screen_paint_update;
     long onidle_calls;
     XTIMER cycles_wanted;
 
@@ -637,7 +860,7 @@ BEGIN_EVENT_TABLE(LisaEmFrame, wxFrame)
 
     EVT_MENU(ID_LISAWEB,        LisaEmFrame::OnLisaWeb)
     EVT_MENU(ID_LISAFAQ,        LisaEmFrame::OnLisaFaq)
-
+    EVT_MENU(ID_LISALIST2,      LisaEmFrame::OnLisaList2)
 
     EVT_MENU(wxID_PREFERENCES,  LisaEmFrame::OnConfig)
     EVT_MENU(wxID_OPEN,         LisaEmFrame::OnOpen)
@@ -646,17 +869,24 @@ BEGIN_EVENT_TABLE(LisaEmFrame, wxFrame)
     EVT_MENU(ID_SCREENSHOT,     LisaEmFrame::OnScreenshot)
     EVT_MENU(ID_SCREENSHOT2,    LisaEmFrame::OnScreenshot)
     EVT_MENU(ID_SCREENSHOT3,    LisaEmFrame::OnScreenshot)
-
+#if DEBUG
+    EVT_MENU(ID_SCREENREGION,   LisaEmFrame::OnScreenRegion)
+#endif
     EVT_MENU(ID_FUSH_PRNT,      LisaEmFrame::OnFlushPrint)
 
     EVT_MENU(ID_DEBUGGER,       LisaEmFrame::OnDebugger)
     EVT_MENU(ID_POWERKEY,       LisaEmFrame::OnPOWERKEY)
     EVT_MENU(ID_APPLEPOWERKEY,  LisaEmFrame::OnAPPLEPOWERKEY)
 
+#ifdef EVT_GESTURE_ZOOM
+    EVT_GESTURE_ZOOM(ID_ZOOM,   LisaEmFrame::OnZoom)
+#endif
 
 #ifndef __WXMSW__
 #ifdef TRACE
     EVT_MENU(ID_DEBUG,          LisaEmFrame::OnTraceLog)
+    EVT_MENU(ID_DEBUG2,         LisaEmFrame::OnTraceLog2)
+
 #endif
 #endif
 
@@ -674,7 +904,7 @@ BEGIN_EVENT_TABLE(LisaEmFrame, wxFrame)
     EVT_MENU(ID_PROFILEPWR,     LisaEmFrame::OnProFilePower)
 
     EVT_MENU(ID_PROFILE_ALL_ON, LisaEmFrame::OnProFilePwrOnAll)
-	EVT_MENU(ID_PROFILE_ALL_OFF,LisaEmFrame::OnProFilePwrOffAll)
+    EVT_MENU(ID_PROFILE_ALL_OFF,LisaEmFrame::OnProFilePwrOffAll)
 
     EVT_MENU(ID_PROFILE_S1L,    LisaEmFrame::OnProFileS1LPwr)
     EVT_MENU(ID_PROFILE_S1U,    LisaEmFrame::OnProFileS1UPwr)
@@ -698,14 +928,21 @@ BEGIN_EVENT_TABLE(LisaEmFrame, wxFrame)
     EVT_MENU(ID_RAWKB,          LisaEmFrame::OnRAWKB)
     EVT_MENU(ID_RAWKBBUF,       LisaEmFrame::OnRAWKBBUF)
 
+    #ifdef DEBUG
+    EVT_MENU(ID_THROTTLE1,      LisaEmFrame::OnThrottle1)
+    EVT_MENU(ID_THROTTLEX,      LisaEmFrame::OnThrottle512)
+    #endif
     EVT_MENU(ID_THROTTLE5,      LisaEmFrame::OnThrottle5)
     EVT_MENU(ID_THROTTLE8,      LisaEmFrame::OnThrottle8)
     EVT_MENU(ID_THROTTLE10,     LisaEmFrame::OnThrottle10)
     EVT_MENU(ID_THROTTLE12,     LisaEmFrame::OnThrottle12)
     EVT_MENU(ID_THROTTLE16,     LisaEmFrame::OnThrottle16)
     EVT_MENU(ID_THROTTLE32,     LisaEmFrame::OnThrottle32)
-    EVT_MENU(ID_THROTTLEX,      LisaEmFrame::OnThrottleX)
-
+    EVT_MENU(ID_THROTTLE48,     LisaEmFrame::OnThrottle48)
+    EVT_MENU(ID_THROTTLE64,     LisaEmFrame::OnThrottle64)
+    EVT_MENU(ID_THROTTLE100,    LisaEmFrame::OnThrottle100)
+    EVT_MENU(ID_THROTTLE128,    LisaEmFrame::OnThrottle128)
+    EVT_MENU(ID_THROTTLE256,    LisaEmFrame::OnThrottle256)
 
     EVT_MENU(ID_ET100_75,       LisaEmFrame::OnET100_75)
     EVT_MENU(ID_ET50_30,        LisaEmFrame::OnET50_30)
@@ -726,30 +963,43 @@ BEGIN_EVENT_TABLE(LisaEmFrame, wxFrame)
     EVT_MENU(ID_VID_SY,         LisaEmFrame::OnVideoSingleY)
     EVT_MENU(ID_VID_2X3Y,       LisaEmFrame::OnVideo2X3Y)
 
-    EVT_MENU(ID_VID_SKINS_ON,   LisaEmFrame::OnSkinsOn)
-    EVT_MENU(ID_VID_SKINS_OFF,  LisaEmFrame::OnSkinsOff)
+    EVT_MENU(ID_VID_SKINS,      LisaEmFrame::OnSkins)
+
+    EVT_MENU(ID_VID_SCALE_100,  LisaEmFrame::OnScale100)
+    EVT_MENU(ID_VID_SCALE_125,  LisaEmFrame::OnScale125)
+    EVT_MENU(ID_VID_SCALE_150,  LisaEmFrame::OnScale150)
+    EVT_MENU(ID_VID_SCALE_175,  LisaEmFrame::OnScale175)
+    EVT_MENU(ID_VID_SCALE_200,  LisaEmFrame::OnScale200)
+    EVT_MENU(ID_VID_SCALE_225,  LisaEmFrame::OnScale225)
+    EVT_MENU(ID_VID_SCALE_250,  LisaEmFrame::OnScale250)
+    EVT_MENU(ID_VID_SCALE_275,  LisaEmFrame::OnScale275)
+    EVT_MENU(ID_VID_SCALE_300,  LisaEmFrame::OnScale300)
+
+    EVT_MENU(ID_VID_SCALE_ZOOMIN,   LisaEmFrame::OnZoomIn)
+    EVT_MENU(ID_VID_SCALE_ZOOMOUT,  LisaEmFrame::OnZoomOut)
+
+    EVT_MENU(ID_VID_FULLSCREEN, LisaEmFrame::OnFullScreen)
 
   // reinstated as per request by Kallikak, added 4Hz to help with really slow machines
-    EVT_MENU(ID_REFRESH_60Hz,   LisaEmFrame::OnRefresh60Hz)
-    EVT_MENU(ID_REFRESH_20Hz,   LisaEmFrame::OnRefresh20Hz)
-    EVT_MENU(ID_REFRESH_12Hz,   LisaEmFrame::OnRefresh12Hz)
-    EVT_MENU(ID_REFRESH_8Hz,    LisaEmFrame::OnRefresh8Hz)
-    EVT_MENU(ID_REFRESH_4Hz,    LisaEmFrame::OnRefresh4Hz)
+    EVT_MENU(ID_REFRESH_60Hz,   LisaEmFrame::OnRefresh60)
+    EVT_MENU(ID_REFRESH_20Hz,   LisaEmFrame::OnRefresh20)
+    EVT_MENU(ID_REFRESH_12Hz,   LisaEmFrame::OnRefresh12)
+    EVT_MENU(ID_REFRESH_8Hz,    LisaEmFrame::OnRefresh8)
+    EVT_MENU(ID_REFRESH_4Hz,    LisaEmFrame::OnRefresh4)
 
     EVT_MENU(ID_HIDE_HOST_MOUSE,LisaEmFrame::OnHideHostMouse)
 
-    EVT_MENU(ID_RUN,            LisaEmFrame::OnRun)
     EVT_MENU(ID_PAUSE,          LisaEmFrame::OnPause)
 
 
     //EVT_IDLE(LisaEmFrame::OnIdleEvent)
     EVT_TIMER(ID_EMULATION_TIMER, LisaEmFrame::OnEmulationTimer)
 
-    #ifdef __WXOSX__
+    //#ifdef __WXOSX__
     EVT_MENU(wxID_EXIT,         LisaEmFrame::OnQuit)
-    #else
-    EVT_MENU(wxID_EXIT,         LisaEmApp::OnQuit)
-    #endif
+    //#elseif
+    //EVT_MENU(wxID_EXIT,         LisaEmApp::OnQuit)
+    //#endif
 
 
 
@@ -767,6 +1017,11 @@ wxMenu *fileMenu     = NULL;
 wxMenu *editMenu     = NULL;
 wxMenu *keyMenu      = NULL;
 wxMenu *DisplayMenu  = NULL;
+wxMenuItem *FullScreenCheckMenuItem = NULL;
+
+wxMenu *DisplayScaleSub = NULL;
+wxMenu *DisplayRefreshSub = NULL;
+
 wxMenu *throttleMenu = NULL;
 wxMenu *profileMenu  = NULL;
 
@@ -774,10 +1029,9 @@ wxMenu *helpMenu     = NULL;
 
 
 LisaConfig       *my_lisaconfig=NULL;
-
 LisaWin          *my_lisawin=NULL;
 LisaEmFrame      *my_lisaframe=NULL;
-
+  
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -817,7 +1071,7 @@ LisaEmFrame      *my_lisaframe=NULL;
 */
 
 #ifndef USE_RAW_BITMAP_ACCESS
-wxImage *display_img = NULL;
+wxImage          *display_img = NULL;
 #endif
 
 wxMenuBar        *menuBar = NULL;
@@ -836,13 +1090,9 @@ wxSound          *my_lisa_power_switch02=NULL;
 wxSound          *my_poweroffclk=NULL;
 
 
-
-
 // byte bitmap used to accelerate writes to videoram
-wxBitmap  *my_bytemap=NULL;    wxMemoryDC *my_bytemapDC =NULL;
-wxBitmap  *my_alias  =NULL;    wxMemoryDC *my_aliasDC   =NULL;
-
 wxImage   *display_image =NULL;
+
 
 wxBitmap  *my_skin   =NULL;    wxMemoryDC *my_skinDC    =NULL; // bug with wxX11 turns background black, this attempts
 wxBitmap  *my_skin0  =NULL;    wxMemoryDC *my_skin0DC   =NULL; // to split the img in two hoping that it will help.
@@ -937,10 +1187,10 @@ void buildscreenymap_3Y(void)
 {
  wxCoord y;
  for (y=0; y<364; y++)   yoffset[y]=y*90;
+
  for (y=0; y<364*3; y++)
      {
        //screen_focus[y]=0;
-
        screen_to_mouse[y]=y/3;
           screen_y_map[y/3]=y-1;
      }
@@ -948,8 +1198,9 @@ void buildscreenymap_3Y(void)
 }
 
 
-// hack to fix issues on linux - somehow this isn't quite what I'd want either.
+// hacks to fix issues on linux - somehow this isn't quite what I'd want either.
 // it's not too different from --without-rawbitmap due to the conversions, and slightly worse.
+// TODO: delete these once verified 
 void correct_my_skin(void)
 {
 #ifdef __WXGTK__
@@ -963,6 +1214,7 @@ void correct_my_skin(void)
   my_skin=new wxBitmap(*display_image);
   delete display_image;
   if ( my_skinDC==NULL)  my_skinDC=new class wxMemoryDC;
+
   my_skinDC->SelectObjectAsSource(*my_skin);
  #endif
 #endif
@@ -988,6 +1240,136 @@ void correct_my_lisabitmap(void)
 #endif
 }
 
+// video modes
+enum
+{
+     vidmod_aa=0,    // RePaint_AntiAliased
+     vidmod_2y=1,    // RePaint_DoubleY; 
+     vidmod_raw=2,   // RePaint_SingleY
+     vidmod_3y=3,    // RePaint_2X3Y
+     vidmod_aag=4,   // RePaint_AAGray
+     vidmod_3a=0x3a  // RePaint_3A;
+};
+
+
+#ifdef DEBUG
+void log_screen_box(FILE *f,int x, int y, int x2, int y2)
+{
+  // :TODO:
+  if (0) fprintf(f,"%d %d %d %d",x,y,x2,y2);
+}
+#endif
+
+#ifdef XXXDEBUG
+#include "../lisa/m64.c"
+
+void log_screen_box(FILE *f,int x, int y, int x2, int y2)
+{
+  uint8 *out;
+  int p, xx,yy, xbyte, yrow;
+  int ybytestart=y*lisa_vid_size_xbytes;
+  int ybyteend=y2*lisa_vid_size_xbytes;
+  int xb=x/8, xb2=x2/8;
+  int z=8;
+  int size=((x2-x+8)/8)*(y2-y) +8;
+  int i=0;
+  int count=0;
+  uint8 *m=(uint8 *) calloc(1,  size  +128);
+  char  *o=(char  *) calloc(1,4*size/3+128); // mime64 output is 25% larger
+  uint8 *l=(uint8 *) calloc(1,4*size/3  +128);
+
+  // save header - big endian, as ${diety} intended, of course.
+  m[1]=((x &  7) <<    4) | (x2&7);  // save x coordinate lefover bits so we know how many bits to the left and right to ignore later
+  m[2]=((xb2-xb) >>    8)         ;  // size in x bytes
+  m[3]=((xb2-xb) &  0xff)         ; 
+  m[4]=((y2-y1 ) >>    8)         ;  // size in y lines
+  m[5]=((y2-y1 ) &  0xff)         ;
+  m[6]=((size  ) >>    8)         ;  // byte size of block
+  m[7]=((size  ) &  0xff)         ;
+  m[0]=m[1]^m[2]^m[3]^m[4]^m[5]^m[6]^m[7]^0x55; // checksum
+  z=8;
+
+  #define ROL64(x) (x>>63) | (x<<1)
+
+  uint16 lmask=((0x00ff >>(x  & 7 ) ) & 0xff;
+  uint16 rmask=((0xff00 >>(x2 & 7 ) ) & 0xff;
+  uint64 hash=0xdec0de99dec0de66;
+  //DEBUG_LOG(0,"region: (%d,%d)-(%d,%d) size_in:%d size_m64:%d\n",x,y,x2,y2,size+128,4*size/3+128);
+  fprintf(f,"\n\nregion=\"%d,%d!",x2-x,y2-y);
+  for (p=ybytestart+xb; y<=y2; y++, p+=lisa_vid_size_xbytes)
+  {  
+    for (xx=xb; xx<xb2; p++,xx++)
+    {
+       uint8 mask=0xff;
+       if (xx==xb)  mask=lmask;
+       if (xx==xb2) mask=rmask;
+
+       m[z++]=lisaram[videolatchaddress+p] & mask;
+       hash=ROL64(hash)^(lisaram[videolatchaddress+p] & mask);
+       count++;
+    }
+  }
+
+// TODO: future code //
+// might be able to use hash for the display instead.
+// maybe use the first few values to find on the screen ram and then do a hash of the region when found.
+// so maybe 1st 4 bytes - would have to shift through 8x, and once found, try hashing the region and see
+// if we get the same value.
+
+// Use cLevel=-12 for high compression
+/*
+int LZ4_compress_destSize (const char* src, char* dst, int* srcSizePtr, int targetDstSize);
+  Reverse the logic : compresses as much data as possible from 'src' buffer
+  into already allocated buffer 'dst', of size >= 'targetDestSize'.
+  This function either compresses the entire 'src' content into 'dst' if it's large enough,
+  or fill 'dst' buffer completely with as much data as possible from 'src'.
+  note: acceleration parameter is fixed to "default".
+
+ *srcSizePtr : will be modified to indicate how many bytes where read from 'src' to fill 'dst'.
+               New value is necessarily <= input value.
+ @return : Nb bytes written into 'dst' (necessarily <= targetDestSize)
+           or 0 if compression fails.
+
+wtf - this ignores cLevel:
+static int LZ4IO_LZ4_compress(const char* src, char* dst, int srcSize, int dstSize, int cLevel)
+{
+    (void)cLevel;
+    return LZ4_compress_fast(src, dst, srcSize, dstSize, 1);
+}
+
+but then:
+LZ4_compress_HC
+
+// Compress Block 
+outSize = compressionFunction(in_buff, out_buff+4, (int)inSize, outBuffSize, compressionlevel);
+compressedfilesize += outSize+4;
+DISPLAYUPDATE(2, "\rRead : %i MB  ==> %.2f%%   ",
+        (int)(filesize>>20), (double)compressedfilesize/files
+*/
+/*
+  i=LZ4_compress_fast(m, l, count, dstSize, (4*size/3  +128));
+  if (i<1) 
+  {
+     o[0]='4'; o[1]='>'; // indicate that it's compressed
+     m64_encode((char *)m,i,&o[2]); 
+  } 
+  else
+  {
+     o[0]='>'; o[1]='<'; // indicate that it's not compressed
+     m64_encode((char *)l,i,&o[2]); // lz4 failed - send uncompressed block as m64
+  }
+  fprintf(f,"%s===\"\n\n",o);
+  free(m);
+  free(o);
+  free(l);
+  ALERT_LOG(0,"done");
+}
+
+*/
+#endif
+
+void update_menu_checkmarks(void);
+
 
 
 ///////////////
@@ -1000,132 +1382,151 @@ void LisaWin::SetVideoMode(int mode)
   if (!has_lisa_xl_screenmod && mode==0x3a) mode=0;
   if (mode!=0x3a) lisa_ui_video_mode=mode;
 
-
-  DisplayMenu->Check(ID_VID_AA    ,mode==0);  DisplayMenu->Enable(ID_VID_AA    ,mode!=0x3a);
-  DisplayMenu->Check(ID_VID_AAG   ,mode==4);  DisplayMenu->Enable(ID_VID_AAG   ,mode!=0x3a);
-  //DisplayMenu->Check(ID_VID_SCALED,mode==5);  DisplayMenu->Enable(ID_VID_SCALED,mode!=0x3a);
-  DisplayMenu->Check(ID_VID_DY    ,mode==1);  DisplayMenu->Enable(ID_VID_DY    ,mode!=0x3a);
-  DisplayMenu->Check(ID_VID_SY    ,mode==2);  DisplayMenu->Enable(ID_VID_SY    ,mode!=0x3a);
-  DisplayMenu->Check(ID_VID_2X3Y  ,mode==3);  DisplayMenu->Enable(ID_VID_2X3Y  ,mode!=0x3a);
-
+  update_menu_checkmarks();
 
   switch (mode)
   {
 
-   case 0:   buildscreenymap()    ;  screen_origin_x=140; screen_origin_y=130; effective_lisa_vid_size_x=720; effective_lisa_vid_size_y=500;
-             RePainter=&LisaWin::RePaint_AntiAliased;                                                                    break;
+   case vidmod_aag:   buildscreenymap();      skin.screen_origin_x=skin.default_screen_origin_x; skin.screen_origin_y=skin.default_screen_origin_y;  
+                                              effective_lisa_vid_size_x=  _H(720);         effective_lisa_vid_size_y=  _H(500);
+                                              o_effective_lisa_vid_size_x=   720;          o_effective_lisa_vid_size_y=   500;
+                                              RePainter=&LisaWin::RePaint_AAGray;                                                break;
 
-   case 1:   buildscreenymap_2Y() ;  screen_origin_x=  0; screen_origin_y=  0; effective_lisa_vid_size_x=720; effective_lisa_vid_size_y=364*2;
-             RePainter=&LisaWin::RePaint_DoubleY;                                                                        break;
+   case vidmod_aa:    buildscreenymap();      skin.screen_origin_x=skin.default_screen_origin_x; skin.screen_origin_y=skin.default_screen_origin_y;  
+                                              effective_lisa_vid_size_x=  _H(720);         effective_lisa_vid_size_y=  _H(500);
+                                              o_effective_lisa_vid_size_x=   720;          o_effective_lisa_vid_size_y=   500;
+                                              RePainter=&LisaWin::RePaint_AntiAliased;                                           break;
 
-   case 2:   buildscreenymap_raw();  screen_origin_x=140; screen_origin_y=198; effective_lisa_vid_size_x=720; effective_lisa_vid_size_y=364;
-             RePainter=&LisaWin::RePaint_SingleY;                                                                        break;
 
-   case 3:   buildscreenymap_3Y() ;  screen_origin_x=  0; screen_origin_y=  0; effective_lisa_vid_size_x=720*2; effective_lisa_vid_size_y=364*3;
-             RePainter=&LisaWin::RePaint_2X3Y;                                                                           break;
+   case vidmod_2y:    buildscreenymap_2Y();   skin.screen_origin_x=            0;          skin.screen_origin_y=            0; 
+                                              effective_lisa_vid_size_x=  _H(720);         effective_lisa_vid_size_y=  _H(364*2);
+                                              o_effective_lisa_vid_size_x=_H(720);         o_effective_lisa_vid_size_y=_H(364*2);
+                                              RePainter=&LisaWin::RePaint_DoubleY;                                               break;
 
-   case 4:   buildscreenymap()    ;  screen_origin_x=140; screen_origin_y=130; effective_lisa_vid_size_x=720; effective_lisa_vid_size_y=500;
-             RePainter=&LisaWin::RePaint_AAGray;                                                                         break;
 
- //case 5:   buildscreenymap()    ;  screen_origin_x=140; screen_origin_y=130; effective_lisa_vid_size_x=720; effective_lisa_vid_size_y=500;
+   case vidmod_raw:   buildscreenymap_raw();  skin.screen_origin_x=skin.default_screen_origin_x; skin.screen_origin_y=skin.default_screen_origin_y; 
+                                              effective_lisa_vid_size_x=  _H(720);         effective_lisa_vid_size_y=  _H(364);
+                                              o_effective_lisa_vid_size_x=   720;          o_effective_lisa_vid_size_y=   364;
+                                              RePainter=&LisaWin::RePaint_SingleY;                                               break;
+
+
+   case vidmod_3y:    buildscreenymap_3Y();   skin.screen_origin_x=  0;                    skin.screen_origin_y=  0; 
+                                              effective_lisa_vid_size_x=  _H(720);         effective_lisa_vid_size_y=  _H(364*3);
+                                              o_effective_lisa_vid_size_x=   720*2;        o_effective_lisa_vid_size_y=   364*3;
+                                              RePainter=&LisaWin::RePaint_2X3Y;                                                  break;
+
+   case vidmod_3a:    buildscreenymap_3A();   skin.screen_origin_x=(skin.default_screen_origin_x +56); skin.screen_origin_y=(skin.default_screen_origin_y +34);
+                                              effective_lisa_vid_size_x=  _H(608);         effective_lisa_vid_size_y=  _H(431);
+                                              o_effective_lisa_vid_size_x=   608;          o_effective_lisa_vid_size_y=   431;
+
+                                              lisa_vid_size_x=               608;          lisa_vid_size_y=               431;
+                                              lisa_vid_size_xbytes=76;
+                                              has_lisa_xl_screenmod=1;
+                                              RePainter=&LisaWin::RePaint_3A;                                                    break;
+
+ //case 5:   buildscreenymap()    ;  skin.screen_origin_x=140; skin.screen_origin_y=130; effective_lisa_vid_size_x=720; effective_lisa_vid_size_y=500;
  //          RePainter=&LisaWin::RePaint_Scaled;                                                                         break;
 
-
-   case 0x3a: buildscreenymap_3A();
-
-             lisa_vid_size_x=608;
-             lisa_vid_size_y=431;
-             effective_lisa_vid_size_x=608;
-             effective_lisa_vid_size_y=431;
-
-             screen_origin_x=140+56;
-             screen_origin_y=130+34;
-
-             lisa_vid_size_x=608;
-             lisa_vid_size_y=431;
-
-             lisa_vid_size_xbytes=76;
-             has_lisa_xl_screenmod=1;
-
-             RePainter=&LisaWin::RePaint_3A;
-             break;
   }
 
-   delete my_lisabitmap;
-   delete my_memDC;
+  ALERT_LOG(0,"o_effective_lisa_vid_x,y:%d,%d",o_effective_lisa_vid_size_x,o_effective_lisa_vid_size_y);
 
-   my_memDC     =new class wxMemoryDC;
-   my_lisabitmap=new class wxBitmap(effective_lisa_vid_size_x, effective_lisa_vid_size_y,DEPTH);
-   my_memDC->SelectObjectAsSource(*my_lisabitmap);
-   my_memDC->SetBrush(FILLERBRUSH);      my_memDC->SetPen(FILLERPEN);
-   my_memDC->DrawRectangle(0 ,   0,   effective_lisa_vid_size_x, effective_lisa_vid_size_y);
-   if (!my_memDC->IsOk()) ALERT_LOG(0,"my_memDC is not ok.");
-   if (!my_lisabitmap->IsOk()) ALERT_LOG(0,"my_lisabitmap is not ok.");
+  delete my_lisabitmap;
+  delete my_memDC;
 
+  my_memDC     =new class wxMemoryDC;
+  my_lisabitmap=new class wxBitmap(o_effective_lisa_vid_size_x, o_effective_lisa_vid_size_y,DEPTH);
 
-   videoramdirty=32768;
-//   ALERT_LOG(0,"Done setting video mode to :%02x",mode);
+  my_memDC->SelectObjectAsSource(*my_lisabitmap);
+  my_memDC->SetBrush(FILLERBRUSH);      my_memDC->SetPen(FILLERPEN);
+  my_memDC->DrawRectangle(0 ,   0,   o_effective_lisa_vid_size_x, o_effective_lisa_vid_size_y);
 
-   if (skins_on)
-	   {
-         SetMinSize(wxSize(720,384));
-         SetMaxSize(wxSize(ISKINSIZE));
-         SetScrollbars(ISKINSIZEX/100, ISKINSIZEY/100,  100,100,  0,0,  true);
-         EnableScrolling(true,true);
-       }
-   else
-       {
-         int x,y;
-         GetSize(&x,&y);
-         screen_origin_x=(x  - effective_lisa_vid_size_x)>>1;                 // center display
-         screen_origin_y=(y  - effective_lisa_vid_size_y)>>1;                 // on skinless
-         screen_origin_x= (screen_origin_x<0 ? 0:screen_origin_x);
-         screen_origin_y= (screen_origin_y<0 ? 0:screen_origin_y);
-         ox=screen_origin_x; oy=screen_origin_y;
-	   }
-   Refresh(false,NULL);
-   black();
-  
+  #ifdef DEBUG
+    if (!my_memDC->IsOk())      ALERT_LOG(0,"my_memDC is not ok.");
+    if (!my_lisabitmap->IsOk()) ALERT_LOG(0,"my_lisabitmap is not ok.");
+  #endif
+  videoramdirty=32768;
+   //DEBUG_LOG(0,"Done setting video mode to :%02x",mode);
+
+  if  (skins_on)
+      {
+        SetMinSize(  wxSize(_H(720),_H(500) )  );
+        if  (skin.width_size>0 && skin.height_size>0)
+            {
+              SetClientSize(              wxSize(  _H(skin.width_size), _H(skin.height_size)  ) );
+              SetMaxSize(                 wxSize(  _H(skin.width_size), _H(skin.height_size)  ) );
+
+              my_lisaframe->SetClientSize(wxSize(  _H(skin.width_size), _H(skin.height_size)  ) );
+              my_lisaframe->SetMaxSize(   wxSize(  _H(skin.width_size), _H(skin.height_size)  ) );
+
+              DEBUG_LOG(0,"** Reset max window size to %d,%d at hidpi:%f ***",
+                              _H(skin.width_size), _H(skin.height_size), hidpi_scale            );
+            }
+        else
+            {  
+              SetSize(wxSize(ISKINSIZE)); 
+              SetMaxSize(wxSize(ISKINSIZE));
+              my_lisaframe->SetSize(wxSize(ISKINSIZE)); 
+              my_lisaframe->SetMaxSize(wxSize(ISKINSIZE));
+              DEBUG_LOG(0,"Reset max window size to ISKINSIZE");
+            }
+          SetScrollbars(ISKINSIZEX/_H(100), ISKINSIZEY/_H(100),  100,100,  0,0,  true);
+          EnableScrolling(true,true);
+      }
+  else
+      {
+        int x,y;
+        GetSize(&x,&y);
+        skin.screen_origin_x=(x  - effective_lisa_vid_size_x)>>1;                 // center display
+        skin.screen_origin_y=(y  - effective_lisa_vid_size_y)>>1;                 // on skinless
+        skin.screen_origin_x= (skin.screen_origin_x<0 ? 0:skin.screen_origin_x);
+        skin.screen_origin_y= (skin.screen_origin_y<0 ? 0:skin.screen_origin_y);
+        ox=skin.screen_origin_x; oy=skin.screen_origin_y;
+      }
+  Refresh(false,NULL);
+  black();
+
+  ALERT_LOG(0,"o_effective_lisa_vid_x,y:%d,%d",o_effective_lisa_vid_size_x,o_effective_lisa_vid_size_y);
+ 
 }
 
 void LisaEmFrame::FloppyAnimation(void)
 {
 
     if (my_lisawin->floppystate & FLOPPY_ANIMATING)                           // go to next frame
-	{
+    {
 
-		if ((my_lisawin->floppystate & FLOPPY_ANIM_MASK)!= FLOPPY_PRESENT) 
-		{
-			my_lisawin->floppystate++;
-			my_lisawin->floppystate |= FLOPPY_ANIMATING|FLOPPY_NEEDS_REDRAW;
-		} 
-		
-		if ((my_lisawin->floppystate & FLOPPY_ANIM_MASK)== FLOPPY_PRESENT) 
-		{
-			my_lisawin->floppystate= FLOPPY_NEEDS_REDRAW | FLOPPY_PRESENT; // refresh, stop counting.
-			if (my_floppy_insert!=NULL && sound_effects_on) my_floppy_insert->Play(romless ? wxSOUND_SYNC:wxSOUND_ASYNC);
-		}
-	}
+        if ((my_lisawin->floppystate & FLOPPY_ANIM_MASK)!= FLOPPY_PRESENT) 
+        {
+            my_lisawin->floppystate++;
+            my_lisawin->floppystate |= FLOPPY_ANIMATING|FLOPPY_NEEDS_REDRAW;
+        } 
+        
+        if ((my_lisawin->floppystate & FLOPPY_ANIM_MASK)== FLOPPY_PRESENT) 
+        {
+            my_lisawin->floppystate= FLOPPY_NEEDS_REDRAW | FLOPPY_PRESENT; // refresh, stop counting.
+            if (!!my_floppy_insert && sound_effects_on) my_floppy_insert->Play(romless ? wxSOUND_SYNC:wxSOUND_ASYNC);
+        }
+    }
     else
-	{
-		if (my_floppy_eject!=NULL && sound_effects_on && (my_lisawin->floppystate & FLOPPY_ANIM_MASK)== FLOPPY_INSERT_2)
-			my_floppy_eject->Play(wxSOUND_ASYNC);
+    {
+        if (!!my_floppy_eject && sound_effects_on && (my_lisawin->floppystate & FLOPPY_ANIM_MASK)== FLOPPY_INSERT_2)
+            my_floppy_eject->Play(wxSOUND_ASYNC);
 
-		if ((my_lisawin->floppystate & FLOPPY_ANIM_MASK)==FLOPPY_INSERT_0) 
-		{
-			my_lisawin->floppystate=FLOPPY_NEEDS_REDRAW | FLOPPY_EMPTY;
-		} 
-		else 
-		{
-			my_lisawin->floppystate--;  // go to previous frame
-			my_lisawin->floppystate |= FLOPPY_NEEDS_REDRAW;
-		}
+        if ((my_lisawin->floppystate & FLOPPY_ANIM_MASK)==FLOPPY_INSERT_0) 
+        {
+            my_lisawin->floppystate=FLOPPY_NEEDS_REDRAW | FLOPPY_EMPTY;
+        } 
+        else 
+        {
+            my_lisawin->floppystate--;  // go to previous frame
+            my_lisawin->floppystate |= FLOPPY_NEEDS_REDRAW;
+        }
 
-	}
+    }
     Refresh();
     wxMilliSleep(200);
 }
-
 
 
 
@@ -1135,35 +1536,38 @@ void LisaEmFrame::VidRefresh(long now)
 
     if (videoramdirty)
     {
-  		  wxRect* rect=NULL;
-		  if (running) check_running_lisa_os();
+        wxRect* rect=NULL;
 
-          my_lisawin->dirtyscreen=2;
-		  // suspect that RefreshRect(rect,false) erases the background anyway on wxMac 2.8.x
-		  rect=new wxRect(screen_origin_x,           screen_origin_y,
-					  effective_lisa_vid_size_x, effective_lisa_vid_size_y);
-          Refresh(false, rect);
-          delete rect;
- 		  lastcrtrefresh=now;                                      // and how long ago the last refresh happened
-                                                                   // cheating a bit here to smooth out mouse movement.
+        my_lisawin->dirtyscreen=2;
+        // suspect that RefreshRect(rect,false) erases the background anyway on wxMac 2.8.x
+        rect=new wxRect(skin.screen_origin_x,           skin.screen_origin_y,
+                        o_effective_lisa_vid_size_x, o_effective_lisa_vid_size_y);
+        Refresh(false, rect);
+        delete rect;
+        lastcrtrefresh=now;                                      // and how long ago the last refresh happened
+                                                                 // cheating a bit here to smooth out mouse movement.
     }
 
-	screen_paint_update++;                                   // used to figure out effective host refresh rate
-	lastrefresh=cpu68k_clocks;
+    screen_paint_update++;                                       // used to figure out effective host refresh rate
+    lastrefresh=cpu68k_clocks;
     seek_mouse_event();
 }
 
+
+
 int LisaEmFrame::EmulateLoop(long idleentry)
 {
-
     long now=runtime.Time();
+
+    if (my_lisaframe->soundsw.Time()>500 && sound_effects_on) // OH WOW! When sound is looping it fails to stop here and we're stuck in a loop! 
+       {my_lisaframe->soundplaying=0; wxSound::Stop();}       // silence floppy motor if it hasn't been accessed in 500ms
 
     while (now-idleentry<emulation_time && running)          // don't stay in OnIdleEvent for too long, else UI gets unresponsive
     {
-		long cpuexecms=(long)((float)(cpu68k_clocks-cpu68k_reference)*clockfactor); //68K CPU Execution in MS
+        long cpuexecms=(long)((float)(cpu68k_clocks-cpu68k_reference)*clockfactor); //68K CPU Execution in MS
 
-		if ( cpuexecms<=now  )                               // balance 68K CPU execution vs host time to honor throttle
-		{
+        if ( cpuexecms<=now  )                               // balance 68K CPU execution vs host time to honor throttle
+        {
             if (!cycles_wanted) cycles_wanted=(XTIMER)(float)(emulation_time/clockfactor);
             clx=clx+cycles_wanted;                           // add in any leftover cycles we didn't execute.
                                                              // but prevent it falling behind or jumping ahead
@@ -1174,75 +1578,115 @@ int LisaEmFrame::EmulateLoop(long idleentry)
             clx=reg68k_external_execute(clx);                // execute some 68K code
             // clx=reg68k_external_execute(clx);
 
-			now=runtime.Time();                              // find out how long we took
+            now=runtime.Time();                              // find out how long we took
 
             if (pc24 & 1)                                    // lisa rebooted or just odd addr error?
-			{                                                // moved here to avoid stack leak
+            {                                                // moved here to avoid stack leak
                 ALERT_LOG(0,"ODD PC!")
-				if (lisa_ram_safe_getlong(context,12) & 1)   // oddaddr vector is odd as well?
-				{
-					save_pram();                             // lisa has rebooted.
-					profile_unmount();
-					return 1;
-				}
-			}
+                if (lisa_ram_safe_getlong(context,12) & 1)   // oddaddr vector is odd as well?
+                {
+                    save_pram();                             // lisa has rebooted.
+                    profile_unmount();
+                    return 1;
+                }
+            }
 
-			get_next_timer_event();                          // handle any pending IRQ's/timer prep work
-		    
-//20071115                                                             // if we need to, refresh the display
+            get_next_timer_event();                          // handle any pending IRQ's/timer prep work
+            
+//20071115                                                   // if we need to, refresh the display
 //#ifdef __WXOSX__
-//		VidRefresh(now);                                     // OS X, esp slower PPC's suffer if we use the if statement
+//        VidRefresh(now);                                   // OS X, esp slower PPC's suffer if we use the if statement
 //#else
-		if (now-lastcrtrefresh>hostrefresh) VidRefresh(now); // but if we don't, Linux under X11 gets too slow.
+        if (now-lastcrtrefresh>hostrefresh) VidRefresh(now); // but if we don't, Linux under X11 gets too slow.
         else seek_mouse_event();
         
 //#endif
-		}                                                    // loop if we didn't go over our time quota
-		else
-			break;                                           // else force exit, time quota is up
+        }                                                    // loop if we didn't go over our time quota
+        else
+            break;                                           // else force exit, time quota is up
     } // exec loop  ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	return 0;	                                             // Lisa did not reboot, return 0
+    return 0;                                                // Lisa did not reboot, return 0
 }
 
 
+#ifdef DEBUG
+extern "C" char *debug_screenshot(void);
+extern "C" void dumpallmmu(void);
+static int last_lisa_clock_secs=0;
+#endif
 
 void LisaEmFrame::Update_Status(long elapsed,long idleentry)
 {
-	wxString text;
-	float hosttime=(float)(elapsed - last_runtime_sample);
-	mhzactual= 0.001 *
-		( (float)(cpu68k_clocks-last_runtime_cpu68k_clx))  / hosttime;
+    static int counter;
+    wxString text;
+    float hosttime=(float)(elapsed - last_runtime_sample);
+    mhzactual= 0.001 *
+        ( (float)(cpu68k_clocks-last_runtime_cpu68k_clx))  / hosttime;
+
+    if (running) check_running_lisa_os(); // moved here from LisaEmFrame::VidRefresh so we don't do this as often.
 
   //text.Printf("%1.2fMHz  %x%x:%x%x:%x%x.%x @%d/%08x vid:%1.2fHz%c  loop:%1.2fHz, mouse:%1.2fHz slice:%ldms, 68K:%lldcycles (%3.2f ms), %lld left, %lld wanted (%lld%%)",
-    text.Printf(_T("%1.2fMHz  %x%x:%x%x:%x%x.%x @%d/%08x"),
-				mhzactual,
-				lisa_clock.hours_h,lisa_clock.hours_l,
-				lisa_clock.mins_h,lisa_clock.mins_l,
-				lisa_clock.secs_h,lisa_clock.secs_l,
-				lisa_clock.tenths,
-                context,pc24); //,
+    text.Printf(_T("%1.2fMHz  %x%x:%x%x:%x%x.%x @%d/%08x (cpu_clk:%lld"),
+                mhzactual,
+                lisa_clock.hours_h,lisa_clock.hours_l,
+                lisa_clock.mins_h,lisa_clock.mins_l,
+                lisa_clock.secs_h,lisa_clock.secs_l,
+                lisa_clock.tenths,
+                context,pc24,cpu68k_clocks); //,
 
-				//(float)screen_paint_update*1000/hosttime,                 (videoramdirty ? 'D':' '),
-				//(float)onidle_calls       *1000/hosttime,
-				//(float)my_lisawin->mousemoved *1000/hosttime,
-				//elapsed-idleentry,
-                //cpu68k_clocks-last_runtime_cpu68k_clx,
-                //((clockfactor==0) ?(0.001 *     ((float)(cpu68k_clocks-last_runtime_cpu68k_clx))/mhzactual)
-				//                  :(clockfactor*((float)(cpu68k_clocks-last_runtime_cpu68k_clx)))           ),
-				//clx, cycles_wanted,
-				//100*clx/cycles_wanted
-			   //);
+    SetStatusBarText(text);
 
-	SetStatusBarText(text);
-	// these are independant of the execution loops on purpose, so that way we get a 2nd opinion as it were.
-	last_runtime_sample=elapsed;
-	last_runtime_cpu68k_clx=cpu68k_clocks;
+    // only issue is that this is called only on startup
+    if ( !(counter) ) update_menu_checkmarks(); // meh, there's some bugs in wxWidgets 3.1.1 and earlier on GTK where Radio buttons don't get updated, i.e. scale menu
+    counter++; counter&=7;
+    // these are independant of the execution loops on purpose, so that way we get a 2nd opinion as it were.
+    last_runtime_sample=elapsed;
+    last_runtime_cpu68k_clx=cpu68k_clocks;
     my_lisawin->mousemoved=0;
-	screen_paint_update=0;                              // reset statistics counters
-	onidle_calls=0;
-	idleentry--;                                       // eat warning when debug version isn't used.
+    screen_paint_update=0;                              // reset statistics counters
+    onidle_calls=0;
+    idleentry--;                                       // eat warning when debug version isn't used.
+
+
+    // if we're in the ROM, and within the first 3 seconds of emulation, and have had command line options, 
+    // send Apple-2 or Apple 3 to start from floppy/Widget/Profile
+    if (running_lisa_os==LISA_ROM_RUNNING && cpu68k_clocks>15000000 && cpu68k_clocks<30000000)
+    {
+        ALERT_LOG(0,"Checking for on_start options to pass to ROM. %lld",(long long) cpu68k_clocks);
+
+        if (on_start_harddisk)  { apple_3(); on_start_harddisk=0; on_start_floppy=""; ALERT_LOG(0,"on_start_harddisk");}
+
+        if (on_start_floppy != "" )
+        {
+            char s[1024];
+            strncpy(s,on_start_floppy.mb_str(wxConvUTF8),1023 );
+            floppy_insert(s);
+            wxMilliSleep(100);  // wait for insert sound to complete to prevent crash.
+            my_lisaframe->floppy_to_insert=_T("");
+            on_start_floppy="";
+            on_start_harddisk=0;
+            apple_2();
+            ALERT_LOG(0,"on_start_floppy inserted %s",s);
+        }
+
+    }
+
+
+  #ifdef DEBUG  // do ram, mmu, and screenshot dumps every 5s
+    if  (buglog && abs(lisa_clock.secs_l-last_lisa_clock_secs)>15 )
+        {
+            char *name=debug_screenshot();
+            ALERT_LOG(0,"screenshot taken");
+            dumpallmmu();
+            dumpram(name);
+            debug_screenshot();
+            last_lisa_clock_secs=lisa_clock.secs_l;
+        }
+  #endif
+
 }
+
 
 void LisaEmFrame::OnEmulationTimer(wxTimerEvent& WXUNUSED(event))
 {
@@ -1260,90 +1704,94 @@ void LisaEmFrame::OnEmulationTimer(wxTimerEvent& WXUNUSED(event))
 
   onidle_calls++;
 
-  if ((my_lisawin->floppystate & FLOPPY_ANIM_MASK) != FLOPPY_PRESENT &&
-	  (my_lisawin->floppystate & FLOPPY_ANIM_MASK) != FLOPPY_EMPTY )	  FloppyAnimation();
+  if  (on_start_poweron && onidle_calls >5)
+      {
+          wxCommandEvent foo;
+          on_start_poweron=0;
+          OnPOWERKEY(foo);
+          ALERT_LOG(0,"on_start_poweron");
+      }
 
-   if (running==emulation_running)
-   {
-	 long int elapsed=0;
+
+  if ((my_lisawin->floppystate & FLOPPY_ANIM_MASK) != FLOPPY_PRESENT &&
+      (my_lisawin->floppystate & FLOPPY_ANIM_MASK) != FLOPPY_EMPTY )      FloppyAnimation();
+
+  if  (running==emulation_running)
+      {
+        long int elapsed=0;
 
   //   if (floppy_6504_wait>0 && floppy_6504_wait<128) floppy_6504_wait--;                 
   
-     if (!last_runtime_sample )                              // initialize slice timer
-     {
-        last_runtime_sample=now;
-        last_decisecond=now;
-        lastcrtrefresh=now;
-		last_runtime_cpu68k_clx=cpu68k_clocks;
-     }
+        if  (!last_runtime_sample )                              // initialize slice timer
+            {
+              last_runtime_sample=now;
+              last_decisecond=now;
+              lastcrtrefresh=now;
+              last_runtime_cpu68k_clx=cpu68k_clocks;
+            }
 
 
-	 if (cpu68k_clocks<10 && floppy_to_insert.Len())         // deferred floppy insert.
-	 {
-           const wxCharBuffer s = floppy_to_insert.fn_str();
-           int i=floppy_insert((char *)(const char *)s);
-           floppy_to_insert=_T("");
-           if (i) eject_floppy_animation();
-	 }
+        if  (cpu68k_clocks<10 && floppy_to_insert.Len())         // deferred floppy insert.
+            {
+              const wxCharBuffer s = floppy_to_insert.fn_str();
+              int i=floppy_insert((char *)(const char *)s);
+              floppy_to_insert=_T("");
+              if (i) eject_floppy_animation();
+            }
 
 
-    clktest = cpu68k_clocks;
- 	clx=cpu68k_clocks;
+        clktest = cpu68k_clocks;
+        clx     = cpu68k_clocks;
 
-	long ticks=( now - last_decisecond );                    // update COPS 1/10th second clock.
-	while (ticks>100) {ticks-=100; decisecond_clk_tick(); last_decisecond=now;}
-
-
-    if (EmulateLoop(now) )                                   // 68K execution
-	{            
-		ALERT_LOG(0,"REBOOTED?");                            // Did we reboot?
-		lisa_rebooted();
-        barrier=0;
-		return;
-	}
-
-	elapsed=runtime.Time();                                  // get time after exist of execution loop
+        long ticks=( now - last_decisecond );                    // update COPS 1/10th second clock.
+        while (ticks>100) {ticks-=100; decisecond_clk_tick(); last_decisecond=now;}
 
 
-	if ( (elapsed - last_runtime_sample) > 1000  && running) // update status bar every 1000ms, and check print jobs too
-	{
-		   static int ctr;
-           Update_Status(elapsed,idleentry);
-		   if ((ctr++)>9) {iw_check_finish_job(); ctr=0;}
-    }
+        if  (EmulateLoop(now) )                                   // 68K execution
+            {            
+                ALERT_LOG(0,"REBOOTED?");                            // Did we reboot?
+                lisa_rebooted();
+                barrier=0;
+                return;
+            }
 
-    // anything to paste to the keyboard?
-    if (wspaste_to_keyboard.Len()<8102 && wspaste_to_keyboard.Len()>idx_paste_to_kb && (copsqueuelen>=0 && copsqueuelen<MAXCOPSQUEUE-8) )
-        {DEBUG_LOG(0,"pasting to kb"); keystroke_cops( paste_to_keyboard[idx_paste_to_kb++] );}
-
-   }
-   else // we are not running, or we are paused, so yield and sleep a bit
-   {
-	  
-	  last_runtime_sample=0;
-	  lastcrtrefresh=0;
-   }
+        elapsed=runtime.Time();                                  // get time after exist of execution loop
 
 
+        if  ( (elapsed - last_runtime_sample) > 1000  && running) // update status bar every 1000ms, and check print jobs too
+            {
+                static int ctr;
+                Update_Status(elapsed,idleentry);
+                if ((ctr++)>9) {iw_check_finish_job(); ctr=0;}
+            }
 
-   #ifndef __WXOSX__
-     {
-	  static unsigned int x;
-	  x++;
-	  if (x>15)  {
-		          x=0;
-		          videoramdirty=32768; 
-			      Refresh(false,NULL);
-			     }
-     }
-   #endif
+        // anything to paste to the keyboard?  **TODO** Valgrind reports this here: ==24726== Conditional jump or move depends on uninitialised value(s)
+        if  (wspaste_to_keyboard.Len()<8102 && wspaste_to_keyboard.Len()>idx_paste_to_kb && (copsqueuelen>=0 && copsqueuelen<MAXCOPSQUEUE-8) )
+            {ALERT_LOG(0,"pasting to kb"); keystroke_cops( paste_to_keyboard[idx_paste_to_kb++] );}
+
+      }
+  else // else for   if  (running==emulation_running) we are not running, or we are paused, so yield and sleep a bit
+      {
+        last_runtime_sample=0;
+        lastcrtrefresh=0;
+      }
+
+  #ifndef __WXOSX__
+  {   // force an extra full display refresh every 15 cycles on OS X
+      static unsigned int x;
+      x++;
+      if (x>15) {
+                  x=0;
+                  videoramdirty=32768; 
+                  Refresh(false,NULL);
+                }
+  }
+  #endif
 
 
 barrier=0;
 }
-///////////////////////
-
-
+//---------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 
 void LisaEmFrame::OnPasteToKeyboard(wxCommandEvent& WXUNUSED(event))
@@ -1366,136 +1814,152 @@ void LisaEmFrame::OnPasteToKeyboard(wxCommandEvent& WXUNUSED(event))
     }
 }
 
+void set_hidpi_scale(void);
+
+
+// the: wxALWAYS_SHOW_SB causes "../src/gtk/scrolwin.cpp(227): assert "scrolled" failed in DoShowScrollbars(): window must be created"
 LisaWin::LisaWin(wxWindow *parent)
-        : wxScrolledWindow(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize,
-                   wxRAISED_BORDER|wxVSCROLL|wxHSCROLL|wxWS_EX_PROCESS_IDLE
-#ifdef wxALWAYS_SHOW_SB
-|wxALWAYS_SHOW_SB
-#endif
+        : wxScrolledWindow(parent, wxID_ANY, wxDefaultPosition, wxSize(ISKINSIZE),
+          wxBORDER_THEME|wxVSCROLL|wxHSCROLL|wxWS_EX_PROCESS_IDLE |wxFULL_REPAINT_ON_RESIZE
+//#ifdef wxALWAYS_SHOW_SB
+//|wxALWAYS_SHOW_SB
+//#endif
 #ifdef wxMAXIMIZE
 |wxMAXIMIZE
 #endif
-                                   )
+)
 {
-       mousemoved=0;
+    mousemoved=0;
 
-	   floppystate = FLOPPY_NEEDS_REDRAW | FLOPPY_EMPTY; // set floppy state and force refresh
-       powerstate = POWER_NEEDS_REDRAW;                  // set power state and force refresh
-       //repaintall = REPAINT_NOTHING;
+    floppystate = FLOPPY_NEEDS_REDRAW | FLOPPY_EMPTY; // set floppy state and force refresh
+    powerstate  = POWER_NEEDS_REDRAW;                  // set power state and force refresh
+    //repaintall = REPAINT_NOTHING;
 
-       repaintall = REPAINT_INVALID_WINDOW;
+    repaintall  = REPAINT_INVALID_WINDOW;
 
-       rawidx=0;
+    rawidx=0;
 
-       SetExtraStyle(wxWS_EX_PROCESS_IDLE );
+    SetExtraStyle(wxWS_EX_PROCESS_IDLE );
 
-       // deprecated // SetInitialBestSize(wxSize(IWINSIZE));
+    int screensizex,screensizey;   // my_lisaframe is still null.
+    wxDisplaySize(&screensizex,&screensizey);
 
-	   //wxScreenDC theScreen;          // I know I do this in the frame too, but when this runs,
-	   int screensizex,screensizey;   // my_lisaframe is still null.
-	   //theScreen.GetSize(&screensizex,&screensizey);
+    DEBUG_LOG(0,"LisaWin constructor");
+    // Grrr! OS X sometimes returns garbage here
 
-	   wxDisplaySize(&screensizex,&screensizey);
+    // fucked up thing here, if you have a 4K display and are using wx3.1.1 you're told
+    // the display is 4k, if you're using 3.1.2 it lies to you and says you have 1080p! Argh!
+    if  (screensizex< 0 || screensizex>16384 || screensizey<0 || screensizey>16384)
+        {
+            ALERT_LOG(0,"Got Garbage lisawin Screen Size: %d,%d",screensizex,screensizey);
+            screensizex=1024; screensizey=768;
+        }
+    else
+        {
+            if (my_lisaframe) {my_lisaframe->screensizex=screensizex;my_lisaframe->screensizey=screensizey;}
+        }
 
-	   // Grrr! OS X sometimes returns garbage here
-	   if (screensizex< 0 || screensizex>8192 || screensizey<0 || screensizey>2048)
-	         {
-		      ALERT_LOG(0,"Got Garbage lisawin Screen Size: %d,%d",screensizex,screensizey);
-		      screensizex=1024; screensizey=768;
-	         }
-	   else
-		     {
-  		      if (my_lisaframe) {my_lisaframe->screensizex=screensizex;my_lisaframe->screensizey=screensizey;}
-//			  ALERT_LOG(0,"LisaWin - Screen size is:%d,%d",screensizex,screensizey);
-		     }
+    ALERT_LOG(0,"skins is:%d", skins_on);
+    if  (skins_on)
+        {
+            DEBUG_LOG(0,"Setting widnow sizes");
+            set_hidpi_scale();
+            SetMinSize(wxSize(_H(720),_H(500)) ); //IWINSIZE previously
+            SetSize(wxSize(IWINSIZE));
+            SetMaxSize(wxSize(ISKINSIZE)); // not this guy
+            DEBUG_LOG(0,"Setting scrollbars");
+            SetScrollbars(ISKINSIZEX/(_H(100)), ISKINSIZEY/_H(100),  _H(100),_H(100),  0,0,  true);
 
+            DEBUG_LOG(0,"Enabling scrolling");
+            EnableScrolling(true,true);
 
-       if (skins_on)
-       {
-         SetMinSize(wxSize(720,384)); //IWINSIZE previously
-         SetSize(wxSize(IWINSIZE));
-         SetMaxSize(wxSize(ISKINSIZE));
-         SetScrollbars(ISKINSIZEX/100, ISKINSIZEY/100,  100,100,  0,0,  true);
-         EnableScrolling(true,true);
+            skin.screen_origin_x=skin.default_screen_origin_x;
+            skin.screen_origin_y=skin.default_screen_origin_y;
 
-         screen_origin_x=140;
-         screen_origin_y=130;
-       }
-       else  //------------------------ skinless ----------------------------------------------------
-       {
-         switch (lisa_ui_video_mode)
-         {
-               default:
-                case 0:   effective_lisa_vid_size_x=720;   effective_lisa_vid_size_y=500;      break;
-                case 1:   effective_lisa_vid_size_x=720;   effective_lisa_vid_size_y=364*2;    break;
-                case 2:   effective_lisa_vid_size_x=720;   effective_lisa_vid_size_y=364;      break;
-                case 3:   effective_lisa_vid_size_x=720*2; effective_lisa_vid_size_y=364*3;    break;
-                case 4:   effective_lisa_vid_size_x=720;   effective_lisa_vid_size_y=500;      break;
-                case 0x3a:effective_lisa_vid_size_x=608;   effective_lisa_vid_size_y=431;      break;
-         }
+            DEBUG_LOG(0,"Set window size to %d,%d",ISKINSIZEX,ISKINSIZEY);
+        }
+    else  //------------------------ skinless ----------------------------------------------------
+        {
+            int x,y;
+            setvideomode(lisa_ui_video_mode);
 
+            y=myConfig->Read(_T("/lisawin/sizey"),(long)effective_lisa_vid_size_y);
+            x=myConfig->Read(_T("/lisawin/sizex"),(long)effective_lisa_vid_size_x);
+            if (x<=0 || x>4096 || y<=0 || y>2048) {x=effective_lisa_vid_size_x;y=effective_lisa_vid_size_y;}
 
+            if  (x>screensizex || y>screensizey)         // if the saved/defaults are too large correct them
+                {
+                    x=MIN(o_effective_lisa_vid_size_x,screensizex-100);
+                    y=MIN(o_effective_lisa_vid_size_y,screensizey-150);
+                    DEBUG_LOG(0,"Resetting screen size to:%ld,%ld since screensize is %ld, %ld",(long)x,(long)y,
+                                  (long)screensizex, (long)screensizey);
+                }
 
-         int x,y;
+            SetMinSize( wxSize( _H(720),_H(500) ) );
+            DEBUG_LOG(0,"Set window size to %d,%d",x,y);
+            SetClientSize(wxSize(x,y));                                                         // LisaWin //
+            SetMaxSize(wxSize(ISKINSIZE));                                                      // LisaWin //
+            GetClientSize(&dwx,&dwy);
+            // Sometimes GetClientSize/SetClientSize return DIFFERNT values.  On OS X this causes the
+            // Lisa window to GROW over time! m@+h3rf*(<R!!!  dwx/dwy is used to figure out the difference,
+            // and then adjust to the size we want.  This is some sick shit that anyone has to code this way.
+            dwx-=x; dwy-=y;
+            DEBUG_LOG(0,"Resetting client size to %ld,%ld",(long)(x-dwx),(long)(y-dwy) );
+            SetClientSize(wxSize(x-dwx,y-dwy));                                                 // LisaWin //
+            SetMinSize(wxSize( _H(720), _H(500) ) );
+            ox=(x  - effective_lisa_vid_size_x)/2;                                              // center display
+            oy=(y  - effective_lisa_vid_size_y)/2;                                              // on skinless
+            ox= (ox<0 ? 0:ox);
+            oy= (oy<0 ? 0:oy);
+            DEBUG_LOG(0,"Disable scrollbars");
+            EnableScrolling(false,false);                                                       // LisaWin //
 
-         y=myConfig->Read(_T("/lisawin/sizey"),(long)effective_lisa_vid_size_y);
-         x=myConfig->Read(_T("/lisawin/sizex"),(long)effective_lisa_vid_size_x);
-         if (x<=0 || x>4096 || y<=0 || y>2048) {x=effective_lisa_vid_size_x;y=effective_lisa_vid_size_y;}
-
-
-         if (x>screensizex || y>screensizey)         // if the saved/defaults are too large correct them
-            {
-              x=MIN(effective_lisa_vid_size_x,screensizex-100);
-              y=MIN(effective_lisa_vid_size_y,screensizey-150);
-            }
-
-//         ALERT_LOG(0,"Setting lisawin size to:%d,%d effective:%d,%d",x,y,
-//                     effective_lisa_vid_size_x,effective_lisa_vid_size_y);
-
-         SetMinSize(wxSize(720,384));
-         SetClientSize(wxSize(x,y));                                                         // LisaWin //
-         SetMaxSize(wxSize(ISKINSIZE));                                                      // LisaWin //
-         GetClientSize(&dwx,&dwy);
-         // Sometimes GetClientSize/SetClientSize return DIFFERNT values.  On OS X this causes the
-         // Lisa window to GROW over time! m@+h3rf*(<R!!!  dwx/dwy is used to figure out the difference,
-		 // and then adjust to the size we want.  This is some sick shit that anyone has to code this way.
-         dwx-=x; dwy-=y;
-         SetClientSize(wxSize(x-dwx,y-dwy));                                                 // LisaWin //
-         SetMinSize(wxSize(720,384));
-         ox=(x  - effective_lisa_vid_size_x)/2;                                              // center display
-         oy=(y  - effective_lisa_vid_size_y)/2;                                              // on skinless
-         ox= (ox<0 ? 0:ox);
-         oy= (oy<0 ? 0:oy);
-
-         EnableScrolling(false,false);                                                       // LisaWin //
-
-       } // --------------------------------------------------------------------------------------------------
+            DEBUG_LOG(0,"done.");
+        } // --------------------------------------------------------------------------------------------------
 
 
-       RePainter=&LisaWin::RePaint_AntiAliased;  //RePaint_AAGray;
+        RePainter=&LisaWin::RePaint_AntiAliased;  //RePaint_AAGray;
 
-       /* Draw the VNC-style dot cursor we use later */
-#if defined(__WXX11__) || defined(__WXGTK__) || defined(__WXOSX__)
+        if (!!my_lisabitmap) delete my_lisabitmap;
+        if (!!my_memDC)      delete my_memDC;
 
-#ifdef __WXOSX__
-       /* LSB (0x01) is leftmost. First byte is top row. 1 is black/visible*/
-       char cursor_bits[] = {0x00, 0x0e, 0x0e, 0x0e, 0x00};
-       char mask_bits[]   = {0x1f, 0x1f, 0x1f, 0x1f, 0x1f};
-#else
-       char cursor_bits[] = {0xe0, 0xee, 0xee, 0xee, 0xe0};
-       char mask_bits[]   = {0xe0, 0xe0, 0xe0, 0xe0, 0xe0};
-#endif
+        my_memDC     =new class wxMemoryDC;
+        my_lisabitmap=new class wxBitmap(o_effective_lisa_vid_size_x, o_effective_lisa_vid_size_y,DEPTH);
 
-       wxBitmap bmp = wxBitmap(cursor_bits, 8, 5);
-       bmp.SetMask(new wxMask(wxBitmap(mask_bits, 8, 5)));
+        my_memDC->SelectObjectAsSource(*my_lisabitmap);
+        my_memDC->SetBrush(FILLERBRUSH);      my_memDC->SetPen(FILLERPEN);
+        my_memDC->DrawRectangle(0 ,   0,   effective_lisa_vid_size_x, effective_lisa_vid_size_y);
 
-       wxImage img = bmp.ConvertToImage();
-       img.SetOption(wxIMAGE_OPTION_CUR_HOTSPOT_X, _T("2"));
-       img.SetOption(wxIMAGE_OPTION_CUR_HOTSPOT_Y, _T("2"));
+        #ifdef DEBUG
+        if (!my_memDC->IsOk())      ALERT_LOG(0,"my_memDC is not ok.");
+        if (!my_lisabitmap->IsOk()) ALERT_LOG(0,"my_lisabitmap is not ok.");
+        #endif
 
-       m_dot_cursor = new wxCursor(img);
-#endif
+
+        /* Draw the VNC-style dot cursor we use later */
+        #if defined(__WXX11__) || defined(__WXGTK__) || defined(__WXOSX__)
+          #ifdef __WXOSX__
+          /* LSB (0x01) is leftmost. First byte is top row. 1 is black/visible*/
+            const unsigned char cursor_bits[] = {0x00, 0x0e, 0x0e, 0x0e, 0x00};
+            const unsigned char mask_bits[]   = {0x1f, 0x1f, 0x1f, 0x1f, 0x1f};
+          #else
+            const unsigned char cursor_bits[] = {0xe0, 0xee, 0xee, 0xee, 0xe0};
+            const unsigned char mask_bits[]   = {0xe0, 0xe0, 0xe0, 0xe0, 0xe0};
+          #endif
+
+        wxBitmap bmp = wxBitmap((const char *)cursor_bits, 8, 5, 1);
+        bmp.SetMask(new wxMask(wxBitmap((const char *)mask_bits, 8, 5, 1)));
+
+        wxImage img = bmp.ConvertToImage();
+
+        img.SetOption(wxIMAGE_OPTION_CUR_HOTSPOT_X, _T("2"));
+        img.SetOption(wxIMAGE_OPTION_CUR_HOTSPOT_Y, _T("2"));
+
+        m_dot_cursor = new wxCursor(img); // valgrind: ==24726== Invalid read of size 32
+        #endif
 }
+
+
 
 LisaWin::~LisaWin(void)
 {
@@ -1511,13 +1975,13 @@ void LisaEmFrame::OnVideoAntiAliased(wxCommandEvent& WXUNUSED(event))
     {
         wxString msg;
         msg.Printf(_T("Your display is only (%d,%d).  This mode needs at least (%d,%d), will shut off skins."),
-                   screensizex,screensizey,  IWINSIZEX,IWINSIZEY);
+                    screensizex,screensizey,  IWINSIZEX,IWINSIZEY);
         wxMessageBox(msg,_T("The display is too small"));
         turn_skins_off();
 
-        if (screensizey<IWINSIZEY) {my_lisawin->SetVideoMode(2); return;}  // even still too small, go raw bits mode.
+        if (screensizey<IWINSIZEY) {my_lisawin->SetVideoMode(vidmod_raw); return;}  // even still too small, go raw bits mode.
     }
-    my_lisawin->SetVideoMode(0);
+    my_lisawin->SetVideoMode(vidmod_aa);
 }
 
 
@@ -1527,17 +1991,19 @@ void LisaEmFrame::OnVideoAAGray(wxCommandEvent& WXUNUSED(event))
     if (screensizex<IWINSIZEX || screensizey<IWINSIZEY)
     {
         wxString msg;
-		msg.Printf(_T("Your display is only (%d,%d).  This mode needs at least (%d,%d), will shut off skins."),
-                   screensizex,screensizey,  IWINSIZEX,IWINSIZEY);
+        msg.Printf(_T("Your display is only (%d,%d).  This mode needs at least (%d,%d), will shut off skins."),
+                    screensizex,screensizey,  IWINSIZEX,IWINSIZEY);
         wxMessageBox(msg,wxT("The display is too small"));
         turn_skins_off();
-        if (screensizey<IWINSIZEY) {my_lisawin->SetVideoMode(2); return;}
+        if (screensizey<IWINSIZEY) {my_lisawin->SetVideoMode(vidmod_raw); return;}
     }
 
-    my_lisawin->SetVideoMode(4);
+    my_lisawin->SetVideoMode(vidmod_aag);
 }
+
+
 //void LisaEmFrame::OnVideoScaled(wxCommandEvent& WXUNUSED(event))          {my_lisawin->SetVideoMode(5);}
-void LisaEmFrame::OnVideoSingleY(wxCommandEvent& WXUNUSED(event))           {my_lisawin->SetVideoMode(2);}
+void LisaEmFrame::OnVideoSingleY(wxCommandEvent& WXUNUSED(event))           {my_lisawin->SetVideoMode(vidmod_raw);}
 
 
 void LisaEmFrame::OnVideoDoubleY(wxCommandEvent& WXUNUSED(event))
@@ -1546,15 +2012,15 @@ void LisaEmFrame::OnVideoDoubleY(wxCommandEvent& WXUNUSED(event))
     if (screensizex<720+40 || screensizey<364*2+50)
     {
      wxString msg;
-		msg.Printf(_T("Your display is only (%d,%d).  This mode needs at least (%d,%d)."),
+        msg.Printf(_T("Your display is only (%d,%d).  This mode needs at least (%d,%d)."),
                 screensizex,screensizey,  720+40,364*2+50 );
         wxMessageBox(msg,wxT("The display is too small"));
 
      // oops!  The display size changed on us since the last time. i.e. notebook with small screen
      // previously connected to large monitor, now on native LCD
-     if (lisa_ui_video_mode==1 || lisa_ui_video_mode==3)
+     if (lisa_ui_video_mode==vidmod_2y || lisa_ui_video_mode==vidmod_3y)
         {
-          my_lisawin->SetVideoMode(2); turn_skins_off();
+          my_lisawin->SetVideoMode(vidmod_raw); turn_skins_off();
         }
 
      return;
@@ -1566,7 +2032,7 @@ void LisaEmFrame::OnVideoDoubleY(wxCommandEvent& WXUNUSED(event))
      if (yesnomessagebox("This mode doesn't work with the Lisa Skin.  Shut off the skin?",
                          "Remove Skin?")==0) return;
     }
-    my_lisawin->SetVideoMode(1);
+    my_lisawin->SetVideoMode(vidmod_2y);
     turn_skins_off();
 }
 
@@ -1584,145 +2050,357 @@ void LisaEmFrame::OnVideo2X3Y(wxCommandEvent& WXUNUSED(event))
      // previously connected to large monitor, now on native LCD
      if (lisa_ui_video_mode==1 || lisa_ui_video_mode==3)
         {
-          my_lisawin->SetVideoMode(2);
+          my_lisawin->SetVideoMode(vidmod_raw);
           turn_skins_off();
         }
-
 
      return;
     }
 
     if (skins_on)
     {
-     if (yesnomessagebox("This mode doesn't work with the Lisa Skin.  Shut off the skin?",
-                         "Remove Skin?")==0) return;
+         if (yesnomessagebox("This mode doesn't work with the Lisa Skin.  Shut off the skin?",
+                             "Remove Skin?")==0) return;
     }
 
-    my_lisawin->SetVideoMode(3);
+    my_lisawin->SetVideoMode(vidmod_3y);
     turn_skins_off();
 }
 
 
-
-void LisaEmFrame::OnSkinsOn(wxCommandEvent& WXUNUSED(event))
+void LisaEmFrame::OnSkins(wxCommandEvent& WXUNUSED(event))
 {
- if (lisa_ui_video_mode==1 || lisa_ui_video_mode==3)
- {
-   if (yesnomessagebox("The current display mode doesn't work with the Lisa Skin. Change modes?",
-                       "Change Display Mode?")==0) return;
 
-    setvideomode(0);
-  }
+    if (skins_on)
+    {
+        // Turn off skins
+        skins_on_next_run=0;
+        skins_on=0;
+        turn_skins_off();
+    }
+    else
+    {
+        // Turn on Skins
+        if (lisa_ui_video_mode==vidmod_2y || lisa_ui_video_mode==vidmod_3y)
+        {
+            if (yesnomessagebox("The current display mode doesn't work with the Lisa Skin. Change modes?",
+                                "Change Display Mode?")==0) return;
+                setvideomode(vidmod_aa);
+        }
 
-  skins_on_next_run=1;
-  skins_on=1;
-  turn_skins_on();
+       skins_on_next_run=1;
+       skins_on=1;
+       turn_skins_on();
+    }
 }
 
 
-void LisaEmFrame::OnSkinsOff(wxCommandEvent& WXUNUSED(event))
+// Something is really fucked in wxWidgets, and it's been that way since at least 2.7.x as I had to do this with earlier
+// LisaEms. Why? Unless I had some horrendous bug in LisaEm that I never caught for the last 12 years.
+//
+// I couldn't blit the whole skin onto the skin DC from an image, instead I had to break it up into 4 segments, which isn't
+// terrible as the lower quarter of the skin is where the power button is and when it's light, the whole 4th segment has
+// a glow to it. But why doesn't just work as it should?
+// 
+// If I use stretchblit 4x, it only works for the first of the 4 segments, but the rest show up as garbage, but other blits
+// later such as the floppy or power animations have no issues, so what the fuck?
+// The 2nd to last blits show trash in the image, even pulling in stuff from other windows in other apps like
+// terminals and whatever else is open on the machine.
+// 
+// And reversing the order of the 4 segments produces the same fucked up issue where the bottom 1/4 is shown correctly at the top
+// The 0th fragment works fine, but the 1st, 2nd, and 3rd produce garbage, why? Testing the DC says it's ok. But it isn't. Why not?
+// 
+// And the fuckedupedness of this exists in the actual image itself because taking a screenshot with skins saves it to disk
+// into the png file. So it's not just a display bug.
+//
+// What the actual fuck? The fix is to use a temporary image which I call "skinny", use the normal 4x blit, and then one single
+// StretchBlit at the end. But why didn't 4x StretchBlits work, and why do I need a temporary image that I have to new/delete?
+// Dear wxDevs, please fix this shyte!
+
+void prepare_skin(void)
 {
- skins_on_next_run=0;
- skins_on=0;
- turn_skins_off();
+    if (!my_lisaframe) return;
+    if (!my_skin0DC || !my_skin1DC || !my_skin2DC || !my_skin3DC) my_lisaframe->LoadImages();
+
+    wxBitmap   *skinny=NULL;    
+    wxMemoryDC *skinnyDC =NULL;
+
+    set_hidpi_scale();
+    setup_hidpi();
+
+    skin.width_size =my_skin0->GetWidth();
+    skin.height_size=my_skin0->GetHeight() +
+                     my_skin1->GetHeight() + 
+                     my_skin2->GetHeight() +  
+                     my_skin3->GetHeight() ;
+
+    skinny   = new wxBitmap(skin.width_size, skin.height_size, wxBITMAP_SCREEN_DEPTH);
+    skinnyDC = new class wxMemoryDC;
+    skinnyDC->SelectObjectAsSource(*skinny);
+
+    int y=0;
+    skinnyDC->Blit(0,y, my_skin0->GetWidth(),my_skin0->GetHeight(),my_skin0DC, 0,0 ,wxCOPY, false);   y+=my_skin0->GetHeight();
+    skinnyDC->Blit(0,y, my_skin1->GetWidth(),my_skin1->GetHeight(),my_skin1DC, 0,0 ,wxCOPY, false);   y+=my_skin1->GetHeight();
+    skinnyDC->Blit(0,y, my_skin2->GetWidth(),my_skin2->GetHeight(),my_skin2DC, 0,0 ,wxCOPY, false);   y+=my_skin2->GetHeight();
+    skinnyDC->Blit(0,y, my_skin3->GetWidth(),my_skin3->GetHeight(),my_skin3DC, 0,0 ,wxCOPY, false); //y+=my_skin3->GetHeight();
+
+    my_skinDC->StretchBlit(0,0, _H(skinny->GetWidth() ), _H(skinny->GetHeight() ), skinnyDC, 
+                           0,0,    skinny->GetWidth(),      skinny->GetHeight(),   wxCOPY, false);    
+
+    delete skinnyDC;  // what a fucking waste!
+    delete skinny;
 }
 
-void LisaEmFrame::OnRefresh60Hz(wxCommandEvent& WXUNUSED(event)) {hostrefresh=1000/60; refresh_rate=1*REFRESHRATE; refresh_rate_used=refresh_rate;save_global_prefs();}
-void LisaEmFrame::OnRefresh20Hz(wxCommandEvent& WXUNUSED(event)) {hostrefresh=1000/20; refresh_rate=3*REFRESHRATE; refresh_rate_used=refresh_rate;save_global_prefs();}
-void LisaEmFrame::OnRefresh12Hz(wxCommandEvent& WXUNUSED(event)) {hostrefresh=1000/12; refresh_rate=5*REFRESHRATE; refresh_rate_used=refresh_rate;save_global_prefs();}
-void LisaEmFrame::OnRefresh8Hz( wxCommandEvent& WXUNUSED(event)) {hostrefresh=1000/ 8; refresh_rate=7*REFRESHRATE; refresh_rate_used=refresh_rate;save_global_prefs();}
-void LisaEmFrame::OnRefresh4Hz( wxCommandEvent& WXUNUSED(event)) {hostrefresh=1000/ 4; refresh_rate=9*REFRESHRATE; refresh_rate_used=refresh_rate;save_global_prefs();}
-
-void LisaEmFrame::OnHideHostMouse(wxCommandEvent& WXUNUSED(event)) {hide_host_mouse=!hide_host_mouse; save_global_prefs();}
-
-
-
-extern "C" long get_wx_millis(void)
+void LisaEmFrame::resize_lisaframe(int newscale)
 {
- return my_lisaframe->runtime.Time();
+  int wx, wy, screensizex, screensizey;
+  float resize=newscale/hidpi_scale;
+  //wxSize maxsize;
+  wxDisplaySize(&screensizex,&screensizey);
+
+  //wx=GetMaxWidth()  * resize;  
+  //wy=GetMaxHeight() * resize;  
+  //
+  //if (wx>screensizex) wx=screensizex-32;
+  //if (wy>screensizey) wy=screensizey-32;
+  //
+  //maxsize.x=wx; maxsize.y=wy; if (my_lisawin) my_lisawin->SetMaxSize(&maxsize);
+  //
+  GetSize(&wx,&wy);
+  wx=wx*resize; wy=wy*resize;
+
+  if (wx>screensizex) wx=screensizex-32;
+  if (wy>screensizey) wy=screensizey-32;
+  SetSize(wx,wy);
+  // meh //CentreOnScreen(wxBOTH);
 }
 
+#define SCALE_MENU(XscaleX)                                             \
+  void LisaEmFrame::OnScale##XscaleX(  wxCommandEvent& WXUNUSED(event)) \
+       {resize_lisaframe(XscaleX/100);                                  \
+        hidpi_scale=(XscaleX/100.0);                                    \
+        save_global_prefs(); prepare_skin();                            \
+        ALERT_LOG(0,"OnScaleMenu Zoom %f",hidpi_scale);                 \
+        set_hidpi_scale(); update_menu_checkmarks(); }
 
+SCALE_MENU(100);
+SCALE_MENU(125);
+SCALE_MENU(150);
+SCALE_MENU(175);
+SCALE_MENU(200);
+SCALE_MENU(225);
+SCALE_MENU(250);
+SCALE_MENU(275);
+SCALE_MENU(300);
+
+void LisaEmFrame::OnZoomIn( wxCommandEvent &event)
+{
+    ALERT_LOG(0,"zoom in from: hidpi_scale:%d",(int)(hidpi_scale * 100));
+    switch((int)(hidpi_scale * 100))
+    {
+        case 100:  OnScale125(event); break;
+        case 125:  OnScale150(event); break;
+        case 150:  OnScale175(event); break;
+        case 175:  OnScale200(event); break;
+        case 200:  OnScale225(event); break;
+        case 225:  OnScale250(event); break;
+        case 250:  OnScale275(event); break;
+        case 275:  OnScale300(event); break;
+        case 300:  break;
+    }
+}
+
+void LisaEmFrame::OnZoomOut( wxCommandEvent &event)
+{
+    ALERT_LOG(0,"zoom out from: hidpi_scale:%d",(int)(hidpi_scale * 100));
+    switch((int)(hidpi_scale * 100))           // zoom out
+    {
+        case 100:  break;
+        case 125:  OnScale100(event); break;
+        case 150:  OnScale125(event); break;
+        case 175:  OnScale150(event); break;
+        case 200:  OnScale175(event); break;
+        case 225:  OnScale200(event); break;
+        case 250:  OnScale225(event); break;
+        case 275:  OnScale250(event); break;
+        case 300:  OnScale275(event); break;
+    }
+}
+
+#ifdef EVT_GESTURE_ZOOM
+void LisaEmFrame::OnZoom( wxZoomGestureEvent& evt)
+{
+     wxCommandEvent evx;
+     wxCommandEvent& ev = evx;
+     ALERT_LOG(0,"scale/zoom in/out event %f",evt.GetZoomFactor());
+
+     if (evt.GetZoomFactor()>1.0) OnZoomIn(ev);
+     else                         OnZoomOut(ev);
+}
+#endif
+
+
+void LisaEmFrame::OnFullScreen(   wxCommandEvent& WXUNUSED(event)) 
+{
+    //int isfullscreen=IsFullScreen();
+    int   isfullscreen;
+    if (!FullScreenCheckMenuItem) return; // incase we somehow got here before the menu was built
+    
+    isfullscreen=FullScreenCheckMenuItem->IsChecked();
+    #ifdef __WXOSX__
+      EnableFullScreenView(!IsFullScreen());
+    #else
+      // likely it's a bad idea to be in full screen without the ability to show the menu
+      // not sure if OS X will show it anyway when you move the mouse up
+      #ifndef SHOW_MENU_IN_FULLSCREEN
+        ShowFullScreen(isfullscreen,wxFULLSCREEN_ALL);
+      #else
+        ShowFullScreen(isfullscreen,wxFULLSCREEN_NOTOOLBAR | wxFULLSCREEN_NOSTATUSBAR |
+                                     wxFULLSCREEN_NOBORDER  | wxFULLSCREEN_NOCAPTION );
+      #endif
+    #endif
+
+    update_menu_checkmarks();
+    save_global_prefs();
+}
+
+// should look into making these C++ templates instead
+#define OnRefresh(XHertzX)                                              \
+void LisaEmFrame::OnRefresh##XHertzX(  wxCommandEvent& WXUNUSED(event)) \
+{                                                                       \
+     hostrefresh=1000/XHertzX; refresh_rate=1*REFRESHRATE;              \
+     refresh_rate_used=refresh_rate;                                    \
+     save_global_prefs();update_menu_checkmarks();                      \
+}
+
+OnRefresh(60);
+OnRefresh(20);
+OnRefresh(12);
+OnRefresh(8);
+OnRefresh(4);
+
+void LisaEmFrame::OnHideHostMouse(wxCommandEvent& WXUNUSED(event)) 
+{ hide_host_mouse=!hide_host_mouse;   save_global_prefs();}
+
+
+extern "C" long get_wx_millis(void) { return my_lisaframe->runtime.Time();}
+
+
+
+void set_hidpi_scale(void)
+{
+    int screensizex, screensizey;
+    wxDisplaySize(&screensizex,&screensizey);
+    static float last_hidpi;
+    ALERT_LOG(0,"\n ***** hidpi_scale is currently set to %f ****\n",hidpi_scale);
+
+    if (hidpi_scale==0.0)
+       { 
+          long hdpiscale = myConfig->Read(_T("/hidpi_scale"), (int)(hidpi_scale*100));
+          ALERT_LOG(0,"***** I just read /hidpi_scale %ld from preferences ****",(long) hdpiscale)
+          hidpi_scale=hdpiscale / 100.0;
+          if (hidpi_scale < 1.0) hidpi_scale = 1.0;
+       }
+
+    if (hidpi_scale <1.0)
+       { 
+              if      (screensizey>1800)  hidpi_scale=1.50;
+              else if (screensizey>1080)  hidpi_scale=1.25;
+              else                        hidpi_scale=1.00;
+             ALERT_LOG(0,"hidpi_scale was <1 or uninitialized, resized to =%f\n",hidpi_scale);
+       }
+
+    if (!!DisplayScaleSub && !!my_lisaframe && !!my_lisaframe && last_hidpi!=hidpi_scale)
+       {
+            update_menu_checkmarks();
+            //prepare_skin();
+
+            if (myConfig) 
+               {
+                  myConfig->Write(_T("/hidpi_scale"),(long)(hidpi_scale * 100.0 ) ); 
+                  ALERT_LOG(0,"Write scale to config %f",hidpi_scale);
+               }
+            last_hidpi=hidpi_scale;
+     
+            if (skins_on) {ALERT_LOG(0,"Reloading skins");turn_skins_off(); turn_skins_on();}
+
+            my_lisawin->EnableScrolling(false, false);
+            my_lisawin->SetScrollbars(ISKINSIZEX / _H(100), ISKINSIZEY / _H(100), 100, 100, 0, 0, true);
+            my_lisawin->EnableScrolling(true, true);
+            force_refresh();
+      }
+
+}
 
 
 void save_global_prefs(void)
 {
-  int x,y;
+    int x=0,y=0;
 
-  if (!myConfig)     return;                                 // not initialized yet
-  if (!DisplayMenu)  return;
-  if (!my_lisaframe) return;
-  if (!fileMenu)     return;
+    if (!myConfig)     return;                                 // not initialized yet
+    if (!DisplayMenu)  return;
+    if (!my_lisaframe) return;
+    if (!fileMenu)     return;
 
-  myConfig->Write(_T("/soundeffects"),sound_effects_on);
-  myConfig->Write(_T("/displayskins"),skins_on_next_run);
-  myConfig->Write(_T("/displaymode"), (long)lisa_ui_video_mode);
-  myConfig->Write(_T("/asciikeyboard"), (long)asciikeyboard);
-  myConfig->Write(_T("/lisaconfigfile"),myconfigfile);
-  myConfig->Write(_T("/throttle"),(long)my_lisaframe->throttle);
+    myConfig->Write(_T("/soundeffects"),sound_effects_on);
+    myConfig->Write(_T("/displayskins"),skins_on_next_run);
+    myConfig->Write(_T("/displaymode"), (long)lisa_ui_video_mode);
+    myConfig->Write(_T("/asciikeyboard"), (long)asciikeyboard);
+    myConfig->Write(_T("/lisaconfigfile"),myconfigfile);
+    myConfig->Write(_T("/throttle"),(long)my_lisaframe->throttle);
 
-  myConfig->Write(_T("/emutime"),(long)emulation_time);
-  myConfig->Write(_T("/emutick"),(long)emulation_tick);
+    myConfig->Write(_T("/emutime"),(long)emulation_time);
+    myConfig->Write(_T("/emutick"),(long)emulation_tick);
 
+    myConfig->Write(_T("/refreshrate"),(long)refresh_rate);
+    myConfig->Write(_T("/hidehostmouse"),(long)hide_host_mouse);
 
+    my_lisawin->GetClientSize(&x,&y);
+    myConfig->Write(_T("/lisawin/sizey"),(long)y); //-my_lisawin->dwy);  // 2019.06.19 these are negative!
+    myConfig->Write(_T("/lisawin/sizex"),(long)x); //-my_lisawin->dwx);
+    my_lisaframe->GetClientSize(&x,&y);
+    myConfig->Write(_T("/lisaframe/sizey"),(long)y); //-my_lisaframe->dwy);
+    myConfig->Write(_T("/lisaframe/sizex"),(long)x); //-my_lisaframe->dwx);
+    myConfig->Write(_T("/lisaframe/fullscreen"),(long)(my_lisaframe->IsFullScreen()) );
 
-  myConfig->Write(_T("/refreshrate"),(long)refresh_rate);
-  myConfig->Write(_T("/hidehostmouse"),(long)hide_host_mouse);
+    myConfig->Write(_T("/hidpi_scale"),(long)(hidpi_scale * 100.0 ) );
 
-  my_lisawin->GetClientSize(&x,&y);
-  myConfig->Write(_T("/lisawin/sizey"),(long)y-my_lisawin->dwy);
-  myConfig->Write(_T("/lisawin/sizex"),(long)x-my_lisawin->dwx);
-  my_lisaframe->GetClientSize(&x,&y);
-  myConfig->Write(_T("/lisaframe/sizey"),(long)y-my_lisaframe->dwy);
-  myConfig->Write(_T("/lisaframe/sizex"),(long)x-my_lisaframe->dwx);
+    myConfig->Flush(); //valgrind==24726== Conditional jump or move depends on uninitialised value(s)
 
+    if ( refresh_rate!=9*REFRESHRATE  && refresh_rate!=7*REFRESHRATE  &&
+         refresh_rate!=5*REFRESHRATE  && refresh_rate!=3*REFRESHRATE  &&
+         refresh_rate!=  REFRESHRATE                                    ) refresh_rate =  REFRESHRATE;
 
-  myConfig->Flush();
-
-
-
-  DisplayMenu->Check(ID_VID_AA    ,lisa_ui_video_mode==0);  DisplayMenu->Enable(ID_VID_AA    ,lisa_ui_video_mode!=0x3a);
-  DisplayMenu->Check(ID_VID_AAG   ,lisa_ui_video_mode==4);  DisplayMenu->Enable(ID_VID_AAG   ,lisa_ui_video_mode!=0x3a);
-//DisplayMenu->Check(ID_VID_SCALED,lisa_ui_video_mode==5);  DisplayMenu->Enable(ID_VID_SCALED,lisa_ui_video_mode!=0x3a);
-  DisplayMenu->Check(ID_VID_DY    ,lisa_ui_video_mode==1);  DisplayMenu->Enable(ID_VID_DY    ,lisa_ui_video_mode!=0x3a);
-  DisplayMenu->Check(ID_VID_SY    ,lisa_ui_video_mode==2);  DisplayMenu->Enable(ID_VID_SY    ,lisa_ui_video_mode!=0x3a);
-  DisplayMenu->Check(ID_VID_2X3Y  ,lisa_ui_video_mode==3);  DisplayMenu->Enable(ID_VID_2X3Y  ,lisa_ui_video_mode!=0x3a);
-
-  DisplayMenu->Check(ID_VID_SKINS_ON, !!skins_on);
-  DisplayMenu->Check(ID_VID_SKINS_OFF, !skins_on);
-
-  if ( refresh_rate!=9*REFRESHRATE  && refresh_rate!=7*REFRESHRATE  &&
-       refresh_rate!=5*REFRESHRATE  && refresh_rate!=3*REFRESHRATE  &&
-       refresh_rate!=  REFRESHRATE                                    ) refresh_rate =  REFRESHRATE;
-
-  // reinstated as per request by Kallikak
-  my_lisaframe->hostrefresh=1000/60;
-  DisplayMenu->Check(ID_REFRESH_4Hz, refresh_rate==9*REFRESHRATE);  if (refresh_rate==9*REFRESHRATE) my_lisaframe->hostrefresh=1000/ 4;
-  DisplayMenu->Check(ID_REFRESH_8Hz, refresh_rate==7*REFRESHRATE);  if (refresh_rate==7*REFRESHRATE) my_lisaframe->hostrefresh=1000/ 8;
-  DisplayMenu->Check(ID_REFRESH_12Hz,refresh_rate==5*REFRESHRATE);  if (refresh_rate==7*REFRESHRATE) my_lisaframe->hostrefresh=1000/12;
-  DisplayMenu->Check(ID_REFRESH_20Hz,refresh_rate==3*REFRESHRATE);  if (refresh_rate==7*REFRESHRATE) my_lisaframe->hostrefresh=1000/20;
-  DisplayMenu->Check(ID_REFRESH_60Hz,refresh_rate==1*REFRESHRATE);  if (refresh_rate==7*REFRESHRATE) my_lisaframe->hostrefresh=1000/60;
-
-#ifdef DEBUG
-#ifdef TRACE
-  fileMenu->Check(ID_DEBUG,!!debug_log_enabled);
-#endif
-#endif
-
-  DisplayMenu->Check(ID_HIDE_HOST_MOUSE,!!hide_host_mouse);
-
-  keyMenu->Check(ID_ASCIIKB,  asciikeyboard== 1);
-  keyMenu->Check(ID_RAWKB,    asciikeyboard== 0);
-  keyMenu->Check(ID_RAWKBBUF, asciikeyboard==-1);
-
-  updateThrottleMenus(my_lisaframe->throttle);
+    my_lisaframe->hostrefresh=1000/60;
+    update_menu_checkmarks();
 }
 
 
 void LisaEmFrame::SetStatusBarText(wxString &msg) {SetStatusText(msg,0);}
 
 DECLARE_APP(LisaEmApp)           // Implements LisaEmApp& GetApp()
-IMPLEMENT_APP(LisaEmApp)         // Give wxWidgets the means to create a LisaEmApp object
+IMPLEMENT_APP(LisaEmApp)         // Give wxWidgets the means to create a LisaEmApp object //valgrind reports:: Conditional jump or move depends on uninitialised value(s)
+
+
+void LisaEmApp::LisaSkinConfig(void)
+{
+    wxStandardPathsBase& stdp = wxStandardPaths::Get();
+    wxString defaultconfig = wxGetHomeDir();
+    wxString rscDir = stdp.GetResourcesDir() + wxFileName::GetPathSeparator(wxPATH_NATIVE);
+    wxString sndfile;
+
+    // stare not upon the insanity that predated this code, for it was written by drunkards! (*Burp*)
+    sndfile=rscDir + skin.floppy_eject;           my_floppy_eject  =       new wxSound(sndfile);
+
+    myconfigfile=myConfig->Read(_T("/lisaskin"),defaultconfig);
+
+    pConfig=new wxFileConfig(_T("LisaEm"),
+                             _T("sunder.NET"),
+                             (myconfigfile),     //local
+                             (myconfigfile),     //global
+                             wxCONFIG_USE_LOCAL_FILE,
+                             wxConvAuto() );   // or wxConvUTF8
+}
 
 
 // Initialize the application
@@ -1731,33 +2409,24 @@ bool LisaEmApp::OnInit()
     wxString argv1;
     wxString Ext;
 
-	wxString defaultconfig = wxGetHomeDir();
+    wxString defaultconfig = wxGetHomeDir();
+
+    // call default behaviour (mandatory)
+    if (!wxApp::OnInit()) return false;
+
     #ifdef __UNIX__
-    if (defaultconfig.Last() != wxT('/') )  defaultconfig  <<wxT("/lisaem.conf");
+    if (defaultconfig.Last() != wxT('/') )   defaultconfig  <<wxT("/lisaem.conf");
     #else
     if (defaultconfig.Last() != wxT('\\') )  defaultconfig  <<wxT("\\lisaem.conf");
     #endif
 
     myConfig = wxConfig::Get();         // this one is the global configuration for the app.
                                         // get the path to the last opened Lisaconfig and load that.
-
     myconfigfile=myConfig->Read(_T("/lisaconfigfile"),defaultconfig);
 
-    // override config file on startup if passed a parameter.
-    if (argc>1)
-    {
-      argv1.Printf(_T("%s"),argv[1]);
-      const char *ext=strstr(
-                  (const char *)(argv1.fn_str()),
-                  (const char *)(".lisaem"));
+    if (on_start_lisaconfig!="") {myconfigfile=on_start_lisaconfig; on_start_lisaconfig="";}
 
-      if (ext!=NULL && strlen(ext)==7)  // ensure the proper extension is contained.
-         {
-            argv1.Printf(_T("%s"),argv[1]);
-            if (wxFile::Exists(argv1) ) myconfigfile=argv1;
-         }
-    }
-
+    ALERT_LOG(0,"Reading this Lisa config...");
 
     pConfig=new wxFileConfig(_T("LisaEm"),
                              _T("sunder.NET"),
@@ -1767,73 +2436,188 @@ bool LisaEmApp::OnInit()
                              wxConvAuto() );   // or wxConvUTF8
 
     // this is a global setting  - must be right before the LisaFrame!
-    skins_on          =(int)myConfig->Read(_T("/displayskins"),(long)1);
-    skins_on_next_run=skins_on;
+    skins_on          = (int)myConfig->Read(_T("/displayskins"),(long)1);
+    skins_on_next_run = skins_on;
 
-    // Create the main application window
-    my_lisaframe=new LisaEmFrame(wxT("LisaEm"));
+    refresh_rate      = (long)myConfig->Read(_T("/refreshrate"),(long)REFRESHRATE);
+    hide_host_mouse   = (int) myConfig->Read(_T("/hidehostmouse"),(long)0);
+    refresh_rate_used = refresh_rate;
+    sound_effects_on  = (int)myConfig->Read(_T("/soundeffects"),(long)1);
+    lisa_ui_video_mode= (int)myConfig->Read(_T("/displaymode"), (long)0);
+    asciikeyboard     = (int)myConfig->Read(_T("/asciikeyboard"),(long)1);
 
-    refresh_rate      =(long)myConfig->Read(_T("/refreshrate"),(long)REFRESHRATE);
-    hide_host_mouse   =(int) myConfig->Read(_T("/hidehostmouse"),(long)0);
-    refresh_rate_used=refresh_rate;
-    sound_effects_on  =(int)myConfig->Read(_T("/soundeffects"),(long)1);
-    lisa_ui_video_mode=(int)myConfig->Read(_T("/displaymode"), (long)0);
-    asciikeyboard     =(int)myConfig->Read(_T("/asciikeyboard"),(long)1);
-    my_lisaframe->throttle=(float)(myConfig->Read(_T("/throttle"),(long)5));
+    emulation_time    = (long)myConfig->Read(_T("/emutime"),(long)100);
+    emulation_tick    = (long)myConfig->Read(_T("/emutick"),(long)75);
 
-    emulation_time=(long)myConfig->Read(_T("/emutime"),(long)100);
-    emulation_tick=(long)myConfig->Read(_T("/emutick"),(long)75);
+    long hdpiscale = myConfig->Read(_T("/hidpi_scale"),    (int)(hidpi_scale * 100));
+    ALERT_LOG(0, "read /hidpi_scale %ld from preferences", (long)hdpiscale)
 
+    // should I get rid of this switch block and allow the user to pass whatever they like?
+    int osz=(int)(on_start_zoom*100);
+    switch(osz)
+    {
+      case 100: hidpi_scale = on_start_zoom; ALERT_LOG(0,"zoom override to %f",hidpi_scale); set_hidpi_scale(); break;
+      case 125: hidpi_scale = on_start_zoom; ALERT_LOG(0,"zoom override to %f",hidpi_scale); set_hidpi_scale(); break;
+      case 150: hidpi_scale = on_start_zoom; ALERT_LOG(0,"zoom override to %f",hidpi_scale); set_hidpi_scale(); break;
+      case 175: hidpi_scale = on_start_zoom; ALERT_LOG(0,"zoom override to %f",hidpi_scale); set_hidpi_scale(); break;
+      case 200: hidpi_scale = on_start_zoom; ALERT_LOG(0,"zoom override to %f",hidpi_scale); set_hidpi_scale(); break;
+      case 225: hidpi_scale = on_start_zoom; ALERT_LOG(0,"zoom override to %f",hidpi_scale); set_hidpi_scale(); break;
+      case 250: hidpi_scale = on_start_zoom; ALERT_LOG(0,"zoom override to %f",hidpi_scale); set_hidpi_scale(); break;
+      case 275: hidpi_scale = on_start_zoom; ALERT_LOG(0,"zoom override to %f",hidpi_scale); set_hidpi_scale(); break;
+      case 300: hidpi_scale = on_start_zoom; ALERT_LOG(0,"zoom override to %f",hidpi_scale); set_hidpi_scale(); break;
 
-//    ALERT_LOG(0,"Initial system start up Throttle:%f clkfactor:%f",
-//              my_lisaframe->throttle,my_lisaframe->clockfactor);
+      default:  // get it from config if it's not on the commandline or if it's invalid on the command line
+                hidpi_scale = (hdpiscale == 0 ? 1 : hdpiscale) / 100.0;
+                ALERT_LOG(0, "Setting HDPI Scale %ld from config, setting to: %f", (long)hdpiscale, hidpi_scale);
+                set_hidpi_scale();
+                break;
+    }
 
-    save_global_prefs();
-
-    DEBUG_LOG(0,"CreatingLisaconfig()");
+    ALERT_LOG(0,"Reading Lisa instance Specific config.");
     my_lisaconfig = new LisaConfig();
-    DEBUG_LOG(0,"Created Lisaconfig()");
 
     pConfig->SetRecordDefaults();
 
-    DEBUG_LOG(0,"Loading Config");
     my_lisaconfig->Load(pConfig, floppy_ram);// load it in
-    DEBUG_LOG(0,"Saving Config");
-    my_lisaconfig->Save(pConfig, floppy_ram);// save it so defaults are created
-
-
-
-    my_lisaframe->running=emulation_off;     // CPU isn't yet turned on
-
+    my_lisaconfig->Save(pConfig, floppy_ram);// save it so defaults are created if the file doesn't exist yet
 
     SetVendorName(_T("sunder.NET"));
     SetAppName(_T("LisaEm"));
-	my_lisawin->repaintall = REPAINT_INVALID_WINDOW;
+
+    if (!my_lisaframe) 
+       {
+          ALERT_LOG(0,"Creating new LisaEmFrame");
+          my_lisaframe=new LisaEmFrame(wxT("LisaEm"));
+          ALERT_LOG(0,"Created LisaEmFrame");
+       }
+
+    if (!my_lisawin) 
+       {
+          ALERT_LOG(0,"Creating new LisaWin");
+          my_lisawin = new LisaWin(my_lisaframe);
+          ALERT_LOG(0,"Created LisaWin");
+       }  
+
+    my_lisaframe->running=emulation_off;     // CPU isn't yet turned on
+    my_lisaframe->throttle=(float)(myConfig->Read(_T("/throttle"),(long)5));
+
+    my_lisawin->repaintall = REPAINT_INVALID_WINDOW;
     my_lisaframe->Show(true);                // Light it up
-	my_lisawin->repaintall = REPAINT_INVALID_WINDOW;
+    my_lisawin->repaintall = REPAINT_INVALID_WINDOW;
+
+    ALERT_LOG(0,"Getting paths");
 
     wxStandardPathsBase& stdp = wxStandardPaths::Get();
-	wxString sndfile;
-	wxString rscDir = stdp.GetResourcesDir() + wxFileName::GetPathSeparator(wxPATH_NATIVE);
-   
-    // stare not upon the insanity that predated this code, for it was written by drunkards! (*Burp*)
-    sndfile=rscDir + _T("floppy_eject.wav");           my_floppy_eject  =       new wxSound(sndfile);
-    sndfile=rscDir + _T("floppy_insert_sound.wav");    my_floppy_insert =       new wxSound(sndfile);
-    sndfile=rscDir + _T("floppy_motor1.wav");          my_floppy_motor1 =       new wxSound(sndfile);
-    sndfile=rscDir + _T("floppy_motor2.wav");          my_floppy_motor2 =       new wxSound(sndfile);
-    sndfile=rscDir + _T("lisa_power_switch01.wav");    my_lisa_power_switch01 = new wxSound(sndfile);
-    sndfile=rscDir + _T("lisa_power_switch02.wav");    my_lisa_power_switch02 = new wxSound(sndfile);
-    sndfile=rscDir + _T("poweroffclk.wav");            my_poweroffclk =         new wxSound(sndfile);
+    wxString sndfile;
+    
+    wxString rscDir = stdp.GetResourcesDir() + wxFileName::GetPathSeparator(wxPATH_NATIVE);
 
-	my_lisaframe->UpdateProfileMenu();
+    ALERT_LOG(0,"Loading sounds");
+    //TODO: may need to remove the rscDir from these as they're going to be in the LisaSkin class defaults instead.
+    sndfile=rscDir + skin.floppy_eject;           my_floppy_eject  =       new wxSound(sndfile);
+    sndfile=rscDir + skin.floppy_insert;          my_floppy_insert =       new wxSound(sndfile);
+    sndfile=rscDir + skin.floppy_motor1;          my_floppy_motor1 =       new wxSound(sndfile);
+    sndfile=rscDir + skin.floppy_motor2;          my_floppy_motor2 =       new wxSound(sndfile);
+    sndfile=rscDir + skin.lisa_power_switch01;    my_lisa_power_switch01 = new wxSound(sndfile);
+    sndfile=rscDir + skin.lisa_power_switch02;    my_lisa_power_switch02 = new wxSound(sndfile);
+    sndfile=rscDir + skin.poweroffclk;            my_poweroffclk =         new wxSound(sndfile);
+    /*
+    my_floppy_eject  =       new wxSound(skin.floppy_eject);
+    my_floppy_insert =       new wxSound(skin.floppy_insert);
+    my_floppy_motor1 =       new wxSound(skin.floppy_motor1);
+    my_floppy_motor2 =       new wxSound(skin.floppy_motor2);
+    my_lisa_power_switch01 = new wxSound(skin.lisa_power_switch01);
+    my_lisa_power_switch02 = new wxSound(skin.lisa_power_switch02);
+    my_poweroffclk =         new wxSound(skin.poweroffclk);
+    */
 
+    ALERT_LOG(0,"Update ProFile menu");
+    my_lisaframe->UpdateProfileMenu();
+
+    if (on_start_skin ==  wxCMD_SWITCH_ON)  turn_skins_on();
+    if (on_start_skin ==  wxCMD_SWITCH_OFF) turn_skins_off();
+
+    on_start_skin=wxCMD_SWITCH_NOT_FOUND; // mark it as not found since we already processed it
+
+    ALERT_LOG(0,"init black");
     black();
 
+    if (on_start_fullscreen==wxCMD_SWITCH_ON || 
+        ( myConfig->Read(_T("/lisaframe/fullscreen"),(long)0) && (on_start_fullscreen!=wxCMD_SWITCH_OFF) ) )
+        {
+          wxCommandEvent foo;
+          on_start_fullscreen=0;
+          my_lisaframe->OnFullScreen(foo);
+          ALERT_LOG(0,"on_start_fullscreen or last state was fullscreen");
+        }
+    setvideomode(lisa_ui_video_mode);
+
+    ALERT_LOG(0,"OnInit Done.")
     return true;
 }
 
 
+char *getbanner(void)
+{
+    const int len=2048;
+    static char banner[len];
+          //         .........1.........2.........3.........4.........5.........6.........7
+          //         123456789012345678901234567890123456789012345678901234567890123456789012345678
+    snprintf(banner,len,
+                    "-----------------------------------------------------------------------\n"
+                    "  The Lisa II Emulator %-17s http://lisaem.sunder.net\n"
+                    "  -------------------------------------------------------------------  \n"
+                    "  Copyright  (C) 2019  by Ray A. Arachelian,   All Rights Reserved     \n"
+                    "  Released  under  the terms of  the  GNU Public License  Version 2.0  \n"
+                    "  -------------------------------------------------------------------  \n"
+                    "  For historical/archival/educational use only - no warranty provied.  \n"
+                    "  -------------------------------------------------------------------  \n"
+                    "  Portions of this software contain bits of code from the following:   \n"
+                    "  generator - www.squish.net/generator  wxWidgets.org  - www.ijg.org   \n"
+                    "  LZ4 Library Copyright (c) 2011-2016, Yann Collet All rights reserved.\n"
+                    "   Many thanks to David T. Craig for the tons of Lisa documentation    \n"
+                    "     Many thanks to James McPhail for Lisa and 68000 hardware help     \n"
+                    "      Many thanks to Brain Folley for the initial OS X UI help         \n"
+                    "-----------------------------------------------------------------------\n\n"
 
+                    #ifdef DEBUG
+                    "DEBUG is compiled in.\n"
+                    #endif
+                    #ifdef DEBUGMEMCALLS
+                    "DEBUGMEMCALLS is enabled.\n"
+                    #endif
+                    ,my_version );
+
+  return banner;
+}
+
+
+void banner(void)    { puts(getbanner());}
+
+
+void LisaEmApp::OnInitCmdLine(wxCmdLineParser& parser)
+{
+    parser.SetDesc (cmdLineDesc);
+    parser.SetSwitchChars (wxT("-"));
+    parser.SetLogo( getbanner() );   
+
+}
+
+
+bool LisaEmApp::OnCmdLineParsed(wxCmdLineParser& parser)
+{
+    on_start_poweron          = parser.Found(wxT("p"));
+    on_start_harddisk         = parser.Found(wxT("d"));
+    on_start_fullscreen       = parser.FoundSwitch(wxT("F"));  // negateable
+    on_start_skin             = parser.FoundSwitch(wxT("s"));  // negateable
+    on_start_quit_on_poweroff = parser.Found(wxT("q"));
+
+    parser.Found(wxT("f"),&on_start_floppy);
+    parser.Found(wxT("c"),&on_start_lisaconfig);
+    parser.Found(wxT("z"),&on_start_zoom);
+
+    return true;
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1887,8 +2671,18 @@ void LisaWin::LogKeyEvent(const wxChar* WXUNUSED(name), wxKeyEvent& event, int k
 
     // on linux for some reason I get keycode=-1 for ALT!!!
     #ifdef __WXX11__
-    if (keycode==-1) keycode=WXK_ALT;
+      if (keycode==-1) { ALERT_LOG(0,"ALT key hit:%d",keycode); keycode=WXK_ALT; }
     #endif
+
+#ifdef DEBUG
+                if (debug_log_onclick)
+                {
+                  debug_log_onclick=0;
+                  debug_log_enabled=!debug_log_enabled;
+                  if (debug_log_enabled) {debug_on("onclick");}
+                  else                   {debug_off(); ALERT_LOG(0,"Debug log turned off on RIGHT CLICK");}
+                }
+#endif
 
     //ALERT_LOG(0,"Received %08x keycode on event %d",keycode,keydir);
     switch ( keycode )
@@ -1897,7 +2691,6 @@ void LisaWin::LogKeyEvent(const wxChar* WXUNUSED(name), wxKeyEvent& event, int k
 // need to implement variations of these for the other keyboard languages too.
 // also should get rid of this and replace it with some sort of table/array instead.
 //
-
         case WXK_LEFT:
         case WXK_NUMPAD_LEFT:        lisakey=KEYCODE_CURSORL;  forcelisakey=1;       break;
 
@@ -1942,8 +2735,6 @@ void LisaWin::LogKeyEvent(const wxChar* WXUNUSED(name), wxKeyEvent& event, int k
         case WXK_ESCAPE:             lisakey=KEYCODE_CLEAR;           break;
         case WXK_SPACE:              lisakey=KEYCODE_SPACE;           break;
         case WXK_DELETE:             lisakey=KEYCODE_BACKSPACE;       break;
-
-
 
         case 'a' :                   lisakey=KEYCODE_A;               break;
         case 'b' :                   lisakey=KEYCODE_B;               break;
@@ -2046,12 +2837,35 @@ void LisaWin::LogKeyEvent(const wxChar* WXUNUSED(name), wxKeyEvent& event, int k
         case        '/':             lisakey=KEYCODE_FSLASHQ;         break;
 
 
-        case WXK_SHIFT:              lisakey=KEYCODE_SHIFT;           break;
-        case WXK_ALT:                lisakey=KEYCODE_COMMAND;         break;
+        case WXK_SHIFT:              lisakey=KEYCODE_SHIFT;           break;  
+
+#if defined(__WXX11__) || defined(__WXGTK__)
+        case WXK_ALT:                lisakey=KEYCODE_COMMAND;         break; // may need to change these around for linux, or at least add control
         case WXK_CONTROL:            lisakey=KEYCODE_LOPTION;         break;
+#endif
+#if defined(__WXOSX__)    
+        case WXK_ALT:                lisakey=KEYCODE_COMMAND;         break; 
+        case WXK_CONTROL:            lisakey=KEYCODE_LOPTION;         break;
+#endif
+#if defined(__WXMSW__)    
+        case WXK_ALT:                lisakey=KEYCODE_COMMAND;         break; 
+        case WXK_CONTROL:            lisakey=KEYCODE_LOPTION;         break;
+#endif
+        default: ALERT_LOG(0,"Uncaught Keycode:%ld",(long)keycode);   break;
+
+//Keycode:309 - linux windows-menu-key
+/*
+  WXK_WINDOWS_LEFT,  only generated under Windows currently.
+  WXK_WINDOWS_RIGHT, only generated under Windows currently.
+  WXK_WINDOWS_MENU   only generated under Windows currently.
+  WXK_COMMAND, "Under OS X, this key maps to the 'Command' (aka logo or 'Apple') key, whereas on Linux/Windows/others this is the Control key,
+               with the new semantic of WXK_CONTROL, WXK_COMMAND is not needed anymore"  um, wtf, I'm running Linux and my machine has all these keys
+*/
     }
 
+
 int i;
+
 
 switch (asciikeyboard)
 {
@@ -2063,8 +2877,10 @@ switch (asciikeyboard)
                                               if (forcelisakey & 8) send_cops_keycode(KEYCODE_COMMAND|KEY_DOWN);
                                               if (forcelisakey & 4) send_cops_keycode(KEYCODE_SHIFT  |KEY_DOWN);
                                               if (forcelisakey & 2) send_cops_keycode(KEYCODE_OPTION |KEY_DOWN);
+                                              //----------------------------------------------------------------
                                                                     send_cops_keycode(lisakey        |KEY_DOWN);
                                                                     send_cops_keycode(lisakey        |KEY_UP  );
+                                              //----------------------------------------------------------------
                                               if (forcelisakey & 2) send_cops_keycode(KEYCODE_OPTION |KEY_UP  );
                                               if (forcelisakey & 4) send_cops_keycode(KEYCODE_SHIFT  |KEY_UP  );
                                               if (forcelisakey & 8) send_cops_keycode(KEYCODE_COMMAND|KEY_UP  );
@@ -2136,15 +2952,6 @@ case -1 :
                    int i,flag=0;
                    if (rawidx==0) {//ALERT_LOG(0,"Returning since rawdown=0");
                                    return;}           // nothing in the buffer
-                   //static int lastkeyup;
-
-                   //if (lisakey==lastkeyup) ALERT_LOG(0,"Multiple key up:%d",lisakey);
-
-                   // prevent keydown syndrome. i.e. when typing there, if you type in like this:
-                   // t-down, h-down, t-up, h-up, you get "tht" without this return.  Most people aren't
-                   // aware that they're doing this, I certainly wasn't until just down because most kbd
-                   // drivers compensate for this!
-                   //if (lisakey!=rawcodes[rawidx-1]) return;  // this isn't right. *** want to ignore any keys up no longer in the buffer ***
 
                    if (lisakey!=rawcodes[rawidx-1] &&
                        lisakey!=KEYCODE_COMMAND    &&
@@ -2297,10 +3104,8 @@ void LisaWin::OnKeyUp(wxKeyEvent& event)
              keycode==WXK_NUMPAD_RIGHT||
              keycode==WXK_NUMPAD_DOWN   )            {LogKeyEvent(_T("Key up"), event,1);event.Skip(); return;}
 
-
-    if (asciikeyboard==1) event.Skip(); else LogKeyEvent(_T("Key up"), event,1);
-
     videoramdirty++;
+
 }
 
 void LisaWin::OnChar(wxKeyEvent& event)
@@ -2322,6 +3127,8 @@ void LisaWin::OnChar(wxKeyEvent& event)
         LogKeyEvent(_T("Char"), event, 2);
         event.Skip(false); //else  LogKeyEvent(_T("Char"), event, 2);
       }
+
+if (!my_lisaframe->running && (keycode=='q' || keycode=='Q' || keycode==0x11 ) )   {  wxCommandEvent foo; my_lisaframe->OnQuit(foo); }    
 }
 
 
@@ -2329,7 +3136,7 @@ void LisaWin::OnChar(wxKeyEvent& event)
 
 void LisaWin::ContrastChange(void)
 {
-  	  if ((contrast>>1)==lastcontrast)      return;
+      if ((contrast>>1)==lastcontrast)      return;
 
       lastcontrast=contrast>>1;
 
@@ -2338,9 +3145,9 @@ void LisaWin::ContrastChange(void)
       if (contrast<0xe0)
       {
         int step=(mc-brightness)/10;
-  		/* white */ bright[0]=MIN(240,mc);                                          
-  		/* dark0 */ bright[1]=MIN(240,brightness+step*6);                        
-  		/* dark1 */ bright[2]=bright[3]=MIN(240,brightness+step*5);               
+        /* white */ bright[0]=MIN(240,mc);                                          
+        /* dark0 */ bright[1]=MIN(240,brightness+step*6);                        
+        /* dark1 */ bright[2]=bright[3]=MIN(240,brightness+step*5);               
         /* black */ bright[4]=bright[5]=bright[6]=bright[7]=MIN(240,brightness);    
 
         /* AAGray*/ bright[8] = bright[9] = bright[10]= bright[11]= bright[12]=
@@ -2349,14 +3156,14 @@ void LisaWin::ContrastChange(void)
      }
   else                                   // contrast is all black
       {
-  		bright[0]=0;                  
-  		bright[1]=0;                  
-  		bright[2]=0;                  
-  		bright[3]=0;                  
-  		bright[4]=0;                  
-  		bright[5]=0;                  
-  		bright[6]=0;                  
-  		bright[7]=0;                  
+          bright[0]=0;                  
+          bright[1]=0;                  
+          bright[2]=0;                  
+          bright[3]=0;                  
+          bright[4]=0;                  
+          bright[5]=0;                  
+          bright[6]=0;                  
+          bright[7]=0;                  
 
         bright[8] = bright[9] = bright[10]= bright[11]= bright[12]=bright[13] = bright[14] =bright[15]=0;
 
@@ -2372,7 +3179,24 @@ void LisaWin::ContrastChange(void)
 
 }
 
-
+// lens that doubles 8 bit pixels to 16 horizontally.
+uint16 double_x[256]=
+{   0x0000, 0x0003, 0x000c, 0x000f, 0x0030, 0x0033, 0x003c, 0x003f, 0x00c0, 0x00c3, 0x00cc, 0x00cf, 0x00f0, 0x00f3, 0x00fc, 0x00ff, 
+    0x0300, 0x0303, 0x030c, 0x030f, 0x0330, 0x0333, 0x033c, 0x033f, 0x03c0, 0x03c3, 0x03cc, 0x03cf, 0x03f0, 0x03f3, 0x03fc, 0x03ff, 
+    0x0c00, 0x0c03, 0x0c0c, 0x0c0f, 0x0c30, 0x0c33, 0x0c3c, 0x0c3f, 0x0cc0, 0x0cc3, 0x0ccc, 0x0ccf, 0x0cf0, 0x0cf3, 0x0cfc, 0x0cff, 
+    0x0f00, 0x0f03, 0x0f0c, 0x0f0f, 0x0f30, 0x0f33, 0x0f3c, 0x0f3f, 0x0fc0, 0x0fc3, 0x0fcc, 0x0fcf, 0x0ff0, 0x0ff3, 0x0ffc, 0x0fff, 
+    0x3000, 0x3003, 0x300c, 0x300f, 0x3030, 0x3033, 0x303c, 0x303f, 0x30c0, 0x30c3, 0x30cc, 0x30cf, 0x30f0, 0x30f3, 0x30fc, 0x30ff, 
+    0x3300, 0x3303, 0x330c, 0x330f, 0x3330, 0x3333, 0x333c, 0x333f, 0x33c0, 0x33c3, 0x33cc, 0x33cf, 0x33f0, 0x33f3, 0x33fc, 0x33ff, 
+    0x3c00, 0x3c03, 0x3c0c, 0x3c0f, 0x3c30, 0x3c33, 0x3c3c, 0x3c3f, 0x3cc0, 0x3cc3, 0x3ccc, 0x3ccf, 0x3cf0, 0x3cf3, 0x3cfc, 0x3cff, 
+    0x3f00, 0x3f03, 0x3f0c, 0x3f0f, 0x3f30, 0x3f33, 0x3f3c, 0x3f3f, 0x3fc0, 0x3fc3, 0x3fcc, 0x3fcf, 0x3ff0, 0x3ff3, 0x3ffc, 0x3fff, 
+    0xc000, 0xc003, 0xc00c, 0xc00f, 0xc030, 0xc033, 0xc03c, 0xc03f, 0xc0c0, 0xc0c3, 0xc0cc, 0xc0cf, 0xc0f0, 0xc0f3, 0xc0fc, 0xc0ff, 
+    0xc300, 0xc303, 0xc30c, 0xc30f, 0xc330, 0xc333, 0xc33c, 0xc33f, 0xc3c0, 0xc3c3, 0xc3cc, 0xc3cf, 0xc3f0, 0xc3f3, 0xc3fc, 0xc3ff, 
+    0xcc00, 0xcc03, 0xcc0c, 0xcc0f, 0xcc30, 0xcc33, 0xcc3c, 0xcc3f, 0xccc0, 0xccc3, 0xcccc, 0xcccf, 0xccf0, 0xccf3, 0xccfc, 0xccff, 
+    0xcf00, 0xcf03, 0xcf0c, 0xcf0f, 0xcf30, 0xcf33, 0xcf3c, 0xcf3f, 0xcfc0, 0xcfc3, 0xcfcc, 0xcfcf, 0xcff0, 0xcff3, 0xcffc, 0xcfff, 
+    0xf000, 0xf003, 0xf00c, 0xf00f, 0xf030, 0xf033, 0xf03c, 0xf03f, 0xf0c0, 0xf0c3, 0xf0cc, 0xf0cf, 0xf0f0, 0xf0f3, 0xf0fc, 0xf0ff, 
+    0xf300, 0xf303, 0xf30c, 0xf30f, 0xf330, 0xf333, 0xf33c, 0xf33f, 0xf3c0, 0xf3c3, 0xf3cc, 0xf3cf, 0xf3f0, 0xf3f3, 0xf3fc, 0xf3ff, 
+    0xfc00, 0xfc03, 0xfc0c, 0xfc0f, 0xfc30, 0xfc33, 0xfc3c, 0xfc3f, 0xfcc0, 0xfcc3, 0xfccc, 0xfccf, 0xfcf0, 0xfcf3, 0xfcfc, 0xfcff, 
+    0xff00, 0xff03, 0xff0c, 0xff0f, 0xff30, 0xff33, 0xff3c, 0xff3f, 0xffc0, 0xffc3, 0xffcc, 0xffcf, 0xfff0, 0xfff3, 0xfffc, 0xffff  };
 
 // Repainters //////////////////////////////////////////////////////////////////////////////////////////
 
@@ -2402,109 +3226,167 @@ void LisaWin::ContrastChange(void)
 //                                                                                                    //
 //  The following variables should be declared before calling this macro:                             //
 //                                                                                                    //
-//         int updated=0;	        // number of times we've made updates.                            //
+//      int updated=0;                // number of times we've made updates.                            //
 //                                  // can be used as a threshhold to decide how to redraw the image. //
-//         uint32 a1,a2,a3,xx;      // address above, below, for this value, horziontal byte offset   //
-//         uint16 vup,vdn,val;      // value above, below, this words read from addr @ a1,a2,a3       //
-//         uint16 high,medium,low;  // used for antialiasing. how many neighboring bits               //
-//         uint8 d;                 // darkness level to pass to Z                                    //
+//      uint32 a1,a2,a3,a4,a5,xx;   // address above, below, for this value, horziontal byte offset   //
+//      uint16 vup,vdn,val,vvu,vvd; // value above, below, this words read from addr @ a1,a2,a3       //
+//      uint16 high,medium,low;     // used for antialiasing. how many neighboring bits               //
+//      uint8 d;                    // darkness level to pass to Z                                    //
 //                                                                                                    //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-#define SETRGB16_AA(x,y,Z,Y) {                                                                         \
-	                                                                                                   \
-	 xx=(x)>>3;                                                /*   turn x coord into byte offset */   \
-	                                                                                                   \
-	 a3=(yoffset[screen_to_mouse[ y           ]]+xx) &32767;   /*   this value we're processing   */   \
-	                                                                                                   \
-	 val=(lisaram[videolatchaddress+a3]<<8 )|lisaram[videolatchaddress+a3+1];  /*   this word     */   \
+#define SETRGB16_AAG(x,y,Z,Y) {                                                                        \
                                                                                                        \
-     if (videoramdirty>DIRECT_BLITS_THRESHHOLD ||        /*  If full update requested or dirty    */   \
-         (dirtyvidram[a3]<<8)|dirtyvidram[a3+1]!=val  )                                                \
-      {                                   	                                                           \
-       updated++;     	                                 /*  Keep track of update count           */   \
+     xx=(x)>>3;                                                /*   turn x coord into byte offset */   \
                                                                                                        \
-	   dirty_x_min=MIN(x,dirty_x_min);       dirty_x_max=MAX(x+16,dirty_x_max);                        \
-	   dirty_y_min=MIN(y,dirty_y_min);  	 dirty_y_max=MAX(y,dirty_y_max);                           \
+     a1=(yoffset[screen_to_mouse[ y>0?(y-1):0 ]]+xx) &32767;   /*   get the addresses for above   */   \
+     a2=(yoffset[screen_to_mouse[ y+1         ]]+xx) &32767;   /*   below and                     */   \
+     a3=(yoffset[screen_to_mouse[ y           ]]+xx) &32767;   /*   this value we're processing   */   \
                                                                                                        \
-       d=bright[ ((BIT15 & val ) ? 7:0)  ]; Z; x++;                                                    \
-       d=bright[ ((BIT14 & val ) ? 7:0)  ]; Z; x++;                                                    \
-       d=bright[ ((BIT13 & val ) ? 7:0)  ]; Z; x++;                                                    \
-       d=bright[ ((BIT12 & val ) ? 7:0)  ]; Z; x++;                                                    \
-       d=bright[ ((BIT11 & val ) ? 7:0)  ]; Z; x++;                                                    \
-       d=bright[ ((BIT10 & val ) ? 7:0)  ]; Z; x++;                                                    \
-       d=bright[ ((BIT9  & val ) ? 7:0)  ]; Z; x++;                                                    \
-       d=bright[ ((BIT8  & val ) ? 7:0)  ]; Z; x++;                                                    \
-       d=bright[ ((BIT7  & val ) ? 7:0)  ]; Z; x++;                                                    \
-       d=bright[ ((BIT6  & val ) ? 7:0)  ]; Z; x++;                                                    \
-       d=bright[ ((BIT5  & val ) ? 7:0)  ]; Z; x++;                                                    \
-       d=bright[ ((BIT4  & val ) ? 7:0)  ]; Z; x++;                                                    \
-       d=bright[ ((BIT3  & val ) ? 7:0)  ]; Z; x++;                                                    \
-       d=bright[ ((BIT2  & val ) ? 7:0)  ]; Z; x++;                                                    \
-       d=bright[ ((BIT1  & val ) ? 7:0)  ]; Z; x++;                                                    \
-       d=bright[ ((BIT0  & val ) ? 7:0)  ]; Z; x++;                                                    \
-      } 	                                                                                           \
-     else                                                                                              \
+     vup=(lisaram[videolatchaddress+a1]<<8 )|lisaram[videolatchaddress+a1+1];  /*   word above    */   \
+     vdn=(lisaram[videolatchaddress+a2]<<8 )|lisaram[videolatchaddress+a2+1];  /*   word below    */   \
+     val=(lisaram[videolatchaddress+a3]<<8 )|lisaram[videolatchaddress+a3+1];  /*   this word     */   \
+                                                                                                       \
+                                                                                                       \
+     if (videoramdirty>DIRECT_BLITS_THRESHHOLD ||          /*  If full update requested or        */   \
+         ((dirtyvidram[a1]<<8)|dirtyvidram[a1+1])!=vup ||  /*  if the video ram is dirty above or */   \
+         ((dirtyvidram[a2]<<8)|dirtyvidram[a2+1])!=vdn ||  /*  below or on this value.            */   \
+         ((dirtyvidram[a3]<<8)|dirtyvidram[a3+1])!=val  )                                              \
       {                                                                                                \
-	    Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
-	    Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
-	    Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
-	    Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
-	  }                                                                                                \
+       updated++;                                          /*  Keep track of update count         */   \
+                                                                                                       \
+       dirty_x_min=MIN(x,dirty_x_min);       dirty_x_max=MAX(x+16,dirty_x_max);                        \
+       dirty_y_min=MIN(y,dirty_y_min);       dirty_y_max=MAX(y,dirty_y_max);                           \
+                                                                                                       \
+       a4=(a3-90)>0     ? (a3-90):a3;                                    /*   unscaled addr above */   \
+       a5=(a3+90)<32767 ? (a3+90):a3;                                    /*   unscaled addr below */   \
+       vvu=(lisaram[videolatchaddress+a4]<<8 )|lisaram[videolatchaddress+a4+1]; /* unscaled up    */   \
+       vvd=(lisaram[videolatchaddress+a5]<<8 )|lisaram[videolatchaddress+a5+1]; /* unscaled below */   \
+       getgraymap(vvu,val,vvd,replacegray);              /*  Get the gray replacement map         */   \
+                                                                                                       \
+       high   = vup      & val     & vdn;                /*  above, middle, and below are black   */   \
+       medium = (vup&val)|(val&vdn)|(vdn&vup);           /*  two out of 3 are black               */   \
+       low    = vup      | val     | vdn;                /*  lowest - single pixel is black       */   \
+                                                                                                       \
+      d=bright[ ((BIT15 & val ) ? 7:0)  | replacegray[ 0]]; Z; x++;                                    \
+      d=bright[ ((BIT14 & val ) ? 7:0)  | replacegray[ 1]]; Z; x++;                                    \
+      d=bright[ ((BIT13 & val ) ? 7:0)  | replacegray[ 2]]; Z; x++;                                    \
+      d=bright[ ((BIT12 & val ) ? 7:0)  | replacegray[ 3]]; Z; x++;                                    \
+      d=bright[ ((BIT11 & val ) ? 7:0)  | replacegray[ 4]]; Z; x++;                                    \
+      d=bright[ ((BIT10 & val ) ? 7:0)  | replacegray[ 5]]; Z; x++;                                    \
+      d=bright[ ((BIT9  & val ) ? 7:0)  | replacegray[ 6]]; Z; x++;                                    \
+      d=bright[ ((BIT8  & val ) ? 7:0)  | replacegray[ 7]]; Z; x++;                                    \
+      d=bright[ ((BIT7  & val ) ? 7:0)  | replacegray[ 8]]; Z; x++;                                    \
+      d=bright[ ((BIT6  & val ) ? 7:0)  | replacegray[ 9]]; Z; x++;                                    \
+      d=bright[ ((BIT5  & val ) ? 7:0)  | replacegray[10]]; Z; x++;                                    \
+      d=bright[ ((BIT4  & val ) ? 7:0)  | replacegray[11]]; Z; x++;                                    \
+      d=bright[ ((BIT3  & val ) ? 7:0)  | replacegray[12]]; Z; x++;                                    \
+      d=bright[ ((BIT2  & val ) ? 7:0)  | replacegray[13]]; Z; x++;                                    \
+      d=bright[ ((BIT1  & val ) ? 7:0)  | replacegray[14]]; Z; x++;                                    \
+      d=bright[ ((BIT0  & val ) ? 7:0)  | replacegray[15]]; Z; x++;                                    \
+                                                                                                       \
+                                                                                                       \
+      }                                                                                                \
+     else                                                                                              \
+      {                                                                      /* No updated needed */   \
+        Y; Y; Y; Y;                                                          /* so skip over 16X  */   \
+        Y; Y; Y; Y;                                                                                    \
+        Y; Y; Y; Y;                                                                                    \
+        Y; Y; Y; Y; x+=16;                                                                             \
+      }                                                                                                \
 }                                                                                                     //
 ////////////////// GETRGB MACRO ENDS ///////////////////////////////////////////////////////////////////
 
+/***************************************************************************************************\
+    graymap[] are set to 8 which is the magical OR value into the color contrast table that forces
+    gray replacement.  See ContrastChange() for details.  The graymap is stored as a 3 dimentional
+    array, but we can make use of shifts and OR's to avoid multiplication that [][][] would be
+    involved in dereferencing.  It's possible some compilers will optimize it properly, but why
+    take a chance?  Access is equivalent to   color | graymap[(vup<<4) | (val<<2) | vdn];
 
-void LisaWin::RePaint_AntiAliased(void)
+    Since we work 2 bits at a time, we need to replace both bits with a gray together.  This is why 
+    we have retval[1]=retval[0] and so on.   It would be possible to modify the code to do something
+    like retval & 14 to avoid the copy, but it wouldn't be any faster and would make the code more
+    complicated.
+
+    This function is only called once per every 16 horizontal pixels processed for speed which is
+    why it needs to store its results in an array.
+
+\***************************************************************************************************/
+
+static inline void getgraymap(uint16 up, uint16 val, uint16 dn,  uint8 *retval)
 {
-   // vars for SETRGB16  
-   int updated=0;	
-   uint32 a3,xx;
-   uint16 val;
-   uint8  d;
+    static uint8 graymap[4*4*4]={ 0,0,0,0,0,0,8,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,8,0,8,0,8,0,0,    
+                                  0,0,0,0,8,0,8,8,0,0,0,0,0,0,8,0,0,0,0,0,0,0,8,8,0,8,0,8,0,0,0,0, }; 
 
-   dirty_x_min=720; dirty_x_max=-1; dirty_y_min=384*3; dirty_y_max=-1;
+// static int retval[16];
+  retval[ 0]=retval[ 1]=graymap[(((BIT15+BIT14) & up)>>10 )|(((BIT15+BIT14) & val)>>12 ) | (((BIT15+BIT14) & dn)>>14 )]; 
+  retval[ 2]=retval[ 3]=graymap[(((BIT13+BIT12) & up)>> 8 )|(((BIT13+BIT12) & val)>>10 ) | (((BIT13+BIT12) & dn)>>12 )]; 
+  retval[ 4]=retval[ 5]=graymap[(((BIT11+BIT10) & up)>> 6 )|(((BIT11+BIT10) & val)>> 8 ) | (((BIT11+BIT10) & dn)>>10 )]; 
+  retval[ 6]=retval[ 7]=graymap[(((BIT9 +BIT8 ) & up)>> 4 )|(((BIT9 +BIT8 ) & val)>> 6 ) | (((BIT9 +BIT8 ) & dn)>> 8 )]; 
+  retval[ 8]=retval[ 9]=graymap[(((BIT7 +BIT6 ) & up)>> 2 )|(((BIT7 +BIT6 ) & val)>> 4 ) | (((BIT7 +BIT6 ) & dn)>> 6 )]; 
+  retval[10]=retval[11]=graymap[(((BIT5 +BIT4 ) & up)     )|(((BIT5 +BIT4 ) & val)>> 2 ) | (((BIT5 +BIT4 ) & dn)>> 4 )]; 
+  retval[12]=retval[13]=graymap[(((BIT3 +BIT2 ) & up)<< 2 )|(((BIT3 +BIT2 ) & val)     ) | (((BIT3 +BIT2 ) & dn)>> 2 )]; 
+  retval[14]=retval[15]=graymap[(((BIT1 +BIT0 ) & up)<< 4 )|(((BIT1 +BIT0 ) & val)<< 2 ) | (((BIT1 +BIT0 ) & dn)     )]; 
+
+}
+
+
+void LisaWin::RePaint_AAGray(void)
+{
+    // vars for SETRGB16  
+    int updated=0;    
+    uint32 a1,a2,a3,a4,a5,xx;
+    uint16 vup,vdn,val,vvu,vvd;
+    uint16 high=0,medium=0,low=0;
+    uint8  d;
+
+    uint8 replacegray[16]; // ignore dumb compiler warning here!
+    dirty_x_min=720; dirty_x_max=-1; dirty_y_min=384*3; dirty_y_max=-1;
+
+    if (high|medium|low) high=1; // dumb way to suppress "set but not used" - should get optimized out
 
 #ifdef USE_RAW_BITMAP_ACCESS
 
-   int depth;  
-   int width;  
-   int height; 
-   int ox,oy; // private to this - not member vars
+    int ox,oy;             // private to this - not member vars
+    int width, height, depth;
    
-   if (skins_on)
-      {
-	   if (!my_skin) {ALERT_LOG(0,"Null my_skin"); return;}
-       depth = my_skin->GetDepth();    width = my_skin->GetWidth();    height= my_skin->GetHeight();
-       ox=screen_origin_x;    oy=screen_origin_y;
-      }
-   else
-      {
-	    if (!my_lisabitmap->IsOk()) {ALERT_LOG(0,"my_lisabitmap is not ok!");}
-		if (!my_lisabitmap) {ALERT_LOG(0,"Null my_lisa_bitmap!"); return;}
-       depth = my_lisabitmap->GetDepth();    width = my_lisabitmap->GetWidth();    height= my_lisabitmap->GetHeight();
-       ox=0; oy=0;
-      }
+    if  (skins_on)
+    {
+        if (!my_skin) { replacegray[0]=0;  return;}// useless statement to suppress dumb "unused" compiler warning 
 
-   typedef wxPixelData<wxBitmap,wxNativePixelFormat> PixelData;
-   PixelData data( *( skins_on ? my_skin : my_lisabitmap) );
-   if (!data) {ALERT_LOG(0,"No data."); return;}
+        depth = my_skin->GetDepth();    width = my_skin->GetWidth();    height= my_skin->GetHeight();
+        ox=skin.screen_origin_x;        oy=skin.screen_origin_y;
+    }
+    else
+    {
+        if (!my_lisabitmap) return;
 
-   PixelData::Iterator p(data);
-   p.Reset(data);
-   p.MoveTo(data,ox,oy);                            
+        depth = my_lisabitmap->GetDepth();    width = my_lisabitmap->GetWidth();    height= my_lisabitmap->GetHeight();
+        ox=0; oy=0;
+    }
 
-   for ( int y =0; y< effective_lisa_vid_size_y; y++ )   // effective_lisa_vid_size_y
-   {
-       PixelData::Iterator rowStart = p;                 // save the x,y coordinates at the start of the line
-	   for ( int x = 0; x < effective_lisa_vid_size_x; )
-		{ SETRGB16_AA(x,y,  {p.Red()=d; p.Green()=d; p.Blue()=(d+EXTRABLUE); ++p;} , {++p;} );} 
-	   p = rowStart; p.OffsetY(data, 1);                 // restore the x,y coords from start of line, then increment y to do y++;
-   }
+    typedef wxPixelData<wxBitmap,wxNativePixelFormat> PixelData;
+    PixelData data(skins_on ? *my_skin:*my_lisabitmap);
+    if (!data) return;
+    PixelData::Iterator p(data);
+    p.Reset(data);
+    p.MoveTo(data,ox,oy); 
+    //ALERT_LOG(0,"RepaintAAG f raw bitmap, origin:%d,%d",ox,oy);
 
-    /////////////////////////////////////////////////////////////////////////////////////////////////
-    
+    for ( int y = 0; y < o_effective_lisa_vid_size_y; ++y )   // effective_lisa_vid_size_y
+    {
+        PixelData::Iterator rowStart = p;              // save the x,y coordinates at the start of the line
+
+        for ( int x = 0; x < o_effective_lisa_vid_size_x; )
+            { SETRGB16_AAG(x,y,  {p.Red()=d; p.Green()=d; p.Blue()=(d+EXTRABLUE); ++p;} , {++p;} );}  
+
+        p.Red()=0; p.Green()=0; p.Blue()=0;
+
+
+        p = rowStart; p.OffsetY(data, 1);              // restore the x,y coords from start of line, then increment y to do y++;
+    }
+
 #else
 
   // Since we're working the slower way - with images, we need to rebuild the bitmap from the image.
@@ -2515,457 +3397,75 @@ void LisaWin::RePaint_AntiAliased(void)
   {
     if (!my_skin || !my_lisabitmap) return; 
 
-//    int depth = my_skin->GetDepth();
-//    int width = my_skin->GetWidth();
-//    int height= my_skin->GetHeight();
+  //  int depth = my_skin->GetDepth();
+  //  int width = my_skin->GetWidth();
+  //  int height= my_skin->GetHeight();
 
- 	if (!display_image)   
-         display_image= new wxImage(  my_lisabitmap->ConvertToImage());
+    if  (!display_image)   
+          display_image= new wxImage(  my_lisabitmap->ConvertToImage());
 
-	for ( int y=0; y < effective_lisa_vid_size_y; y++ )
-	    {
-		    for ( int x=0; x < effective_lisa_vid_size_x;)
-                { SETRGB16_AA(x,y,{display_image->SetRGB(x,y,d,d,d+EXTRABLUE); },{;}); }
-	    }
-    // delete the old bitmap, then create a new one from the wxImage, and use it.
+    for ( int y=0; y < o_effective_lisa_vid_size_y; y++ )
+        {
+            for ( int x=0; x < o_effective_lisa_vid_size_x;)
+                { SETRGB16_AAG(x,y,{display_image->SetRGB(x,y,d,d,d+EXTRABLUE); },{;}); }
+        }
+
     delete my_lisabitmap;
-	my_lisabitmap=new wxBitmap(*display_image);
-	my_memDC->SelectObjectAsSource(*my_lisabitmap);
-	   if (!my_memDC->IsOk()) ALERT_LOG(0,"my_memDC is not ok.");
-	   if (!my_lisabitmap->IsOk()) ALERT_LOG(0,"my_lisabitmap is not ok.");
+    my_lisabitmap=new wxBitmap(*display_image);
+    my_memDC->SelectObjectAsSource(*my_lisabitmap);
 
     e_dirty_x_min=dirty_x_min;                       // need to do these here so we can update just the rectangle we need.
     e_dirty_x_max=dirty_x_max;                       // it will be repeated again below, but so what, it's only 4 assignments
     e_dirty_y_min=dirty_y_min; //screen_y_map[dirty_y_min];         // and two lookups.
     e_dirty_y_max=dirty_y_max; //screen_y_map[dirty_y_max];
 
+  //ALERT_LOG(0,"RepaintAAG notraw bitmap, origin:%d,%d",skin.screen_origin_x,skin.screen_origin_y);
+/*
+wxCoord  	xdest,
+		wxCoord  	ydest,
+		wxCoord  	dstWidth,
+		wxCoord  	dstHeight,
+		wxDC *  	source,
+		wxCoord  	xsrc,
+		wxCoord  	ysrc,
+		wxCoord  	srcWidth,
+		wxCoord  	srcHeight,
+		wxRasterOperationMode  	logicalFunc = wxCOPY,
+		bool  	useMask = false,
+		wxCoord  	xsrcMask = wxDefaultCoord,
+		wxCoord  	ysrcMask = wxDefaultCoord 
+	) 		 
+  */
     if (updated)
-          my_skinDC->Blit(screen_origin_x + e_dirty_x_min, screen_origin_y + e_dirty_y_min,     // target x,y
-                          e_dirty_x_max-e_dirty_x_min+1,   e_dirty_y_max-e_dirty_y_min+1,     // size w,h
-                          my_memDC, 0,0, wxCOPY, false);
-
+       {       
+           my_skinDC->StretchBlit(_H(skin.screen_origin_x + e_dirty_x_min), _H(skin.screen_origin_y + e_dirty_y_min),   // target x,y
+                                  _H(e_dirty_x_max-e_dirty_x_min+1),_H(e_dirty_y_max-e_dirty_y_min+1),     // size w,h
+                                   my_memDC, 0,0, (e_dirty_x_max-e_dirty_x_min+1),(e_dirty_y_max-e_dirty_y_min+1),
+                                   wxCOPY, false);
+       }
 
     // we don't delete display_image since we can reuse it the next time around and save time
   }
   else  // skins are off
   {
-    //int depth = my_lisabitmap->GetDepth();
-    //int width = my_lisabitmap->GetWidth();
-    //int height= my_lisabitmap->GetHeight();
+//    int depth = my_lisabitmap->GetDepth();
+//    int width = my_lisabitmap->GetWidth();
+//    int height= my_lisabitmap->GetHeight();
 
     if (!display_image)   display_image= new wxImage(my_lisabitmap->ConvertToImage());
 
-	for ( int yo = 0 , yi=0; yi < effective_lisa_vid_size_y; yo++,yi++ )
-	    {
-		   // note neither xi, nor xo are incremented as part of the for-loop header, this is because
-		   // the SETRGB16_AA macro expands to 16 iterations, and it increments xi on each iteration.
-		   // however, it doesn't do anything with xo, so xo++ is passed as a parameter.
-		   for ( int xo = 0, xi=0; xi < effective_lisa_vid_size_x;)
-               { SETRGB16_AA(xi,yi,{display_image->SetRGB(xo,yo,d,d,d+EXTRABLUE); xo++;},{xo++;});   }
-	    }
-
-    // and this is why this is slower since we need to rebuild the bitmap from the wxImage each time.
-	delete my_lisabitmap;
-	my_lisabitmap=new wxBitmap(*display_image);
-	my_memDC->SelectObjectAsSource(*my_lisabitmap);
-  }
-#endif
-/////////////////////////////////////////////////////////////////////////
-	
-  e_dirty_x_min=dirty_x_min;                       // need to do these here so we can update just the rectangle we need.
-  e_dirty_x_max=dirty_x_max;                       // it will be repeated again below, but so what, it's only 4 assignments
-  e_dirty_y_min=dirty_y_min; //screen_y_map[dirty_y_min];         // and two lookups.
-  e_dirty_y_max=dirty_y_max; //screen_y_map[dirty_y_max];
-
-   if (updated)
-   {
-      memcpy(dirtyvidram,&lisaram[videolatchaddress],32768);
-      repaintall |= REPAINT_INVALID_WINDOW | REPAINT_VIDEO_TO_SKIN;
-	  updated=0;
-   }
-
-}
-
-///////////////// SETRGB 16 bit Raw Replacement MACRO //////////////////////////////////////////////////   
-//                                                                                                    //
-//  macro to fill in r,g,b values, does 16 pixels at a time, must be a macro because of the Z param   //
-//  and we want to get as much speed out of it as possible.                                           //
-//                                                                                                    //
-//  This would have been a 32 pixel macro if it were possible, however, since a single row is on the  //
-//  Lisa's display is either 90 bytes or 76 bytes, we can only evenly divide by 2 bytes (16 bits.)    //
-//                                                                                                    //
-//                                                                                                    //
-//  x,y are x,y coordinates on the bitmap.   They map to the Lisa's display, any other translation    //
-//  must be handled in Z, or via other variables.   x gets incremented for each pixel handled.        //
-//  x,y must be simple variables, and should not be expressions!                                      //
-//                                                                                                    //
-//  Z is a chunk of code to set r,g,b provided by the caller.  Z gets executed 16 times, once per     //
-//  pixel.  This is needed because we might be using SetRGB on images or rawbitmap accesss, or some   //
-//  other method in the future.   Z should be protected by enclosing it in curly braces when passing. //
-//  Z may use the uint8 d to actually set the darkness level for a pixel.                             //
-//                                                                                                    //
-//  Y is identical to Z except that it's code to call when there's no update.  i.e. ++p               //
-//                                                                                                    //
-//                                                                                                    //
-//  The following variables should be declared before calling this macro:                             //
-//                                                                                                    //
-//         int updated=0;	        // number of times we've made updates.                            //
-//                                  // can be used as a threshhold to decide how to redraw the image. //
-//         uint32 a1,a2,a3,xx;      // address above, below, for this value, horziontal byte offset   //
-//         uint16 vup,vdn,val;      // value above, below, this words read from addr @ a1,a2,a3       //
-//         uint16 high,medium,low;  // used for antialiasing. how many neighboring bits               //
-//         uint8 d;                 // darkness level to pass to Z                                    //
-//                                                                                                    //
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#define SETRGB16_RAW_X(x,y,Z) {                                                                        \
-	                                                                                                   \
-	 xx=(x)>>3;                                                /*   turn x coord into byte offset */   \
-	                                                                                                   \
-	 a3=(yoffset[y]+xx) &32767;                                /*   this value we're processing   */   \
-	 val=(lisaram[videolatchaddress+a3]<<8 )|lisaram[videolatchaddress+a3+1];  /*   this word     */   \
-                                                                                                       \
-       updated++;     	                                      /*  Keep track of update count      */   \
-                                                                                                       \
-	   dirty_x_min=MIN(x,dirty_x_min);       dirty_x_max=MAX(x+16,dirty_x_max);                        \
-	   dirty_y_min=MIN(y,dirty_y_min);  	 dirty_y_max=MAX(y,dirty_y_max);                           \
-                                                                                                       \
-	                                                                                                   \
-       d=bright[ ((BIT15 & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT14 & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT13 & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT12 & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT11 & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT10 & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT9  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT8  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT7  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT6  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT5  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT4  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT3  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT2  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT1  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT0  & val) ? 7:0) ]; Z; x++;                                                      \
-}                                                                                                     //
-////////////////// SETRGB MACRO ENDS ///////////////////////////////////////////////////////////////////
-
-
-///////////////// SETRGB 16 bit Raw Replacement MACRO //////////////////////////////////////////////////   
-//                                                                                                    //
-//  macro to fill in r,g,b values, does 16 pixels at a time, must be a macro because of the Z param   //
-//  and we want to get as much speed out of it as possible.                                           //
-//                                                                                                    //
-//  This would have been a 32 pixel macro if it were possible, however, since a single row is on the  //
-//  Lisa's display is either 90 bytes or 76 bytes, we can only evenly divide by 2 bytes (16 bits.)    //
-//                                                                                                    //
-//                                                                                                    //
-//  x,y are x,y coordinates on the bitmap.   They map to the Lisa's display, any other translation    //
-//  must be handled in Z, or via other variables.   x gets incremented for each pixel handled.        //
-//  x,y must be simple variables, and should not be expressions!                                      //
-//                                                                                                    //
-//  Z is a chunk of code to set r,g,b provided by the caller.  Z gets executed 16 times, once per     //
-//  pixel.  This is needed because we might be using SetRGB on images or rawbitmap accesss, or some   //
-//  other method in the future.   Z should be protected by enclosing it in curly braces when passing. //
-//  Z may use the uint8 d to actually set the darkness level for a pixel.                             //
-//                                                                                                    //
-//  Y is identical to Z except that it's code to call when there's no update.  i.e. ++p               //
-//                                                                                                    //
-//                                                                                                    //
-//  The following variables should be declared before calling this macro:                             //
-//                                                                                                    //
-//         int updated=0;	        // number of times we've made updates.                            //
-//                                  // can be used as a threshhold to decide how to redraw the image. //
-//         uint32 a1,a2,a3,xx;      // address above, below, for this value, horziontal byte offset   //
-//         uint16 vup,vdn,val;      // value above, below, this words read from addr @ a1,a2,a3       //
-//         uint16 high,medium,low;  // used for antialiasing. how many neighboring bits               //
-//         uint8 d;                 // darkness level to pass to Z                                    //
-//                                                                                                    //
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#define SETRGB16_RAW(x,y,Z,Y) {                                                                        \
-	                                                                                                   \
-	 xx=(x)>>3;                                                /*   turn x coord into byte offset */   \
-	                                                                                                   \
-	 a3=(yoffset[screen_to_mouse[ y           ]]+xx) &32767;   /*   this value we're processing   */   \
-	 val=(lisaram[videolatchaddress+a3]<<8 )|lisaram[videolatchaddress+a3+1];  /*   this word     */   \
-                                                                                                       \
-     if (videoramdirty>DIRECT_BLITS_THRESHHOLD ||        /*  If full update requested or          */   \
-         (dirtyvidram[a3]<<8)|dirtyvidram[a3+1]!=val  )  /*  value is changed                     */   \
-      {                                   	                                                           \
-       updated++;     	                                 /*  Keep track of update count           */   \
-                                                                                                       \
-	   dirty_x_min=MIN(x,dirty_x_min);       dirty_x_max=MAX(x+16,dirty_x_max);                        \
-	   dirty_y_min=MIN(y,dirty_y_min);  	 dirty_y_max=MAX(y,dirty_y_max);                           \
-                                                                                                       \
-	                                                                                                   \
-       d=bright[ ((BIT15 & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT14 & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT13 & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT12 & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT11 & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT10 & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT9  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT8  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT7  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT6  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT5  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT4  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT3  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT2  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT1  & val) ? 7:0) ]; Z; x++;                                                      \
-       d=bright[ ((BIT0  & val) ? 7:0) ]; Z; x++;                                                      \
-      } 	                                                                                           \
-     else                                                                                              \
-      {                                                                                                \
-	    Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
-	    Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
-	    Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
-	    Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
-	  }                                                                                                \
-}                                                                                                     //
-////////////////// SETRGB MACRO ENDS ///////////////////////////////////////////////////////////////////
-
-void LisaWin::RePaint_SingleY(void)
-{
-   // vars for SETRGB16_RAW
-   int updated=0;	
-   uint32 a3,xx;
-   uint16 val;
-   uint8  d;
-
-   dirty_x_min=720; dirty_x_max=-1; dirty_y_min=384*3; dirty_y_max=-1;
-
-#ifdef USE_RAW_BITMAP_ACCESS
-
- int depth;  
- int width;  
- int height; 
- int ox,oy; // private to this - not member vars
-
-   
-if (skins_on)
-   {
-    if (!my_skin) return;
-    depth = my_skin->GetDepth();    width = my_skin->GetWidth();    height= my_skin->GetHeight();
-    ox=screen_origin_x;    oy=screen_origin_y;
-   }
-else
-   {
-    if (!my_lisabitmap) return;
-    depth = my_lisabitmap->GetDepth();    width = my_lisabitmap->GetWidth();    height= my_lisabitmap->GetHeight();
-    ox=0; oy=0;
-   }
-
-   typedef wxPixelData<wxBitmap,wxNativePixelFormat> PixelData;
-   PixelData data(skins_on ? *my_skin:*my_lisabitmap);
-   if (!data) {DEBUG_LOG(0,"No data."); return;}
-
-   PixelData::Iterator p(data);
-   p.Reset(data);
-
-   p.MoveTo(data,ox,oy);                            
-   for ( int y = 0; y < effective_lisa_vid_size_y; ++y )
-   {
-       PixelData::Iterator rowStart = p;              // save the x,y coordinates at the start of the line
-	   for ( int x = 0; x < effective_lisa_vid_size_x; )
-	       { SETRGB16_RAW(x,y,  {p.Red()=d; p.Green()=d; p.Blue()=(d+EXTRABLUE); ++p;} , {++p;} );}  
-
-       p = rowStart; p.OffsetY(data, 1);              // restore the x,y coords from start of line, then increment y via P.OffsetY to do y++;
-   }
-
-#else
-
-  // Since we're working the slower way - with images, we need to rebuild the bitmap from the image.
-  // to do this, we discard the old bitmap and recreate it from the display_image.  This is of course
-  // slower, which is why we recommend the use of USE_RAW_BITMAP_ACCESS, but USE_RAW_BITMAP_ACCESS
-  // might not work everywhere, so we give the option.
-  if (skins_on)
-  {
-    if (!my_skin || !my_lisabitmap) return; 
-
-    //int depth = my_skin->GetDepth();
-    //int width = my_skin->GetWidth();
-    //int height= my_skin->GetHeight();
-
- 	if (!display_image)   
-         display_image= new wxImage(  my_lisabitmap->ConvertToImage());
-
-	for ( int y=0; y < effective_lisa_vid_size_y; y++ )
-	    {
-		   // note neither xi, nor xo are incremented as part of the for-loop header, this is because
-		   // the SETRGB16_AA macro expands to 16 iterations, and it increments xi on each iteration.
-		   // however, it doesn't do anything with xo, so xo++ is passed as a parameter.
-		    for ( int x=0; x < effective_lisa_vid_size_x;)
-                { SETRGB16_RAW(x,y,{display_image->SetRGB(x,y,d,d,d+EXTRABLUE); },{;}); }
-	    }
+    for ( int yo = 0 , yi=0; yi < o_effective_lisa_vid_size_y; yo++,yi++ )
+        {
+           // note neither xi, nor xo are incremented as part of the for-loop header, this is because
+           // the SETRGB16_AA macro expands to 16 iterations, and it increments xi on each iteration.
+           // however, it doesn't do anything with xo, so xo++ is passed as a parameter.
+           for ( int xo = 0, xi=0; xi < o_effective_lisa_vid_size_x;)
+               { SETRGB16_AAG(xi,yi,{display_image->SetRGB(xo,yo,d,d,d+EXTRABLUE); xo++;},{xo++;});   }
+        }
 
     delete my_lisabitmap;
-	my_lisabitmap=new wxBitmap(*display_image);
-	my_memDC->SelectObjectAsSource(*my_lisabitmap);
-	
-    e_dirty_x_min=dirty_x_min;                       // need to do these here so we can update just the rectangle we need.
-    e_dirty_x_max=dirty_x_max;                       // it will be repeated again below, but so what, it's only 4 assignments
-    e_dirty_y_min=dirty_y_min; //screen_y_map[dirty_y_min];         // and two lookups.
-    e_dirty_y_max=dirty_y_max; //screen_y_map[dirty_y_max];
-
-    if (updated)
-         my_skinDC->Blit(screen_origin_x + e_dirty_x_min, screen_origin_y+e_dirty_y_min,     // target x,y
-                    e_dirty_x_max-e_dirty_x_min+1,   e_dirty_y_max-e_dirty_y_min+1,     // size w,h
-                    my_memDC, 0,0, wxCOPY, false);
-	
-  }
- else  // skins are off
-  {
-    //int depth = my_lisabitmap->GetDepth();
-    //int width = my_lisabitmap->GetWidth();
-    //int height= my_lisabitmap->GetHeight();
-
-    if (!display_image)   display_image= new wxImage(my_lisabitmap->ConvertToImage());
-
-	for ( int yo = 0 , yi=0; yi < effective_lisa_vid_size_y; yo++,yi++ )
-	    {
-		   // note neither xi, nor xo are incremented as part of the for-loop header, this is because
-		   // the SETRGB16_AA macro expands to 16 iterations, and it increments xi on each iteration.
-		   // however, it doesn't do anything with xo, so xo++ is passed as a parameter.
-		   for ( int xo = 0, xi=0; xi < effective_lisa_vid_size_x;)
-               { SETRGB16_RAW(xi,yi,{display_image->SetRGB(xo,yo,d,d,d+EXTRABLUE); xo++;},{xo++;});   }
-	    }
-
-	delete my_lisabitmap;
-	my_lisabitmap=new wxBitmap(*display_image);
-	my_memDC->SelectObjectAsSource(*my_lisabitmap);
-  }
-#endif
-/////////////////////////////////////////////////////////////////////////
-
-  e_dirty_x_min=dirty_x_min;                       // need to do these here so we can update just the rectangle we need.
-  e_dirty_x_max=dirty_x_max;                       // it will be repeated again below, but so what, it's only 4 assignments
-  e_dirty_y_min=dirty_y_min; //screen_y_map[dirty_y_min];         // and two lookups.
-  e_dirty_y_max=dirty_y_max; //screen_y_map[dirty_y_max];
-
-
-  if (updated)
-  {
-      memcpy(dirtyvidram,&lisaram[videolatchaddress],32768);
-      repaintall |= REPAINT_INVALID_WINDOW | REPAINT_VIDEO_TO_SKIN;
-	  updated=0;
-  }
-
-
-}
-
-// this is essentially the same as SingleY, only for a differently sized display.
-void LisaWin::RePaint_3A(void)
-{
-   // vars for SETRGB16_RAW
-   int updated=0;	
-   uint32 a3,xx;
-   uint16 val;
-   uint8  d;
-
-   dirty_x_min=720; dirty_x_max=-1; dirty_y_min=384*3; dirty_y_max=-1;
-
-#ifdef USE_RAW_BITMAP_ACCESS
-
- int depth;  
- int width;  
- int height; 
- int ox,oy; // private to this - not member vars
-
-   
-if (skins_on)
-   {
-    if (!my_skin) return;
-    depth = my_skin->GetDepth();    width = my_skin->GetWidth();    height= my_skin->GetHeight();
-    ox=screen_origin_x;    oy=screen_origin_y;
-   }
-else
-   {
-    if (!my_lisabitmap) return;
-    depth = my_lisabitmap->GetDepth();    width = my_lisabitmap->GetWidth();    height= my_lisabitmap->GetHeight();
-    ox=0; oy=0;
-   }
-
-   typedef wxPixelData<wxBitmap,wxNativePixelFormat> PixelData;
-   PixelData data(skins_on ? *my_skin:*my_lisabitmap);
-
-   PixelData::Iterator p(data);
-   p.Reset(data);
-   p.MoveTo(data,ox,oy);                             
-
-   for ( int y = 0; y < effective_lisa_vid_size_y; ++y )   // effective_lisa_vid_size_y
-   {
-       PixelData::Iterator rowStart = p;                   // save the x,y coordinates at the start of the line
-
-	   for ( int x = 0; x < effective_lisa_vid_size_x; )
-	       { SETRGB16_RAW(x,y,  {p.Red()=d; p.Green()=d; p.Blue()=(d+EXTRABLUE); ++p;} , {++p;} );}  
-
-       p = rowStart; p.OffsetY(data, 1);                   // restore the x,y coords from start of line, then increment y to do y++;
-   }
-
-#else
-
-  // Since we're working the slower way - with images, we need to rebuild the bitmap from the image.
-  // to do this, we discard the old bitmap and recreate it from the display_image.  This is of course
-  // slower, which is why we recommend the use of USE_RAW_BITMAP_ACCESS, but USE_RAW_BITMAP_ACCESS
-  // might not work everywhere, so we give the option.
-  if (skins_on)
-  {
-    if (!my_skin || !my_lisabitmap) return; 
-
-    //int depth = my_skin->GetDepth();
-    //int width = my_skin->GetWidth();
-    //int height= my_skin->GetHeight();
-
- 	if (!display_image)   
-         display_image= new wxImage(  my_lisabitmap->ConvertToImage());
-
-	for ( int y=0; y < effective_lisa_vid_size_y; y++ )
-	    {
-		   // note neither xi, nor xo are incremented as part of the for-loop header, this is because
-		   // the SETRGB16_AA macro expands to 16 iterations, and it increments xi on each iteration.
-		   // however, it doesn't do anything with xo, so xo++ is passed as a parameter.
-		    for ( int x=0; x < effective_lisa_vid_size_x;)
-                { SETRGB16_RAW(x,y,{display_image->SetRGB(x,y,d,d,d+EXTRABLUE); },{;}); }
-	    }
-
-    delete my_lisabitmap;
-	my_lisabitmap=new wxBitmap(*display_image);
-	my_memDC->SelectObjectAsSource(*my_lisabitmap);
-	
-    e_dirty_x_min=dirty_x_min;                       // need to do these here so we can update just the rectangle we need.
-    e_dirty_x_max=dirty_x_max;                       // it will be repeated again below, but so what, it's only 4 assignments
-    e_dirty_y_min=dirty_y_min; //screen_y_map[dirty_y_min];         // and two lookups.
-    e_dirty_y_max=dirty_y_max; //screen_y_map[dirty_y_max];
-
-    if (updated)
-        my_skinDC->Blit(screen_origin_x + e_dirty_x_min, screen_origin_y+e_dirty_y_min,     // target x,y
-                    e_dirty_x_max-e_dirty_x_min+1,   e_dirty_y_max-e_dirty_y_min+1,     // size w,h
-                   my_memDC, 0,0, wxCOPY, false);
-  }
-  else  // skins are off
-  {
-    //int depth = my_lisabitmap->GetDepth();
-    //int width = my_lisabitmap->GetWidth();
-    //int height= my_lisabitmap->GetHeight();
-
-    if (!display_image)   display_image= new wxImage(my_lisabitmap->ConvertToImage());
-
-	for ( int y=0; y < effective_lisa_vid_size_y; y++ )
-	    {
-		   // note neither xi, nor xo are incremented as part of the for-loop header, this is because
-		   // the SETRGB16_AA macro expands to 16 iterations, and it increments xi on each iteration.
-		   // however, it doesn't do anything with xo, so xo++ is passed as a parameter.
-		   //for ( int xo = 0, xi=0; xi < effective_lisa_vid_size_x;)
-               // { SETRGB16_RAW(xi,yi,{display_image->SetRGB(xo,yo,d,d,d+EXTRABLUE); xo++;},{xo++;});   }
-		    for ( int x=0; x < effective_lisa_vid_size_x;)
-                { SETRGB16_RAW(x,y,{display_image->SetRGB(x,y,d,d,d+EXTRABLUE); },{;}); }
-	    }
-
-	delete my_lisabitmap;
-	my_lisabitmap=new wxBitmap(*display_image);
-	my_memDC->SelectObjectAsSource(*my_lisabitmap);
+    my_lisabitmap=new wxBitmap(*display_image);
+    my_memDC->SelectObjectAsSource(*my_lisabitmap);
   }
 #endif
 /////////////////////////////////////////////////////////////////////////
@@ -2979,178 +3479,8 @@ else
   {
       memcpy(dirtyvidram,&lisaram[videolatchaddress],32768);
       repaintall |= REPAINT_INVALID_WINDOW | REPAINT_VIDEO_TO_SKIN;
-	  updated=0;
+      updated=0;
   }
-
-
-}
-
-
-// no skins here.
-void LisaWin::RePaint_DoubleY(void)
-{
-   // vars for SETRGB16_RAW
-   int updated=0;	
-   uint32 a3,xx;
-   uint16 val;
-   uint8  d;
-
-
-   if (skins_on) {ALERT_LOG(0,"Skins should not be on!!!!"); turn_skins_off();}
-   if (!my_lisabitmap) return;
-   dirty_x_min=720; dirty_x_max=-1; dirty_y_min=384*3; dirty_y_max=-1;
-
-#ifdef USE_RAW_BITMAP_ACCESS
-
-   int depth;  
-   int width;  
-   int height; 
-   int ox,oy; // private to this - not member vars
-
-   if (!my_lisabitmap) return;
-   depth = my_lisabitmap->GetDepth();    width = my_lisabitmap->GetWidth();    height= my_lisabitmap->GetHeight();
-   ox=0; oy=0;
- 
-   typedef wxPixelData<wxBitmap,wxNativePixelFormat> PixelData;
-   PixelData data(*my_lisabitmap);
-   if (!data) return;
-
-   PixelData::Iterator p(data);
-   p.Reset(data);
-   p.MoveTo(data,ox,oy);                             
-
-   for ( int y = 0; y < effective_lisa_vid_size_y; ++y )   // effective_lisa_vid_size_y
-   {
-       PixelData::Iterator rowStart = p;                   // save the x,y coordinates at the start of the line
-
-	   for ( int x = 0; x < effective_lisa_vid_size_x; )
-	       { SETRGB16_RAW(x,y,  {p.Red()=d; p.Green()=d; p.Blue()=(d+EXTRABLUE); ++p;} , {++p;} );}  
-
-       p = rowStart; p.OffsetY(data, 1);                   // restore the x,y coords from start of line, then increment y to do y++;
-   }
-
-#else
-
-  // Since we're working the slower way - with images, we need to rebuild the bitmap from the image.
-  // to do this, we discard the old bitmap and recreate it from the display_image.  This is of course
-  // slower, which is why we recommend the use of USE_RAW_BITMAP_ACCESS, but USE_RAW_BITMAP_ACCESS
-  // might not work everywhere, so we give the option.
-//  int depth = my_lisabitmap->GetDepth();
-//  int width = my_lisabitmap->GetWidth();
-//  int height= my_lisabitmap->GetHeight();
-  
-  if (!display_image)   display_image= new wxImage(my_lisabitmap->ConvertToImage());
-  
-  for ( int y=0; y < effective_lisa_vid_size_y; y++)
-      {
-	    for ( int x=0; x < effective_lisa_vid_size_x;)
-            { SETRGB16_RAW(x,y,{display_image->SetRGB(x,y,d,d,d+EXTRABLUE); },{;}); }
-      }
-  
-  delete my_lisabitmap;
-  my_lisabitmap=new wxBitmap(*display_image);
-  my_memDC->SelectObjectAsSource(*my_lisabitmap);
-
-#endif
-/////////////////////////////////////////////////////////////////////////
-
-  e_dirty_x_min=dirty_x_min;                       // need to do these here so we can update just the rectangle we need.
-  e_dirty_x_max=dirty_x_max;                       // it will be repeated again below, but so what, it's only 4 assignments
-  e_dirty_y_min=dirty_y_min; //screen_y_map[dirty_y_min];         // and two lookups.
-  e_dirty_y_max=dirty_y_max; //screen_y_map[dirty_y_max];
-
-
-  if (updated)
-  {
-      memcpy(dirtyvidram,&lisaram[videolatchaddress],32768);
-      repaintall |= REPAINT_INVALID_WINDOW | REPAINT_VIDEO_TO_SKIN;
-	  updated=0;
-  }
-
-
-}
-
-
-void LisaWin::RePaint_2X3Y(void)
-{
-	   // vars for SETRGB16_RAW
-	   int updated=0;	
-	   uint32 a3,xx;
-	   uint16 val;
-	   uint8  d;
-
-
-  	   if (!my_lisabitmap) return;
-       dirty_x_min=720; dirty_x_max=-1; dirty_y_min=384*3; dirty_y_max=-1;
-	
-#ifdef USE_RAW_BITMAP_ACCESS
-
-	   int depth;  
-	   int width;  
-	   int height; 
-	   int ox,oy; // private to this - not member vars
-
-	   if (!my_lisabitmap) return;
-	   depth = my_lisabitmap->GetDepth();    width = my_lisabitmap->GetWidth();    height= my_lisabitmap->GetHeight();
-	   ox=0; oy=0;
-	 
-	   typedef wxPixelData<wxBitmap,wxNativePixelFormat> PixelData;
-	   PixelData data(*my_lisabitmap);
-   	   if (!data) return;
-
-	   PixelData::Iterator p(data);
-	   p.Reset(data);
-       p.MoveTo(data,ox,oy);
-
-	   for ( int y = 0; y < effective_lisa_vid_size_y; ++y )   // effective_lisa_vid_size_y
-	   {
-	       PixelData::Iterator rowStart = p;              // save the x,y coordinates at the start of the line
-
-		   for ( int x = 0; x < 720; )
-		       { SETRGB16_RAW(x,y,  {p.Red()=d; p.Green()=d; p.Blue()=(d+EXTRABLUE); ++p; p.Red()=d; p.Green()=d; p.Blue()=(d+EXTRABLUE); ++p;} , 
-		                            {++p;++p;} );}  
-
-		   p = rowStart; p.OffsetY(data, 1);              // restore the x,y coords from start of line, then increment y to do y++;
-	   }
-
-	#else
-
-	  // Since we're working the slower way - with images, we need to rebuild the bitmap from the image.
-	  // to do this, we discard the old bitmap and recreate it from the display_image.  This is of course
-	  // slower, which is why we recommend the use of USE_RAW_BITMAP_ACCESS, but USE_RAW_BITMAP_ACCESS
-	  // might not work everywhere, so we give the option.
-//	  int depth = my_lisabitmap->GetDepth();
-//	  int width = my_lisabitmap->GetWidth();
-//	  int height= my_lisabitmap->GetHeight();
-      
-	  if (!display_image)   display_image= new wxImage(my_lisabitmap->ConvertToImage());
-      
-	  for ( int yo = 0 , yi=0; yi < effective_lisa_vid_size_y; yo++,yi++ )
-	      {
-	  	   
-	  	   for ( int xo = 0, xi=0; xi < 720;)
-	             { SETRGB16_RAW(xi,yi,{display_image->SetRGB(xo,yo,d,d,d+EXTRABLUE); xo++; display_image->SetRGB(xo,yo,d,d,d+EXTRABLUE); xo++;},
-	                                  {xo++;}  );   }
-	      }
-      
-	  delete my_lisabitmap;
-	  my_lisabitmap=new wxBitmap(*display_image);
-	  my_memDC->SelectObjectAsSource(*my_lisabitmap);
-    
-	#endif
-	/////////////////////////////////////////////////////////////////////////
-
-    e_dirty_x_min=dirty_x_min;                       // need to do these here so we can update just the rectangle we need.
-    e_dirty_x_max=dirty_x_max;                       // it will be repeated again below, but so what, it's only 4 assignments
-    e_dirty_y_min=dirty_y_min; //screen_y_map[dirty_y_min];         // and two lookups.
-    e_dirty_y_max=dirty_y_max; //screen_y_map[dirty_y_max];
-
-	  if (updated)
-	  {
-	      memcpy(dirtyvidram,&lisaram[videolatchaddress],32768);
-	      repaintall |= REPAINT_INVALID_WINDOW | REPAINT_VIDEO_TO_SKIN;
-		  updated=0;
-	  }
 
 }
 
@@ -3179,123 +3509,460 @@ void LisaWin::RePaint_2X3Y(void)
 //                                                                                                    //
 //  The following variables should be declared before calling this macro:                             //
 //                                                                                                    //
-//      int updated=0;	            // number of times we've made updates.                            //
+//         int updated=0;            // number of times we've made updates.                            //
 //                                  // can be used as a threshhold to decide how to redraw the image. //
-//      uint32 a1,a2,a3,a4,a5,xx;   // address above, below, for this value, horziontal byte offset   //
-//      uint16 vup,vdn,val,vvu,vvd; // value above, below, this words read from addr @ a1,a2,a3       //
-//      uint16 high,medium,low;     // used for antialiasing. how many neighboring bits               //
-//      uint8 d;                    // darkness level to pass to Z                                    //
+//         uint32 a1,a2,a3,xx;      // address above, below, for this value, horziontal byte offset   //
+//         uint16 vup,vdn,val;      // value above, below, this words read from addr @ a1,a2,a3       //
+//         uint16 high,medium,low;  // used for antialiasing. how many neighboring bits               //
+//         uint8 d;                 // darkness level to pass to Z                                    //
 //                                                                                                    //
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define SETRGB16_AAG(x,y,Z,Y) {                                                                        \
-	                                                                                                   \
-	 xx=(x)>>3;                                                /*   turn x coord into byte offset */   \
-	                                                                                                   \
-	 a1=(yoffset[screen_to_mouse[ y>0?(y-1):0 ]]+xx) &32767;   /*   get the addresses for above   */   \
-	 a2=(yoffset[screen_to_mouse[ y+1         ]]+xx) &32767;   /*   below and                     */   \
-	 a3=(yoffset[screen_to_mouse[ y           ]]+xx) &32767;   /*   this value we're processing   */   \
-	                                                                                                   \
-	 vup=(lisaram[videolatchaddress+a1]<<8 )|lisaram[videolatchaddress+a1+1];  /*   word above    */   \
-	 vdn=(lisaram[videolatchaddress+a2]<<8 )|lisaram[videolatchaddress+a2+1];  /*   word below    */   \
-	 val=(lisaram[videolatchaddress+a3]<<8 )|lisaram[videolatchaddress+a3+1];  /*   this word     */   \
+
+#define SETRGB16_AA(x,y,Z,Y) {                                                                         \
                                                                                                        \
+     xx=(x)>>3;                                                /*   turn x coord into byte offset */   \
                                                                                                        \
-     if (videoramdirty>DIRECT_BLITS_THRESHHOLD ||        /*  If full update requested or          */   \
-         (dirtyvidram[a1]<<8)|dirtyvidram[a1+1]!=vup ||  /*  if the video ram is dirty above or   */   \
-         (dirtyvidram[a2]<<8)|dirtyvidram[a2+1]!=vdn ||  /*  below or on this value.              */   \
-         (dirtyvidram[a3]<<8)|dirtyvidram[a3+1]!=val  )                                                \
-      {                                   	                                                           \
-       updated++;     	                                 /*  Keep track of update count           */   \
+     a3=(yoffset[screen_to_mouse[ y           ]]+xx) &32767;   /*   this value we're processing   */   \
                                                                                                        \
-	   dirty_x_min=MIN(x,dirty_x_min);       dirty_x_max=MAX(x+16,dirty_x_max);                        \
-	   dirty_y_min=MIN(y,dirty_y_min);  	 dirty_y_max=MAX(y,dirty_y_max);                           \
+     val=(lisaram[videolatchaddress+a3]<<8 )|lisaram[videolatchaddress+a3+1];  /*   this word     */   \
                                                                                                        \
- 	   a4=(a3-90)>0     ? (a3-90):a3;                                    /*   unscaled addr above */   \
-	   a5=(a3+90)<32767 ? (a3+90):a3;                                    /*   unscaled addr below */   \
-	   vvu=(lisaram[videolatchaddress+a4]<<8 )|lisaram[videolatchaddress+a4+1]; /* unscaled up    */   \
-	   vvd=(lisaram[videolatchaddress+a5]<<8 )|lisaram[videolatchaddress+a5+1]; /* unscaled below */   \
-       getgraymap(vvu,val,vvd,replacegray);              /*  Get the gray replacement map         */   \
-	                                                                                                   \
-	   high   = vup      & val     & vdn;                /*  above, middle, and below are black   */   \
-	   medium = (vup&val)|(val&vdn)|(vdn&vup);           /*  two out of 3 are black               */   \
-	   low    = vup      | val     | vdn;                /*  lowest - single pixel is black       */   \
-	                                                                                                   \
-	  d=bright[ ((BIT15 & val ) ? 7:0)  | replacegray[ 0]]; Z; x++;                                    \
-	  d=bright[ ((BIT14 & val ) ? 7:0)  | replacegray[ 1]]; Z; x++;                                    \
-	  d=bright[ ((BIT13 & val ) ? 7:0)  | replacegray[ 2]]; Z; x++;                                    \
-	  d=bright[ ((BIT12 & val ) ? 7:0)  | replacegray[ 3]]; Z; x++;                                    \
-	  d=bright[ ((BIT11 & val ) ? 7:0)  | replacegray[ 4]]; Z; x++;                                    \
-	  d=bright[ ((BIT10 & val ) ? 7:0)  | replacegray[ 5]]; Z; x++;                                    \
-	  d=bright[ ((BIT9  & val ) ? 7:0)  | replacegray[ 6]]; Z; x++;                                    \
-	  d=bright[ ((BIT8  & val ) ? 7:0)  | replacegray[ 7]]; Z; x++;                                    \
-	  d=bright[ ((BIT7  & val ) ? 7:0)  | replacegray[ 8]]; Z; x++;                                    \
-	  d=bright[ ((BIT6  & val ) ? 7:0)  | replacegray[ 9]]; Z; x++;                                    \
-	  d=bright[ ((BIT5  & val ) ? 7:0)  | replacegray[10]]; Z; x++;                                    \
-	  d=bright[ ((BIT4  & val ) ? 7:0)  | replacegray[11]]; Z; x++;                                    \
-	  d=bright[ ((BIT3  & val ) ? 7:0)  | replacegray[12]]; Z; x++;                                    \
-	  d=bright[ ((BIT2  & val ) ? 7:0)  | replacegray[13]]; Z; x++;                                    \
-	  d=bright[ ((BIT1  & val ) ? 7:0)  | replacegray[14]]; Z; x++;                                    \
-	  d=bright[ ((BIT0  & val ) ? 7:0)  | replacegray[15]]; Z; x++;                                    \
-	                                                                                                   \
-	                                                                                                   \
-      } 	                                                                                           \
+     if (videoramdirty>DIRECT_BLITS_THRESHHOLD ||        /*  If full update requested or dirty    */   \
+         ((dirtyvidram[a3]<<8)|dirtyvidram[a3+1])!=val  )                                              \
+      {                                                                                                \
+       updated++;                                          /*  Keep track of update count         */   \
+                                                                                                       \
+       dirty_x_min=MIN(x,dirty_x_min);       dirty_x_max=MAX(x+16,dirty_x_max);                        \
+       dirty_y_min=MIN(y,dirty_y_min);       dirty_y_max=MAX(y,dirty_y_max);                           \
+                                                                                                       \
+       d=bright[ ((BIT15 & val ) ? 7:0)  ]; Z; x++;                                                    \
+       d=bright[ ((BIT14 & val ) ? 7:0)  ]; Z; x++;                                                    \
+       d=bright[ ((BIT13 & val ) ? 7:0)  ]; Z; x++;                                                    \
+       d=bright[ ((BIT12 & val ) ? 7:0)  ]; Z; x++;                                                    \
+       d=bright[ ((BIT11 & val ) ? 7:0)  ]; Z; x++;                                                    \
+       d=bright[ ((BIT10 & val ) ? 7:0)  ]; Z; x++;                                                    \
+       d=bright[ ((BIT9  & val ) ? 7:0)  ]; Z; x++;                                                    \
+       d=bright[ ((BIT8  & val ) ? 7:0)  ]; Z; x++;                                                    \
+       d=bright[ ((BIT7  & val ) ? 7:0)  ]; Z; x++;                                                    \
+       d=bright[ ((BIT6  & val ) ? 7:0)  ]; Z; x++;                                                    \
+       d=bright[ ((BIT5  & val ) ? 7:0)  ]; Z; x++;                                                    \
+       d=bright[ ((BIT4  & val ) ? 7:0)  ]; Z; x++;                                                    \
+       d=bright[ ((BIT3  & val ) ? 7:0)  ]; Z; x++;                                                    \
+       d=bright[ ((BIT2  & val ) ? 7:0)  ]; Z; x++;                                                    \
+       d=bright[ ((BIT1  & val ) ? 7:0)  ]; Z; x++;                                                    \
+       d=bright[ ((BIT0  & val ) ? 7:0)  ]; Z; x++;                                                    \
+      }                                                                                                \
      else                                                                                              \
-      {                                                                      /* No updated needed */   \
-	    Y; Y; Y; Y;                                                          /* so skip over 16X  */   \
-	    Y; Y; Y; Y;                                                                                    \
-	    Y; Y; Y; Y;                                                                                    \
-	    Y; Y; Y; Y; x+=16;                                                                             \
-	  }                                                                                                \
+      {                                                                                                \
+        Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
+        Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
+        Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
+        Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
+      }                                                                                                \
 }                                                                                                     //
 ////////////////// GETRGB MACRO ENDS ///////////////////////////////////////////////////////////////////
 
-/***************************************************************************************************\
-   graymap[] are set to 8 which is the magical OR value into the color contrast table that forces
-   gray replacement.  See ContrastChange() for details.  The graymap is stored as a 3 dimentional
-   array, but we can make use of shifts and OR's to avoid multiplication that [][][] would be
-   involved in dereferencing.  It's possible some compilers will optimize it properly, but why
-   take a chance?  Access is equivalent to   color | graymap[(vup<<4) | (val<<2) | vdn];
 
-   Since we work 2 bits at a time, we need to replace both bits with a gray together.  This is why 
-   we have retval[1]=retval[0] and so on.   It would be possible to modify the code to do something
-   like retval & 14 to avoid the copy, but it wouldn't be any faster and would make the code more
-   complicated.
- 
-   This function is only called once per every 16 horizontal pixels processed for speed which is
-   why it needs to store its results in an array.
-
- \***************************************************************************************************/
-
-static inline void getgraymap(uint16 up, uint16 val, uint16 dn,  uint8 *retval)
+void LisaWin::RePaint_AntiAliased(void)
 {
-	static uint8 graymap[4*4*4]={ 0,0,0,0,0,0,8,0,0,8,0,0,0,0,0,0,0,0,0,0,0,0,0,0,8,8,0,8,0,8,0,0,    
-	                              0,0,0,0,8,0,8,8,0,0,0,0,0,0,8,0,0,0,0,0,0,0,8,8,0,8,0,8,0,0,0,0, }; 
+    // vars for SETRGB16  
+    int updated=0;    
+    uint32 a3,xx;
+    uint16 val;
+    uint8  d;
 
-// static int retval[16];
-                                                                                                                                 
- retval[ 0]=retval[ 1]=graymap[(((BIT15+BIT14) & up)>>10 )|(((BIT15+BIT14) & val)>>12 ) | (((BIT15+BIT14) & dn)>>14 )]; 
- retval[ 2]=retval[ 3]=graymap[(((BIT13+BIT12) & up)>> 8 )|(((BIT13+BIT12) & val)>>10 ) | (((BIT13+BIT12) & dn)>>12 )]; 
- retval[ 4]=retval[ 5]=graymap[(((BIT11+BIT10) & up)>> 6 )|(((BIT11+BIT10) & val)>> 8 ) | (((BIT11+BIT10) & dn)>>10 )]; 
- retval[ 6]=retval[ 7]=graymap[(((BIT9 +BIT8 ) & up)>> 4 )|(((BIT9 +BIT8 ) & val)>> 6 ) | (((BIT9 +BIT8 ) & dn)>> 8 )]; 
- retval[ 8]=retval[ 9]=graymap[(((BIT7 +BIT6 ) & up)>> 2 )|(((BIT7 +BIT6 ) & val)>> 4 ) | (((BIT7 +BIT6 ) & dn)>> 6 )]; 
- retval[10]=retval[11]=graymap[(((BIT5 +BIT4 ) & up)     )|(((BIT5 +BIT4 ) & val)>> 2 ) | (((BIT5 +BIT4 ) & dn)>> 4 )]; 
- retval[12]=retval[13]=graymap[(((BIT3 +BIT2 ) & up)<< 2 )|(((BIT3 +BIT2 ) & val)     ) | (((BIT3 +BIT2 ) & dn)>> 2 )]; 
- retval[14]=retval[15]=graymap[(((BIT1 +BIT0 ) & up)<< 4 )|(((BIT1 +BIT0 ) & val)<< 2 ) | (((BIT1 +BIT0 ) & dn)     )]; 
+    dirty_x_min=720; dirty_x_max=-1; dirty_y_min=384*3; dirty_y_max=-1;
+
+#ifdef USE_RAW_BITMAP_ACCESS
+
+    int depth;  
+    int width;  
+    int height; 
+    int ox,oy; // private to this - not member vars
+
+    if  (skins_on)
+        {
+            if (!my_skin) {ALERT_LOG(0,"Null my_skin"); return;}
+            depth = my_skin->GetDepth();    width = my_skin->GetWidth();    height= my_skin->GetHeight();
+            ox=skin.screen_origin_x;    oy=skin.screen_origin_y;
+        }
+    else
+        {
+            if (!my_lisabitmap->IsOk()) {ALERT_LOG(0,"my_lisabitmap is not ok!");}
+            if (!my_lisabitmap)         {ALERT_LOG(0,"Null my_lisa_bitmap!"); return;}
+
+            depth = my_lisabitmap->GetDepth();    width = my_lisabitmap->GetWidth();    height= my_lisabitmap->GetHeight();
+            ox=0; oy=0;
+        }
+
+    typedef wxPixelData<wxBitmap,wxNativePixelFormat> PixelData;
+    PixelData data( *( skins_on ? my_skin : my_lisabitmap) );
+    if (!data) {ALERT_LOG(0,"No data."); return;}
+
+    PixelData::Iterator p(data);
+    p.Reset(data);
+    p.MoveTo(data,ox,oy);                            
+
+    for ( int y =0; y<o_effective_lisa_vid_size_y; y++ )   // effective_lisa_vid_size_y
+        {
+          PixelData::Iterator rowStart = p;                 // save the x,y coordinates at the start of the line
+          for ( int x = 0; x < o_effective_lisa_vid_size_x; )
+              { SETRGB16_AA(x,y,  {p.Red()=d; p.Green()=d; p.Blue()=(d+EXTRABLUE); ++p;} , {++p;} );} 
+          p = rowStart; p.OffsetY(data, 1);                 // restore the x,y coords from start of line, then increment y to do y++;
+        }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    
+#else
+
+  // Since we're working the slower way - with images, we need to rebuild the bitmap from the image.
+  // to do this, we discard the old bitmap and recreate it from the display_image.  This is of course
+  // slower, which is why we recommend the use of USE_RAW_BITMAP_ACCESS, but USE_RAW_BITMAP_ACCESS
+  // might not work everywhere, so we give the option.
+  if (skins_on)
+  {
+    if (!my_skin || !my_lisabitmap) return; 
+
+    if  (!display_image)   
+          display_image= new wxImage(  my_lisabitmap->ConvertToImage());
+
+
+    for ( int y=0; y < o_effective_lisa_vid_size_y; y++ )
+        {
+
+            for ( int x=0; x < o_effective_lisa_vid_size_x;)
+                { 
+                    SETRGB16_AA(x,y,{display_image->SetRGB(x,y,d,d,d+EXTRABLUE); },{;}); 
+                }
+        }
+    // delete the old bitmap, then create a new one from the wxImage, and use it.
+    delete my_lisabitmap;
+    my_lisabitmap=new wxBitmap(*display_image);
+    my_memDC->SelectObjectAsSource(*my_lisabitmap);
+    if (!my_memDC->IsOk()) ALERT_LOG(0,"my_memDC is not ok.");
+    if (!my_lisabitmap->IsOk()) ALERT_LOG(0,"my_lisabitmap is not ok.");
+
+    e_dirty_x_min=dirty_x_min; // need to do these here so we can update just the rectangle we need.
+    e_dirty_x_max=dirty_x_max; // it will be repeated again below, but so what, it's only 4 assignments
+    e_dirty_y_min=dirty_y_min; //screen_y_map[dirty_y_min];         // and two lookups.
+    e_dirty_y_max=dirty_y_max; //screen_y_map[dirty_y_max];
+
+    if  (updated)
+        {       
+           my_skinDC->StretchBlit(_H(skin.screen_origin_x + e_dirty_x_min), _H(skin.screen_origin_y + e_dirty_y_min),   // target x,y
+                                  _H(e_dirty_x_max-e_dirty_x_min+1),_H(e_dirty_y_max-e_dirty_y_min+1),     // size w,h
+                                    my_memDC, 0,0, (e_dirty_x_max-e_dirty_x_min+1),(e_dirty_y_max-e_dirty_y_min+1),
+                                    wxCOPY, false);
+        }
+
+    // we don't delete display_image since we can reuse it the next time around and save time
+  }
+  else  // skins are off
+  {
+
+    if (!display_image)   display_image= new wxImage(my_lisabitmap->ConvertToImage());
+    // * TODO: FIXME: CODEDEBT * this might need rework for hidpi
+    for ( int yo = 0 , yi=0; yi < o_effective_lisa_vid_size_y; yo++,yi++ )
+        {
+            // note neither xi, nor xo are incremented as part of the for-loop header, this is because
+            // the SETRGB16_AA macro expands to 16 iterations, and it increments xi on each iteration.
+            // however, it doesn't do anything with xo, so xo++ is passed as a parameter.
+            for ( int xo = 0, xi=0; xi < o_effective_lisa_vid_size_x;)
+                { SETRGB16_AA(xi,yi,{display_image->SetRGB(xo,yo,d,d,d+EXTRABLUE); xo++;},{xo++;});   }
+        }
+
+    // and this is why this is slower since we need to rebuild the bitmap from the wxImage each time.
+    delete my_lisabitmap;
+    my_lisabitmap=new wxBitmap(*display_image);
+    my_memDC->SelectObjectAsSource(*my_lisabitmap);
+  }
+#endif
+/////////////////////////////////////////////////////////////////////////
+    
+  e_dirty_x_min=dirty_x_min; // need to do these here so we can update just the rectangle we need.
+  e_dirty_x_max=dirty_x_max; // it will be repeated again below, but so what, it's only 4 assignments
+  e_dirty_y_min=dirty_y_min; //screen_y_map[dirty_y_min];         // and two lookups.
+  e_dirty_y_max=dirty_y_max; //screen_y_map[dirty_y_max];
+
+  if (updated)
+  {
+      memcpy(dirtyvidram,&lisaram[videolatchaddress],32768);
+      repaintall |= REPAINT_INVALID_WINDOW | REPAINT_VIDEO_TO_SKIN;
+      updated=0;
+  }
 
 }
 
+///////////////// SETRGB 16 bit Raw Replacement MACRO //////////////////////////////////////////////////   
+//                                                                                                    //
+//  macro to fill in r,g,b values, does 16 pixels at a time, must be a macro because of the Z param   //
+//  and we want to get as much speed out of it as possible.                                           //
+//                                                                                                    //
+//  This would have been a 32 pixel macro if it were possible, however, since a single row is on the  //
+//  Lisa's display is either 90 bytes or 76 bytes, we can only evenly divide by 2 bytes (16 bits.)    //
+//                                                                                                    //
+//                                                                                                    //
+//  x,y are x,y coordinates on the bitmap.   They map to the Lisa's display, any other translation    //
+//  must be handled in Z, or via other variables.   x gets incremented for each pixel handled.        //
+//  x,y must be simple variables, and should not be expressions!                                      //
+//                                                                                                    //
+//  Z is a chunk of code to set r,g,b provided by the caller.  Z gets executed 16 times, once per     //
+//  pixel.  This is needed because we might be using SetRGB on images or rawbitmap accesss, or some   //
+//  other method in the future.   Z should be protected by enclosing it in curly braces when passing. //
+//  Z may use the uint8 d to actually set the darkness level for a pixel.                             //
+//                                                                                                    //
+//  Y is identical to Z except that it's code to call when there's no update.  i.e. ++p               //
+//                                                                                                    //
+//                                                                                                    //
+//  The following variables should be declared before calling this macro:                             //
+//                                                                                                    //
+//         int updated=0;            // number of times we've made updates.                            //
+//                                  // can be used as a threshhold to decide how to redraw the image. //
+//         uint32 a1,a2,a3,xx;      // address above, below, for this value, horziontal byte offset   //
+//         uint16 vup,vdn,val;      // value above, below, this words read from addr @ a1,a2,a3       //
+//         uint16 high,medium,low;  // used for antialiasing. how many neighboring bits               //
+//         uint8 d;                 // darkness level to pass to Z                                    //
+//                                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+#define SETRGB16_RAW_X(x,y,Z) {                                                                         \
+                                                                                                        \
+     xx=(x)>>3;                                                /*   turn x coord into byte offset */    \
+                                                                                                        \
+     a3=(yoffset[y]+xx) &32767;                                /*   this value we're processing   */    \
+     val=(lisaram[videolatchaddress+a3]<<8 )|lisaram[videolatchaddress+a3+1];  /*   this word     */    \
+                                                                                                        \
+     updated++;                                               /*  Keep track of update count      */    \
+                                                                                                        \
+     dirty_x_min=MIN(x,dirty_x_min);       dirty_x_max=MAX(x+16,dirty_x_max);                           \
+     dirty_y_min=MIN(y,dirty_y_min);       dirty_y_max=MAX(y,dirty_y_max);                              \
+                                                                                                        \
+     d=bright[ ((BIT15 & val) ? 7:0) ]; Z; x++;                                                         \
+     d=bright[ ((BIT14 & val) ? 7:0) ]; Z; x++;                                                         \
+     d=bright[ ((BIT13 & val) ? 7:0) ]; Z; x++;                                                         \
+     d=bright[ ((BIT12 & val) ? 7:0) ]; Z; x++;                                                         \
+     d=bright[ ((BIT11 & val) ? 7:0) ]; Z; x++;                                                         \
+     d=bright[ ((BIT10 & val) ? 7:0) ]; Z; x++;                                                         \
+     d=bright[ ((BIT9  & val) ? 7:0) ]; Z; x++;                                                         \
+     d=bright[ ((BIT8  & val) ? 7:0) ]; Z; x++;                                                         \
+     d=bright[ ((BIT7  & val) ? 7:0) ]; Z; x++;                                                         \
+     d=bright[ ((BIT6  & val) ? 7:0) ]; Z; x++;                                                         \
+     d=bright[ ((BIT5  & val) ? 7:0) ]; Z; x++;                                                         \
+     d=bright[ ((BIT4  & val) ? 7:0) ]; Z; x++;                                                         \
+     d=bright[ ((BIT3  & val) ? 7:0) ]; Z; x++;                                                         \
+     d=bright[ ((BIT2  & val) ? 7:0) ]; Z; x++;                                                         \
+     d=bright[ ((BIT1  & val) ? 7:0) ]; Z; x++;                                                         \
+     d=bright[ ((BIT0  & val) ? 7:0) ]; Z; x++;                                                         \
+}                                                                                                     //
+////////////////// SETRGB MACRO ENDS ///////////////////////////////////////////////////////////////////
 
-void LisaWin::RePaint_AAGray(void)
+
+///////////////// SETRGB 16 bit Raw Replacement MACRO //////////////////////////////////////////////////   
+//                                                                                                    //
+//  macro to fill in r,g,b values, does 16 pixels at a time, must be a macro because of the Z param   //
+//  and we want to get as much speed out of it as possible.                                           //
+//                                                                                                    //
+//  This would have been a 32 pixel macro if it were possible, however, since a single row is on the  //
+//  Lisa's display is either 90 bytes or 76 bytes, we can only evenly divide by 2 bytes (16 bits.)    //
+//                                                                                                    //
+//                                                                                                    //
+//  x,y are x,y coordinates on the bitmap.   They map to the Lisa's display, any other translation    //
+//  must be handled in Z, or via other variables.   x gets incremented for each pixel handled.        //
+//  x,y must be simple variables, and should not be expressions!                                      //
+//                                                                                                    //
+//  Z is a chunk of code to set r,g,b provided by the caller.  Z gets executed 16 times, once per     //
+//  pixel.  This is needed because we might be using SetRGB on images or rawbitmap accesss, or some   //
+//  other method in the future.   Z should be protected by enclosing it in curly braces when passing. //
+//  Z may use the uint8 d to actually set the darkness level for a pixel.                             //
+//                                                                                                    //
+//  Y is identical to Z except that it's code to call when there's no update.  i.e. ++p               //
+//                                                                                                    //
+//                                                                                                    //
+//  The following variables should be declared before calling this macro:                             //
+//                                                                                                    //
+//         int updated=0;            // number of times we've made updates.                            //
+//                                  // can be used as a threshhold to decide how to redraw the image. //
+//         uint32 a1,a2,a3,xx;      // address above, below, for this value, horziontal byte offset   //
+//         uint16 vup,vdn,val;      // value above, below, this words read from addr @ a1,a2,a3       //
+//         uint16 high,medium,low;  // used for antialiasing. how many neighboring bits               //
+//         uint8 d;                 // darkness level to pass to Z                                    //
+//                                                                                                    //
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#define SETRGB16_RAW(x,y,Z,Y) {                                                                        \
+                                                                                                       \
+     xx=(x)>>3;                                                /*   turn x coord into byte offset */   \
+                                                                                                       \
+     a3=(yoffset[screen_to_mouse[ y           ]]+xx) &32767;   /*   this value we're processing   */   \
+     val=(lisaram[videolatchaddress+a3]<<8 )|lisaram[videolatchaddress+a3+1];  /*   this word     */   \
+                                                                                                       \
+     if (videoramdirty>DIRECT_BLITS_THRESHHOLD ||        /*  If full update requested or          */   \
+        ((dirtyvidram[a3]<<8)|dirtyvidram[a3+1])!=val  )  /*  value is changed                    */   \
+      {                                                                                                \
+       updated++;                                          /*  Keep track of update count           */ \
+                                                                                                       \
+       dirty_x_min=MIN(x,dirty_x_min);       dirty_x_max=MAX(x+16,dirty_x_max);                        \
+       dirty_y_min=MIN(y,dirty_y_min);       dirty_y_max=MAX(y,dirty_y_max);                           \
+                                                                                                       \
+                                                                                                       \
+       d=bright[ ((BIT15 & val) ? 7:0) ]; Z; x++;                                                      \
+       d=bright[ ((BIT14 & val) ? 7:0) ]; Z; x++;                                                      \
+       d=bright[ ((BIT13 & val) ? 7:0) ]; Z; x++;                                                      \
+       d=bright[ ((BIT12 & val) ? 7:0) ]; Z; x++;                                                      \
+       d=bright[ ((BIT11 & val) ? 7:0) ]; Z; x++;                                                      \
+       d=bright[ ((BIT10 & val) ? 7:0) ]; Z; x++;                                                      \
+       d=bright[ ((BIT9  & val) ? 7:0) ]; Z; x++;                                                      \
+       d=bright[ ((BIT8  & val) ? 7:0) ]; Z; x++;                                                      \
+       d=bright[ ((BIT7  & val) ? 7:0) ]; Z; x++;                                                      \
+       d=bright[ ((BIT6  & val) ? 7:0) ]; Z; x++;                                                      \
+       d=bright[ ((BIT5  & val) ? 7:0) ]; Z; x++;                                                      \
+       d=bright[ ((BIT4  & val) ? 7:0) ]; Z; x++;                                                      \
+       d=bright[ ((BIT3  & val) ? 7:0) ]; Z; x++;                                                      \
+       d=bright[ ((BIT2  & val) ? 7:0) ]; Z; x++;                                                      \
+       d=bright[ ((BIT1  & val) ? 7:0) ]; Z; x++;                                                      \
+       d=bright[ ((BIT0  & val) ? 7:0) ]; Z; x++;                                                      \
+      }                                                                                                \
+     else                                                                                              \
+      {                                                                                                \
+        Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
+        Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
+        Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
+        Y; x++;  Y; x++;  Y; x++;  Y; x++;                                                             \
+      }                                                                                                \
+}                                                                                                     //
+////////////////// SETRGB MACRO ENDS ///////////////////////////////////////////////////////////////////
+
+void LisaWin::RePaint_SingleY(void)
 {
-   // vars for SETRGB16  
-   int updated=0;	
-   uint32 a1,a2,a3,a4,a5,xx;
-   uint16 vup,vdn,val,vvu,vvd;
-   uint16 high,medium,low;
+    // vars for SETRGB16_RAW
+    int updated=0;    
+    uint32 a3,xx;
+    uint16 val;
+    uint8  d;
+
+    dirty_x_min=720; dirty_x_max=-1; dirty_y_min=384*3; dirty_y_max=-1;
+
+#ifdef USE_RAW_BITMAP_ACCESS
+
+    int depth;  
+    int width;  
+    int height; 
+    int ox,oy; // private to this - not member vars
+
+   
+if (skins_on)
+   {
+    if (!my_skin) return;
+    depth = my_skin->GetDepth();    width = my_skin->GetWidth();    height= my_skin->GetHeight();
+    ox=skin.screen_origin_x;    oy=skin.screen_origin_y;
+   }
+else
+   {
+    if (!my_lisabitmap) return;
+    depth = my_lisabitmap->GetDepth();    width = my_lisabitmap->GetWidth();    height= my_lisabitmap->GetHeight();
+    ox=0; oy=0;
+   }
+
+   typedef wxPixelData<wxBitmap,wxNativePixelFormat> PixelData;
+   PixelData data(skins_on ? *my_skin:*my_lisabitmap);
+   if (!data) {DEBUG_LOG(0,"No data."); return;}
+
+   PixelData::Iterator p(data);
+   p.Reset(data);
+
+   p.MoveTo(data,ox,oy);                            
+   for ( int y = 0; y < effective_lisa_vid_size_y; ++y )
+   {
+       PixelData::Iterator rowStart = p;              // save the x,y coordinates at the start of the line
+       for ( int x = 0; x < o_effective_lisa_vid_size_x; )
+           { SETRGB16_RAW(x,y,  {p.Red()=d; p.Green()=d; p.Blue()=(d+EXTRABLUE); ++p;} , {++p;} );}  
+
+       p = rowStart; p.OffsetY(data, 1);              // restore the x,y coords from start of line, then increment y via P.OffsetY to do y++;
+   }
+
+#else
+
+  // Since we're working the slower way - with images, we need to rebuild the bitmap from the image.
+  // to do this, we discard the old bitmap and recreate it from the display_image.  This is of course
+  // slower, which is why we recommend the use of USE_RAW_BITMAP_ACCESS, but USE_RAW_BITMAP_ACCESS
+  // might not work everywhere, so we give the option.
+  if (skins_on)
+  {
+    if (!my_skin || !my_lisabitmap) return; 
+    if (!display_image)   
+        display_image= new wxImage(  my_lisabitmap->ConvertToImage());
+
+    for ( int y=0; y < o_effective_lisa_vid_size_y; y++ )
+        {
+           // note neither xi, nor xo are incremented as part of the for-loop header, this is because
+           // the SETRGB16_AA macro expands to 16 iterations, and it increments xi on each iteration.
+           // however, it doesn't do anything with xo, so xo++ is passed as a parameter.
+            for ( int x=0; x < o_effective_lisa_vid_size_x;)
+                { SETRGB16_RAW(x,y,{display_image->SetRGB(x,y,d,d,d+EXTRABLUE); },{;}); }
+        }
+
+    delete my_lisabitmap;
+    my_lisabitmap=new wxBitmap(*display_image);
+    my_memDC->SelectObjectAsSource(*my_lisabitmap);
+    
+    e_dirty_x_min=dirty_x_min;                       // need to do these here so we can update just the rectangle we need.
+    e_dirty_x_max=dirty_x_max;                       // it will be repeated again below, but so what, it's only 4 assignments
+    e_dirty_y_min=dirty_y_min; //screen_y_map[dirty_y_min];         // and two lookups.
+    e_dirty_y_max=dirty_y_max; //screen_y_map[dirty_y_max];
+
+    if (updated)
+    {    my_skinDC->StretchBlit(_H(skin.screen_origin_x + e_dirty_x_min),   _H(skin.screen_origin_y + e_dirty_y_min),     // target x,y
+                                _H(e_dirty_x_max-e_dirty_x_min+1),          _H(e_dirty_y_max-e_dirty_y_min+1),            // size w,h
+                                  my_memDC, 0,0, 
+                                  (e_dirty_x_max-e_dirty_x_min+1),            (e_dirty_y_max-e_dirty_y_min+1),            // size in src
+                                  wxCOPY, false);
+    }
+
+  }
+ else  // skins are off
+  {
+    if (!display_image)   display_image= new wxImage(my_lisabitmap->ConvertToImage());
+
+    for ( int yo = 0 , yi=0; yi < o_effective_lisa_vid_size_y; yo++,yi++ )
+        {
+           // note neither xi, nor xo are incremented as part of the for-loop header, this is because
+           // the SETRGB16_AA macro expands to 16 iterations, and it increments xi on each iteration.
+           // however, it doesn't do anything with xo, so xo++ is passed as a parameter.
+           for ( int xo = 0, xi=0; xi < o_effective_lisa_vid_size_x;)
+               { SETRGB16_RAW(xi,yi,{display_image->SetRGB(xo,yo,d,d,d+EXTRABLUE); xo++;},{xo++;});   }
+        }
+
+    delete my_lisabitmap;
+    my_lisabitmap=new wxBitmap(*display_image);
+    my_memDC->SelectObjectAsSource(*my_lisabitmap);
+  }
+#endif
+/////////////////////////////////////////////////////////////////////////
+
+  e_dirty_x_min=dirty_x_min;                       // need to do these here so we can update just the rectangle we need.
+  e_dirty_x_max=dirty_x_max;                       // it will be repeated again below, but so what, it's only 4 assignments
+  e_dirty_y_min=dirty_y_min;                       // and two lookups.
+  e_dirty_y_max=dirty_y_max; 
+
+
+  if (updated)
+  {
+      memcpy(dirtyvidram,&lisaram[videolatchaddress],32768);
+      repaintall |= REPAINT_INVALID_WINDOW | REPAINT_VIDEO_TO_SKIN;
+      updated=0;
+  }
+
+
+}
+
+// this is essentially the same as SingleY, only for a differently sized display.
+void LisaWin::RePaint_3A(void)
+{
+   // vars for SETRGB16_RAW
+   int updated=0;    
+   uint32 a3,xx;
+   uint16 val;
    uint8  d;
 
-   uint8 replacegray[16]; // ignore dumb compiler warning here!
    dirty_x_min=720; dirty_x_max=-1; dirty_y_min=384*3; dirty_y_max=-1;
 
 #ifdef USE_RAW_BITMAP_ACCESS
@@ -3303,42 +3970,37 @@ void LisaWin::RePaint_AAGray(void)
  int depth;  
  int width;  
  int height; 
- int ox,oy;             // private to this - not member vars
+ int ox,oy; // private to this - not member vars
 
    
 if (skins_on)
    {
-    if (!my_skin) { replacegray[0]=0;  // useless statement to suppress dumb "unused" compiler warning 
-	                return;}
-
+    if (!my_skin) return;
     depth = my_skin->GetDepth();    width = my_skin->GetWidth();    height= my_skin->GetHeight();
-    ox=screen_origin_x;    oy=screen_origin_y;
+    ox=skin.screen_origin_x;    oy=skin.screen_origin_y;
    }
 else
    {
     if (!my_lisabitmap) return;
-
     depth = my_lisabitmap->GetDepth();    width = my_lisabitmap->GetWidth();    height= my_lisabitmap->GetHeight();
     ox=0; oy=0;
    }
 
    typedef wxPixelData<wxBitmap,wxNativePixelFormat> PixelData;
    PixelData data(skins_on ? *my_skin:*my_lisabitmap);
-   if (!data) return;
+
    PixelData::Iterator p(data);
    p.Reset(data);
-   p.MoveTo(data,ox,oy); 
-   for ( int y = 0; y < effective_lisa_vid_size_y; ++y )   // effective_lisa_vid_size_y
+   p.MoveTo(data,ox,oy);                             
+
+   for ( int y = 0; y < o_effective_lisa_vid_size_y; ++y )   // effective_lisa_vid_size_y
    {
-       PixelData::Iterator rowStart = p;              // save the x,y coordinates at the start of the line
+       PixelData::Iterator rowStart = p;                   // save the x,y coordinates at the start of the line
 
-	   for ( int x = 0; x < effective_lisa_vid_size_x; )
-	       { SETRGB16_AAG(x,y,  {p.Red()=d; p.Green()=d; p.Blue()=(d+EXTRABLUE); ++p;} , {++p;} );}  
+       for ( int x = 0; x < o_effective_lisa_vid_size_x; )
+           { SETRGB16_RAW(x,y,  {p.Red()=d; p.Green()=d; p.Blue()=(d+EXTRABLUE); ++p;} , {++p;} );}  
 
-	   p.Red()=0; p.Green()=0; p.Blue()=0;
-
-
-       p = rowStart; p.OffsetY(data, 1);              // restore the x,y coords from start of line, then increment y to do y++;
+       p = rowStart; p.OffsetY(data, 1);                   // restore the x,y coords from start of line, then increment y to do y++;
    }
 
 #else
@@ -3351,55 +4013,52 @@ else
   {
     if (!my_skin || !my_lisabitmap) return; 
 
-  //  int depth = my_skin->GetDepth();
-  //  int width = my_skin->GetWidth();
-  //  int height= my_skin->GetHeight();
+    if (!display_image)   
+        display_image= new wxImage(  my_lisabitmap->ConvertToImage());
 
- 	if (!display_image)   
-         display_image= new wxImage(  my_lisabitmap->ConvertToImage());
-
-	for ( int y=0; y < effective_lisa_vid_size_y; y++ )
-	    {
-		    for ( int x=0; x < effective_lisa_vid_size_x;)
-                { SETRGB16_AAG(x,y,{display_image->SetRGB(x,y,d,d,d+EXTRABLUE); },{;}); }
-	    }
+    for ( int y=0; y < o_effective_lisa_vid_size_y; y++ )
+        {
+           // note neither xi, nor xo are incremented as part of the for-loop header, this is because
+           // the SETRGB16_AA macro expands to 16 iterations, and it increments xi on each iteration.
+           // however, it doesn't do anything with xo, so xo++ is passed as a parameter.
+            for ( int x=0; x < o_effective_lisa_vid_size_x;)
+                { SETRGB16_RAW(x,y,{display_image->SetRGB(x,y,d,d,d+EXTRABLUE); },{;}); }
+        }
 
     delete my_lisabitmap;
-	my_lisabitmap=new wxBitmap(*display_image);
-	my_memDC->SelectObjectAsSource(*my_lisabitmap);
-
+    my_lisabitmap=new wxBitmap(*display_image);
+    my_memDC->SelectObjectAsSource(*my_lisabitmap);
+    
     e_dirty_x_min=dirty_x_min;                       // need to do these here so we can update just the rectangle we need.
     e_dirty_x_max=dirty_x_max;                       // it will be repeated again below, but so what, it's only 4 assignments
     e_dirty_y_min=dirty_y_min; //screen_y_map[dirty_y_min];         // and two lookups.
     e_dirty_y_max=dirty_y_max; //screen_y_map[dirty_y_max];
 
     if (updated)
-       my_skinDC->Blit(screen_origin_x + e_dirty_x_min, screen_origin_y+e_dirty_y_min,     // target x,y
-                       e_dirty_x_max-e_dirty_x_min+1,   e_dirty_y_max-e_dirty_y_min+1,     // size w,h
-                       my_memDC, 0,0, wxCOPY, false);
-
-    // we don't delete display_image since we can reuse it the next time around and save time
+        my_skinDC->StretchBlit(  (skin.screen_origin_x + _H(e_dirty_x_min) ),  (skin.screen_origin_y + _H(e_dirty_y_min) ),     // target x,y
+                               _H(e_dirty_x_max-e_dirty_x_min+1),            _H(e_dirty_y_max-e_dirty_y_min+1),                 // size w,h
+                                my_memDC, 0,0,                                                                                  // source, source x,y
+                                (e_dirty_x_max-e_dirty_x_min+1),  (e_dirty_y_max-e_dirty_y_min+1),                              // source size w,h
+                                wxCOPY, false);
   }
   else  // skins are off
   {
-//    int depth = my_lisabitmap->GetDepth();
-//    int width = my_lisabitmap->GetWidth();
-//    int height= my_lisabitmap->GetHeight();
-
     if (!display_image)   display_image= new wxImage(my_lisabitmap->ConvertToImage());
 
-	for ( int yo = 0 , yi=0; yi < effective_lisa_vid_size_y; yo++,yi++ )
-	    {
-		   // note neither xi, nor xo are incremented as part of the for-loop header, this is because
-		   // the SETRGB16_AA macro expands to 16 iterations, and it increments xi on each iteration.
-		   // however, it doesn't do anything with xo, so xo++ is passed as a parameter.
-		   for ( int xo = 0, xi=0; xi < effective_lisa_vid_size_x;)
-               { SETRGB16_AAG(xi,yi,{display_image->SetRGB(xo,yo,d,d,d+EXTRABLUE); xo++;},{xo++;});   }
-	    }
+    for ( int y=0; y < o_effective_lisa_vid_size_y; y++ )
+        {
+           // note neither xi, nor xo are incremented as part of the for-loop header, this is because
+           // the SETRGB16_AA macro expands to 16 iterations, and it increments xi on each iteration.
+           // however, it doesn't do anything with xo, so xo++ is passed as a parameter.
+           //for ( int xo = 0, xi=0; xi < effective_lisa_vid_size_x;)
+               // { SETRGB16_RAW(xi,yi,{display_image->SetRGB(xo,yo,d,d,d+EXTRABLUE); xo++;},{xo++;});   }
+            for ( int x=0; x < o_effective_lisa_vid_size_x;)
+                { SETRGB16_RAW(x,y,{display_image->SetRGB(x,y,d,d,d+EXTRABLUE); },{;}); }
+        }
 
-	delete my_lisabitmap;
-	my_lisabitmap=new wxBitmap(*display_image);
-	my_memDC->SelectObjectAsSource(*my_lisabitmap);
+    delete my_lisabitmap;
+    my_lisabitmap=new wxBitmap(*display_image);
+    my_memDC->SelectObjectAsSource(*my_lisabitmap);
   }
 #endif
 /////////////////////////////////////////////////////////////////////////
@@ -3413,35 +4072,202 @@ else
   {
       memcpy(dirtyvidram,&lisaram[videolatchaddress],32768);
       repaintall |= REPAINT_INVALID_WINDOW | REPAINT_VIDEO_TO_SKIN;
-	  updated=0;
+      updated=0;
   }
 
 
 }
 
 
-void LisaWin::OnPaint(wxPaintEvent &event )
+// no skins here.
+void LisaWin::RePaint_DoubleY(void)
 {
-  if (!my_lisaframe) return; // not built yet!
-  if (!my_lisawin)   return;
+   // vars for SETRGB16_RAW
+   int updated=0;    
+   uint32 a3,xx;
+   uint16 val;
+   uint8  d;
 
-  if (!my_lisaframe->running)   repaintall |= REPAINT_INVALID_WINDOW;
-  if ( my_alias==NULL || refresh_bytemap) ContrastChange();
 
-  if ( my_memDC==NULL)       my_memDC     =new class wxMemoryDC;
-  if ( my_lisabitmap==NULL)
+   if (skins_on) {ALERT_LOG(0,"Skins should not be on!!!!"); turn_skins_off();}
+   if (!my_lisabitmap) return;
+   dirty_x_min=720; dirty_x_max=-1; dirty_y_min=384*3; dirty_y_max=-1;
+
+#ifdef USE_RAW_BITMAP_ACCESS
+
+   int depth;  
+   int width;  
+   int height; 
+   int ox,oy; // private to this - not member vars
+
+   if (!my_lisabitmap) return;
+   depth = my_lisabitmap->GetDepth();    width = my_lisabitmap->GetWidth();    height= my_lisabitmap->GetHeight();
+   ox=0; oy=0;
+ 
+   typedef wxPixelData<wxBitmap,wxNativePixelFormat> PixelData;
+   PixelData data(*my_lisabitmap);
+   if (!data) return;
+
+   PixelData::Iterator p(data);
+   p.Reset(data);
+   p.MoveTo(data,ox,oy);                             
+
+   for ( int y = 0; y < o_effective_lisa_vid_size_y; ++y )   // effective_lisa_vid_size_y
+   {
+       PixelData::Iterator rowStart = p;                   // save the x,y coordinates at the start of the line
+
+       for ( int x = 0; x < o_effective_lisa_vid_size_x; )
+           { SETRGB16_RAW(x,y,  {p.Red()=d; p.Green()=d; p.Blue()=(d+EXTRABLUE); ++p;} , {++p;} );}  
+
+       p = rowStart; p.OffsetY(data, 1);                   // restore the x,y coords from start of line, then increment y to do y++;
+   }
+
+#else
+
+  // Since we're working the slower way - with images, we need to rebuild the bitmap from the image.
+  // to do this, we discard the old bitmap and recreate it from the display_image.  This is of course
+  // slower, which is why we recommend the use of USE_RAW_BITMAP_ACCESS, but USE_RAW_BITMAP_ACCESS
+  // might not work everywhere, so we give the option.
+  
+  if (!display_image)   display_image= new wxImage(my_lisabitmap->ConvertToImage());
+  
+  for ( int y=0; y < o_effective_lisa_vid_size_y; y++)
+      {
+        for ( int x=0; x < o_effective_lisa_vid_size_x;)
+            { SETRGB16_RAW(x,y,{display_image->SetRGB(x,y,d,d,d+EXTRABLUE); },{;}); }
+      }
+  
+  delete my_lisabitmap;
+  my_lisabitmap=new wxBitmap(*display_image);
+  my_memDC->SelectObjectAsSource(*my_lisabitmap);
+
+#endif
+/////////////////////////////////////////////////////////////////////////
+
+  e_dirty_x_min=dirty_x_min;                       // need to do these here so we can update just the rectangle we need.
+  e_dirty_x_max=dirty_x_max;                       // it will be repeated again below, but so what, it's only 4 assignments
+  e_dirty_y_min=dirty_y_min; //screen_y_map[dirty_y_min];         // and two lookups.
+  e_dirty_y_max=dirty_y_max; //screen_y_map[dirty_y_max];
+
+
+  if (updated)
   {
-       my_lisabitmap=new class wxBitmap(effective_lisa_vid_size_x,effective_lisa_vid_size_y, DEPTH); //,my_lisaframe->depth);
-       my_memDC->SelectObjectAsSource(*my_lisabitmap);
-	   my_memDC->SetBrush(FILLERBRUSH);      my_memDC->SetPen(FILLERPEN);
-	   my_memDC->DrawRectangle(0 ,   0,   effective_lisa_vid_size_x, effective_lisa_vid_size_y);
-  	   if (!my_memDC->IsOk()) ALERT_LOG(0,"my_memDC is not ok.");
-  	   if (!my_lisabitmap->IsOk()) ALERT_LOG(0,"my_lisabitmap is not ok.");
+      memcpy(dirtyvidram,&lisaram[videolatchaddress],32768);
+      repaintall |= REPAINT_INVALID_WINDOW | REPAINT_VIDEO_TO_SKIN;
+      updated=0;
   }
 
-  if ((dirtyscreen || videoramdirty) && (powerstate & POWER_ON_MASK) == POWER_ON)
-                                        (my_lisawin->*RePainter)();  // whoever came up with this C++ syntax instead of the old C one was on crack!
+}
 
+
+void LisaWin::RePaint_2X3Y(void)
+{
+       // vars for SETRGB16_RAW
+      int    updated=0;    
+      uint32 a3,xx;
+      uint16 val;
+      uint8  d;
+
+      if (!my_lisabitmap) return;
+      dirty_x_min=720; dirty_x_max=-1; dirty_y_min=384*3; dirty_y_max=-1;
+    
+#ifdef USE_RAW_BITMAP_ACCESS
+
+      int depth;  
+      int width;  
+      int height; 
+      int ox,oy; // private to this - not member vars
+
+      if (!my_lisabitmap) return;
+      depth = my_lisabitmap->GetDepth();    width = my_lisabitmap->GetWidth();    height= my_lisabitmap->GetHeight();
+      ox=0; oy=0;
+
+      typedef wxPixelData<wxBitmap,wxNativePixelFormat> PixelData;
+      PixelData data(*my_lisabitmap);
+      if (!data) return;
+
+      PixelData::Iterator p(data);
+      p.Reset(data);
+      p.MoveTo(data,ox,oy);
+
+      for ( int y = 0; y < o_effective_lisa_vid_size_y; ++y )   // effective_lisa_vid_size_y
+      {
+          PixelData::Iterator rowStart = p;              // save the x,y coordinates at the start of the line
+          for ( int x = 0; x < o_effective_lisa_vid_size_x; )
+            { SETRGB16_RAW(x,y,  {p.Red()=d; p.Green()=d; p.Blue()=(d+EXTRABLUE); ++p; p.Red()=d; p.Green()=d; p.Blue()=(d+EXTRABLUE); ++p;} , 
+                                  {++p;++p;} );}  
+           p = rowStart; p.OffsetY(data, 1);              // restore the x,y coords from start of line, then increment y to do y++;
+      }
+
+#else
+      // Since we're working the slower way - with images, we need to rebuild the bitmap from the image.
+      // to do this, we discard the old bitmap and recreate it from the display_image.  This is of course
+      // slower, which is why we recommend the use of USE_RAW_BITMAP_ACCESS, but USE_RAW_BITMAP_ACCESS
+      // might not work everywhere, so we give the option.
+      
+      if (!display_image)   {display_image= new wxImage(my_lisabitmap->ConvertToImage());}
+      //ALERT_LOG(0,"NONRAW display_image:%d,%d  oels:%d,%d",display_image->GetWidth(),display_image->GetHeight(),
+      //                                                    o_effective_lisa_vid_size_x,o_effective_lisa_vid_size_y);
+
+      for ( int yo = 0 , yi=0; yi < o_effective_lisa_vid_size_y; yo++,yi++ )
+          {
+            for ( int xo = 0, xi=0; xi < effective_lisa_vid_size_x-2;)
+                {  //ALERT_LOG(0,"SETRGB16_RAW:xo,yo:%d,%d  xi,yi:%d,%d",xo,yo,xi,yi);
+                   SETRGB16_RAW(xi,yi,{display_image->SetRGB(xo,yo,d,d,d+EXTRABLUE); xo++; display_image->SetRGB(xo,yo,d,d,d+EXTRABLUE); xo++;},
+                                      {xo++;}  );   }
+          }
+      
+      delete my_lisabitmap;
+      my_lisabitmap=new wxBitmap(*display_image);
+      my_memDC->SelectObjectAsSource(*my_lisabitmap);
+    
+#endif
+    /////////////////////////////////////////////////////////////////////////
+
+    e_dirty_x_min=dirty_x_min;                       // need to do these here so we can update just the rectangle we need.
+    e_dirty_x_max=dirty_x_max;                       // it will be repeated again below, but so what, it's only 4 assignments
+    e_dirty_y_min=dirty_y_min; //screen_y_map[dirty_y_min];         // and two lookups.
+    e_dirty_y_max=dirty_y_max; //screen_y_map[dirty_y_max];
+
+    if  (updated)
+        {
+          memcpy(dirtyvidram,&lisaram[videolatchaddress],32768);
+          repaintall |= REPAINT_INVALID_WINDOW | REPAINT_VIDEO_TO_SKIN;
+          updated=0;
+        }
+}
+
+
+// void LisaWin::OnDraw(wxDC & dc) {} // should this be implemented?
+void LisaWin::OnPaint(wxPaintEvent &event )
+{
+//wxPaintDC dc(this);         // 20190831
+  DCTYPE dc(this); // 20190831 - let's see if this is needed
+  DoPrepareDC(dc); // or this->PrepareDC(dc); this->OnDraw(dc);
+
+  if (!my_lisaframe || !my_lisawin) return; // not fully running yet!
+
+  if (!my_lisaframe->running)   repaintall |= REPAINT_INVALID_WINDOW;
+  if (refresh_bytemap) {ALERT_LOG(0,"Contrast change"); ContrastChange();}
+
+  if ( my_lisabitmap==NULL)
+  {
+      ALERT_LOG(0,"my_lisabitmap was NULL, allocating new one - shouldn't be doing this!");
+      my_lisabitmap=new class wxBitmap(o_effective_lisa_vid_size_x,o_effective_lisa_vid_size_y, DEPTH); //,my_lisaframe->depth);
+      my_memDC->SelectObjectAsSource(*my_lisabitmap);
+      my_memDC->SetBrush(FILLERBRUSH);      my_memDC->SetPen(FILLERPEN);
+      my_memDC->DrawRectangle(0 ,   0,   o_effective_lisa_vid_size_x, o_effective_lisa_vid_size_y);
+      if (!my_memDC->IsOk()) ALERT_LOG(0,"my_memDC is not ok.");
+      if (!my_lisabitmap->IsOk()) ALERT_LOG(0,"my_lisabitmap is not ok.");
+  }
+
+  if  ((dirtyscreen || videoramdirty) && (powerstate & POWER_ON_MASK) == POWER_ON)
+      {   
+          //ALERT_LOG(0,"Calling repainter");
+          (my_lisawin->*RePainter)();  // whoever came up with this C++ syntax instead of the old C one was on crack!
+      }
+
+  //DEBUG_LOG(0,"Updating regions");
   // from wx2.8 help
   wxRegionIterator upd(GetUpdateRegion()); // get the update rect list
 
@@ -3449,14 +4275,14 @@ void LisaWin::OnPaint(wxPaintEvent &event )
   {
 
     wxRect rect(upd.GetRect());
-    wxRect display(screen_origin_x,screen_origin_y, effective_lisa_vid_size_x,effective_lisa_vid_size_y);
+    wxRect display( _H(skin.screen_origin_x), _H(skin.screen_origin_y), effective_lisa_vid_size_x,effective_lisa_vid_size_y);
 
     // if this was an actual request to update the screen, then flag it as such.
     if (rect.Intersects(display))         repaintall |= REPAINT_INVALID_WINDOW | REPAINT_VIDEO_TO_SKIN;
 
-    if ( skins_on) OnPaint_skins(   rect);
-    else           OnPaint_skinless(rect);
-
+    //ALERT_LOG(0,"Calling onpaint_skins or skinless with dc");
+    if ( skins_on) OnPaint_skins(   rect, dc);
+    else           OnPaint_skinless(rect, dc);
     upd++;
   }
 
@@ -3465,411 +4291,473 @@ void LisaWin::OnPaint(wxPaintEvent &event )
   videoramdirty=0;
  #ifdef __WXOSX__
   event.Skip(false);
+ #else
+  event.Skip(false); // not sure if I need this or not
  #endif
 }
 
-void LisaWin::OnPaint_skinless(wxRect &rect)
+
+void LisaWin::OnPaint_skinless(wxRect &rect, DCTYPE &dc)
 {
-   wxPaintDC dc(this);
-   DoPrepareDC(dc);
-#ifdef __WXMACOSX__
-   dc.SetBackgroundMode(wxTRANSPARENT); // OS X has a nasty habbit of erasing the background even though we skip the event!
-#endif
+   //wxPaintDC dc(this);
+  #ifdef __WXMACOSX__
+    dc->SetBackgroundMode(wxTRANSPARENT); // OS X has a nasty habbit of erasing the background even though we skip the event!
+  #endif
 
-   int width, height, w_width, w_height;  
-   width=rect.GetWidth();              // junk assignment to suppress " warning: unused parameter 'rect'"
-   height=rect.GetHeight();
+  int width, height, w_width, w_height;  
+  width =rect.GetWidth();              // junk assignment to suppress " warning: unused parameter 'rect'"
+  height=rect.GetHeight();
 
-   GetClientSize(&w_width,&w_height);
+  GetClientSize(&w_width,&w_height);
 
-   correct_my_lisabitmap();  // hack/fix for linux
+  // correct_my_lisabitmap();  // hack/fix for linux
+  // center image
+  ox=(w_width  - o_effective_lisa_vid_size_x)/2;
+  oy=(w_height - o_effective_lisa_vid_size_y)/2;
+  skin.screen_origin_x=ox;  skin.screen_origin_y=oy;
 
-   ox=(w_width  - effective_lisa_vid_size_x)/2;
-   oy=(w_height - effective_lisa_vid_size_y)/2;
-   screen_origin_x=ox;  screen_origin_y=oy;
-
-   if (my_lisaframe->running)
-   {
-       ex=w_width-ox; ey=w_height-oy;
- 
+  if (my_lisaframe->running)
+  {
+      ex=w_width-ox; ey=w_height-oy;
        // draw a black border around the lisa display
-       dc.SetBrush(*wxBLACK_BRUSH);      dc.SetPen(*wxBLACK_PEN);
-       if (oy>1)         dc.DrawRectangle(0 ,   0,   w_width,oy    );   // top
-       if (ey<w_height)  dc.DrawRectangle(0 ,  ey-2, w_width,w_height); // bottom
-       if (ey>1)         dc.DrawRectangle(0 ,  oy,   ox,     ey    );   // center-left
-       if (ex-1<w_width) dc.DrawRectangle(ex-1,oy,   w_width,ey    );   // center-right
+      dc.SetBrush(*wxBLACK_BRUSH);      dc.SetPen(*wxBLACK_PEN);
 
-       if (e_dirty_x_min>e_dirty_x_max || e_dirty_y_min>e_dirty_y_max)
+      if (oy>1)         dc.DrawRectangle(0   , 0   , w_width, oy      );   // top
+      if (ey<w_height)  dc.DrawRectangle(0   , ey-2, w_width, w_height);   // bottom
+      if (ey>1)         dc.DrawRectangle(0   , oy  , ox     , ey      );   // center-left
+      if (ex-1<w_width) dc.DrawRectangle(ex-1, oy  , w_width, ey      );   // center-right
+
+      if  (e_dirty_x_min>e_dirty_x_max || e_dirty_y_min>e_dirty_y_max)
           {
-           e_dirty_x_min=0; e_dirty_x_max=lisa_vid_size_x;
-           e_dirty_y_min=0; e_dirty_y_max=effective_lisa_vid_size_y;
+            e_dirty_x_min=0; e_dirty_x_max=o_effective_lisa_vid_size_x;
+            e_dirty_y_min=0; e_dirty_y_max=o_effective_lisa_vid_size_y;
           }
 
+      #ifdef DEBUG
+        if (!dc.IsOk()) {ALERT_LOG(0,"event DC for repainting is not ok!");}
+      #endif
 
- 	   dc.Blit(ox+e_dirty_x_min,                 oy+e_dirty_y_min,                                 // target x,y on window
-			      e_dirty_x_max-e_dirty_x_min,      e_dirty_y_max-e_dirty_y_min,     my_memDC,     // width, height, source DC
-				  e_dirty_x_min,                    e_dirty_y_min);                                // source x,y
-	
-       e_dirty_x_min=720; e_dirty_x_max=0; e_dirty_y_min=364*3; e_dirty_y_max=-1;                  // reset coordinates for next pass
-   }
-   else    // not running
-   {
-       dc.SetBrush(*wxBLACK_BRUSH);  dc.SetPen(*wxBLACK_PEN);
-       dc.DrawRectangle(0 ,0,   width,height);
-   }
-   
-   repaintall=0;
+      if  (lisa_ui_video_mode==vidmod_3y)
+          dc.StretchBlit( _H(ox+e_dirty_x_min*2),              _H(oy+e_dirty_y_min),            // target x,y on window
+                          _H(e_dirty_x_max-e_dirty_x_min)*2,   _H(e_dirty_y_max-e_dirty_y_min), // width, height
+                          my_memDC,                                                             // src dc
+                          e_dirty_x_min*2,  e_dirty_y_min,                                      // src dc x,y
+                          (e_dirty_x_max-e_dirty_x_min)*2,        e_dirty_y_max-e_dirty_y_min,  // src dc size
+                          wxCOPY, false);
+      else
+          dc.StretchBlit( _H(ox+e_dirty_x_min),                _H(oy+e_dirty_y_min),            // target x,y on window
+                          _H(e_dirty_x_max-e_dirty_x_min),     _H(e_dirty_y_max-e_dirty_y_min), // width, height
+                          my_memDC,                                                             // src dc
+                          e_dirty_x_min,  e_dirty_y_min,                                        // src dc x,y
+                          e_dirty_x_max-e_dirty_x_min,            e_dirty_y_max-e_dirty_y_min,  // src dc size
+                          wxCOPY, false);
+
+      e_dirty_x_min=o_effective_lisa_vid_size_x; e_dirty_x_max=0; e_dirty_y_min=364*3; e_dirty_y_max=-1;                               // reset coordinates for next pass
+  }
+  else    // not running
+  {
+      #ifdef DEBUG
+        if (!dc.IsOk()) {ALERT_LOG(0,"event DC for repainting is not ok!");}
+      #endif
+
+      dc.SetBrush(*wxBLACK_BRUSH);  dc.SetPen(*wxBLACK_PEN);
+      dc.DrawRectangle(0 ,0,   width,height);
+  }
+
+  repaintall=0;
 }
 
 
-void LisaWin::OnPaint_skins(wxRect &rect)
+void LisaWin::OnPaint_skins(wxRect &rect, DCTYPE &dc)
 {
+    static int count;
+    //wxPaintDC dc(this);
+    #ifdef __WXMACOSX__
+      //ALERT_LOG(0,"Setting background mode")
+      dc.SetBackgroundMode(wxTRANSPARENT); // OS X has a nasty habbit of erasing the background even though we skip the event!
+    #endif
 
-   wxPaintDC dc(this);
-   DoPrepareDC(dc);
-#ifdef __WXMACOSX__
-   dc.SetBackgroundMode(wxTRANSPARENT); // OS X has a nasty habbit of erasing the background even though we skip the event!
-#endif
-   
-
-   correct_my_skin();
-
-   // The first time we're in here, draw the skins.  The skins are cut in quarters because
-   // some versions of wxWidgets can't handle such a large wxBitmap. :-(  Once we build the skin
-   // we discard the images and set them to null, so this only runs once.
-
-   if ((powerstate & POWER_NEEDS_REDRAW)==POWER_NEEDS_REDRAW && my_skin0)
-   {
-    int y=0;
-
-    my_skinDC->Blit(0,y, my_skin0->GetWidth(),my_skin0->GetHeight(),my_skin0DC, 0,0 ,wxCOPY, false);   y+=my_skin0->GetHeight();
-    my_skinDC->Blit(0,y, my_skin1->GetWidth(),my_skin1->GetHeight(),my_skin1DC, 0,0 ,wxCOPY, false);   y+=my_skin1->GetHeight();
-    my_skinDC->Blit(0,y, my_skin2->GetWidth(),my_skin2->GetHeight(),my_skin2DC, 0,0 ,wxCOPY, false);   y+=my_skin2->GetHeight();
-    my_skinDC->Blit(0,y, my_skin3->GetWidth(),my_skin3->GetHeight(),my_skin3DC, 0,0 ,wxCOPY, false); //y+=my_skin3->GetHeight();
-
-
-    delete my_skin0;           my_skin0=NULL;
-    delete my_skin1;           my_skin1=NULL;
-    delete my_skin2;           my_skin2=NULL;
-    delete my_skin3;           my_skin3=NULL;
-
-    delete my_skin0DC;         my_skin0DC=NULL;
-    delete my_skin1DC;         my_skin1DC=NULL;
-    delete my_skin2DC;         my_skin2DC=NULL;
-    delete my_skin3DC;         my_skin3DC=NULL;
-   }
-
-   if ((floppystate & FLOPPY_NEEDS_REDRAW) )
-   {
-     // The floppy's going to be redrawn so we to blit the floppy to the
-     // skin, and then the window will need to be updated from the skin.
-     repaintall |= REPAINT_INVALID_WINDOW | REPAINT_FLOPPY_TO_SKIN;
-
-
-     switch(floppystate & FLOPPY_ANIM_MASK)
-     {
-
-        case 0:  my_skinDC->Blit(FLOPPY_LEFT, FLOPPY_TOP, my_floppy0->GetWidth(),my_floppy0->GetHeight(),my_floppy0DC,    0,0 ,wxCOPY, false); break;
-        case 1:  my_skinDC->Blit(FLOPPY_LEFT, FLOPPY_TOP, my_floppy1->GetWidth(),my_floppy1->GetHeight(),my_floppy1DC,    0,0 ,wxCOPY, false); break;
-        case 2:  my_skinDC->Blit(FLOPPY_LEFT, FLOPPY_TOP, my_floppy2->GetWidth(),my_floppy2->GetHeight(),my_floppy2DC,    0,0 ,wxCOPY, false); break;
-        case 3:  my_skinDC->Blit(FLOPPY_LEFT, FLOPPY_TOP, my_floppy3->GetWidth(),my_floppy3->GetHeight(),my_floppy3DC,    0,0 ,wxCOPY, false); break;
-       default:  my_skinDC->Blit(FLOPPY_LEFT, FLOPPY_TOP, my_floppy4->GetWidth(),my_floppy4->GetHeight(),my_floppy4DC,    0,0 ,wxCOPY, false);
-
-     }
-
-     floppystate &= FLOPPY_ANIMATING | FLOPPY_ANIM_MASK; //XXX Is this right?
+    // The first time we're in here, draw the skins.  The skins are cut in horizontal quarters because
+    // some versions of wxWidgets can't handle such a large wxBitmap.
+    if ((powerstate & POWER_NEEDS_REDRAW)==POWER_NEEDS_REDRAW) // && my_skin0)
+    {
+      //ALERT_LOG(0,"On_paint skins: powerstate:%d floppystate:%d",powerstate,floppystate);
+      prepare_skin();
+      //powerstate &= ~POWER_NEEDS_REDRAW;
     }
 
+    if ((floppystate & FLOPPY_NEEDS_REDRAW) )
+    {
+       // The floppy's going to be redrawn so we to blit the floppy to the
+       // skin, and then the window will need to be updated from the skin.
+      repaintall |= REPAINT_INVALID_WINDOW | REPAINT_FLOPPY_TO_SKIN;
 
+      switch(floppystate & FLOPPY_ANIM_MASK)
+      {
 
+        case 0:  my_skinDC->StretchBlit(FLOPPY_LEFT, FLOPPY_TOP, _H(my_floppy0->GetWidth()), _H(my_floppy0->GetHeight()), my_floppy0DC,
+                                        0,0 ,my_floppy0->GetWidth(),my_floppy0->GetHeight(), wxCOPY, false); break;
+
+        case 1:  my_skinDC->StretchBlit(FLOPPY_LEFT, FLOPPY_TOP, _H(my_floppy1->GetWidth()), _H(my_floppy1->GetHeight()), my_floppy1DC,
+                                        0,0 ,my_floppy1->GetWidth(),my_floppy1->GetHeight(), wxCOPY, false); break;
+
+        case 2:  my_skinDC->StretchBlit(FLOPPY_LEFT, FLOPPY_TOP, _H(my_floppy2->GetWidth()), _H(my_floppy2->GetHeight()), my_floppy2DC,
+                                        0,0 ,my_floppy2->GetWidth(),my_floppy2->GetHeight(), wxCOPY, false); break;
+
+        case 3:  my_skinDC->StretchBlit(FLOPPY_LEFT, FLOPPY_TOP, _H(my_floppy3->GetWidth()), _H(my_floppy3->GetHeight()), my_floppy3DC,
+                                        0,0 ,my_floppy3->GetWidth(),my_floppy3->GetHeight(),wxCOPY, false); break;
+
+        default: my_skinDC->StretchBlit(FLOPPY_LEFT, FLOPPY_TOP, _H(my_floppy4->GetWidth()), _H(my_floppy4->GetHeight()), my_floppy4DC,
+                                        0,0, my_floppy4->GetWidth(),my_floppy4->GetHeight(),wxCOPY, false);
+      }
+
+      floppystate &= FLOPPY_ANIMATING | FLOPPY_ANIM_MASK;
+    }
 
     if ((powerstate & POWER_NEEDS_REDRAW) )
     {
-     // The power's going to be redrawn so we to blit the power to the
-     // skin, and then the window will need to be updated from the skin.
-     repaintall |= REPAINT_INVALID_WINDOW | REPAINT_POWER_TO_SKIN;
+      // The power's going to be redrawn so we to blit the power to the
+      // skin, and then the window will need to be updated from the skin.
+      repaintall |= REPAINT_INVALID_WINDOW | REPAINT_POWER_TO_SKIN;
+      //ALERT_LOG(0,"Stretchblitting power state onto my_skinDC");
 
-     if ((powerstate & POWER_ON_MASK) == POWER_ON)
-        {
-          my_skinDC->Blit(POWER_LEFT, POWER_TOP,  my_poweron->GetWidth(), my_poweron->GetHeight(), my_poweronDC, 0,0, wxCOPY, false);
+      if  ((powerstate & POWER_ON_MASK) == POWER_ON)
+          {
+            my_skinDC->StretchBlit(   POWER_LEFT, POWER_TOP,  
+                                      _H(my_poweron->GetWidth()), _H(my_poweron->GetHeight()), 
+                                      my_poweronDC, 0,0, my_poweron->GetWidth(), my_poweron->GetHeight(),
+                                      wxCOPY, true);
+
+          #if defined(DEBUG) && defined(DEBUG_MOUSE_LOCATION)
+              my_skinDC->SetPen(*wxGREEN_PEN); my_skinDC->SetBrush(*wxTRANSPARENT_BRUSH );
+              my_skinDC->DrawRectangle( _H(skin.power_button_tl_x-2),_H(skin.power_button_tl_y-2),
+                                        _H(skin.power_button_br_x - skin.power_button_tl_x +2),
+                                        _H(skin.power_button_br_y - skin.power_button_tl_y +2) );
+          #endif
 
           // These coordinates are a small rectangle around the powerlight
-          if (powerstate & POWER_PUSHED)
-             my_skinDC->Blit(1143-2,836-2, (1185-1143)+2  , (876-836)+2, my_poweronDC,  1143,(836-738), wxCOPY, false);
+          if (powerstate & POWER_PUSHED) {
+              my_skinDC->StretchBlit( _H(skin.power_button_tl_x-2),_H(skin.power_button_tl_y-2),         // left,top corner x,y
+                                      _H(skin.power_button_br_x - skin.power_button_tl_x),
+                                      _H(skin.power_button_br_y - skin.power_button_tl_y),               // width height
+                                      my_poweronDC,  skin.power_button_tl_x+2,skin.power_button_tl_y+2,  // source dc,   x,y
+                                      (skin.power_button_br_x   - skin.power_button_tl_x),
+                                      (skin.power_button_br_y   - skin.power_button_tl_y),               // width height
+                                      wxCOPY, true);  }
         }
-     else
+     else 
         {
-          my_skinDC->Blit(POWER_LEFT, POWER_TOP,  my_poweroff->GetWidth(), my_poweroff->GetHeight(), my_poweroffDC, 0,0, wxCOPY, false);
+          my_skinDC->StretchBlit(    _H(skin.power_button_tl_x),_H(skin.power_button_tl_y),              // left,top corner x,y
+                                     _H(skin.power_button_br_x - skin.power_button_tl_x),
+                                     _H(skin.power_button_br_y - skin.power_button_tl_y),                // width height
+                                     my_poweroffDC,  skin.power_button_tl_x,skin.power_button_tl_y,      // source dc,   x,y
+                                     (skin.power_button_br_x   - skin.power_button_tl_x),
+                                     (skin.power_button_br_y   - skin.power_button_tl_y),                // width height
+                                     wxCOPY, true);
 
           if (powerstate & POWER_PUSHED)
-              my_skinDC->Blit(1143-2,836-2, (1185-1143)+2  , (876-836)+2, my_poweroffDC,  1143,(836-738), wxCOPY, false);
+             my_skinDC->StretchBlit( _H(skin.power_button_tl_x-2),_H(skin.power_button_tl_y+2),          // left,top corner x,y
+                                     _H(skin.power_button_br_x - skin.power_button_tl_x),
+                                     _H(skin.power_button_br_y - skin.power_button_tl_y),                // width height
+                                     my_poweroffDC,  skin.power_button_tl_x+2,skin.power_button_tl_y+2,  // source dc,   x,y
+                                     (skin.power_button_br_x   - skin.power_button_tl_x),
+                                     (skin.power_button_br_y   - skin.power_button_tl_y),                // width height
+                                     wxCOPY, true);
         }
 
      powerstate &= ~POWER_PUSHED;
+     powerstate &= ~POWER_NEEDS_REDRAW;
+
+     //ALERT_LOG(0,"calling force refresh");
+     force_refresh();
+     //ALERT_LOG(0,"Done");
     }
 
 
      ///////////////////////////////////////////////////////////////////
-     int vbX,vbY;
-     int ivbX,ivbY;
-     int width,height;
+     int vbX,vbY,width,height;
 
-     GetViewStart(&vbX,&vbY);           // convert scrollbar position into skin relative pixels
+     count++;
+     if ((count & 31)==0)
+     {
+         count  = 0; 
+         vbX    = 0; 
+         vbY    = 0;
+         width  = my_skin->GetWidth();
+         height = my_skin->GetHeight();
+     }
+     else
+     {
+         GetViewStart(&vbX,&vbY);           // convert scrollbar position into skin relative pixels
 
-     ivbX=vbX; ivbY=vbY;
-     vbX=vbX * (my_skin->GetWidth()/100);
-     vbY=vbY * (my_skin->GetHeight()/100);
+         vbX=vbX * (my_skin->GetWidth()/100);
+         vbY=vbY * (my_skin->GetHeight()/100);
 
-	 vbX  +=rect.GetX()-1;
-	 vbY  +=rect.GetY()-1;
-	 height=rect.GetHeight()+1;
-	 width =rect.GetWidth()+1;
-	
-     width= MIN(width,my_skin->GetWidth()  );
-     height=MIN(height,my_skin->GetHeight());
-	 vbX=MAX(vbX,0); vbY=MAX(vbY,0);
+         vbX  += rect.GetX()-1;
+         vbY  += rect.GetY()-1;
+         height= rect.GetHeight()+1;
+         width = rect.GetWidth()+1;
+    
+         width=  MIN(width,my_skin->GetWidth()  );
+         height= MIN(height,my_skin->GetHeight());
+         vbX   = MAX(vbX,1);
+         vbY   = MAX(vbY,1);
+     }
+     #ifdef DEBUG
+         if (!dc.IsOk()) {ALERT_LOG(0,"event DC for repainting is not ok!");}
+     #endif
 
+     dc.Blit(vbX,vbY, width, height, my_skinDC, vbX,vbY, wxCOPY, false);
 
-	 dc.Blit(vbX,vbY, width, height, my_skinDC, vbX,vbY, wxCOPY, false);
-
+     //ALERT_LOG(0,"Done");
      repaintall=0;
 }
 
 void LisaWin::OnErase(wxEraseEvent &event)
 {
-#ifdef __WXOSX__
-	event.GetDC()->SetBackground(*wxTRANSPARENT_BRUSH);
-	event.GetDC()->SetBackgroundMode(wxTRANSPARENT);
-	event.Skip();
-	event.StopPropagation();
-#endif
+  //ALERT_LOG(0,"entering");
+  #ifdef __WXOSX__
+    event.GetDC()->SetBackground(*wxTRANSPARENT_BRUSH);
+    event.GetDC()->SetBackgroundMode(wxTRANSPARENT);
+    event.Skip();
+    event.StopPropagation();
+  #else
+    event.Skip();
+    event.StopPropagation();
+  #endif
+  //ALERT_LOG(0,"Dome");
+}
+
+
+inline void flushscreen(void) 
+{//if (my_lisawin    )my_lisawin->Refresh();
+  if (my_lisawin)   my_lisawin->Update();  
+ //if (my_lisaframe) my_lisaframe->Refresh(false,NULL);
+  if (my_lisaframe) my_lisaframe->Update(); 
 }
 
 
 void black(void)
 {
-  if (skins_on && my_skin!=NULL)
-     {
-	   if (my_skinDC)
-       {       
-        my_skinDC->SetBrush(FILLERBRUSH);   // these must be white, else linux drawing breaks
-        my_skinDC->SetPen(FILLERPEN);       // these must be white, else linux drawing breaks
-        my_skinDC->DrawRectangle(screen_origin_x,screen_origin_y, effective_lisa_vid_size_x,effective_lisa_vid_size_y);
-       }
+  if  (skins_on && !!my_skin)
+      {
+        if (my_skinDC)
+        {
+          //ALERT_LOG(0,"Setting brush")   
+          my_skinDC->SetBrush(FILLERBRUSH);   // these must be white, else linux drawing breaks
+          my_skinDC->SetPen(FILLERPEN);       // these must be white, else linux drawing breaks
+          my_skinDC->DrawRectangle(_H(skin.screen_origin_x),     _H(skin.screen_origin_y), 
+                                      effective_lisa_vid_size_x,    effective_lisa_vid_size_y);
+        //ALERT_LOG(0,"done");
+        }
       }
   else
-     {
-	   if (my_memDC)
-	   {
-         my_memDC->SetBrush(FILLERBRUSH);   // these must be white, else linux drawing breaks
-         my_memDC->SetPen(FILLERPEN);       // these must be white, else linux drawing breaks
-         my_memDC->DrawRectangle(0,0,effective_lisa_vid_size_x+1,effective_lisa_vid_size_y);
-       }
-     }
-
-my_lisawin->Refresh();
-my_lisawin->Update();
+      {
+        if (my_memDC)
+        {
+           //ALERT_LOG(0,"Setting brush skinless")
+           my_memDC->SetBrush(FILLERBRUSH);   // these must be white, else linux drawing breaks
+           my_memDC->SetPen(FILLERPEN);       // these must be white, else linux drawing breaks
+           my_memDC->DrawRectangle(0,0,effective_lisa_vid_size_x+1,effective_lisa_vid_size_y);
+        }
+      }
+  //ALERT_LOG(0,"Flushing screen");
+  flushscreen();
+  //ALERT_LOG(0,"done.")
 }
 
 
-extern "C" void setstatusbar(char *text)
+extern "C" void x_setstatusbar(char *text)
 {
-	wxString x=wxString(text, wxConvLocal, 2048); //wxSTRING_MAXLEN);
+    wxString x=wxString(text, wxConvLocal, 2048); //wxSTRING_MAXLEN);
     my_lisaframe->SetStatusBarText(x);
 }
 
-extern "C" int islisarunning(void)
-{return     my_lisaframe->running;}
+#define setstatusbar(text)         { ALERT_LOG(0,(text)); x_setstatusbar(text); }
+
+extern "C" int islisarunning(void) { return     my_lisaframe->running;          }
 
 
+// Let your hammer fly, let the lightning crack the blackened skies
 void lightning(void)
 {
-
- if (!skins_on)
-    {
+  if  (!skins_on)
+      {
         contrast=0xf;
         //contrastchange();
         black();
         ALERT_LOG(0,"Lightning skipped - skins off.");
         return;
-    }
- static XTIMER lastclk;
+      }
+  static XTIMER lastclk;
 
- if (lastclk==cpu68k_clocks) {
-                              ALERT_LOG(0,"skipping duplicate");
-                              return; // got a duplicate due to screen refresh
-                             }
- lastclk=cpu68k_clocks;
+  if  (lastclk==cpu68k_clocks) 
+      {  ALERT_LOG(0,"skipping duplicate"); return; } // got a duplicate due to screen refresh
 
- // CAN YOU FEEL IT BUILDING
- 
- // CAN YOU FEEL IT BUILDING
- black();
- // DEVASTATION IS ON THE WAY
- 
- wxMilliSleep(300);
- my_poweroffclk->Play(wxSOUND_ASYNC);
+  lastclk=cpu68k_clocks;
+
+  // CAN YOU FEEL IT BUILDING?
+  // CAN YOU FEEL IT BUILDING?
+  black();
+  // DEVASTATION IS ON THE WAY
+
+  wxMilliSleep(300);
+  my_poweroffclk->Play(wxSOUND_ASYNC);
 
  /* Draw the central flash */
- my_skinDC->SetPen(FILLERPEN);
- my_skinDC->SetBrush(FILLERBRUSH);
- my_skinDC->DrawRectangle(screen_origin_x + effective_lisa_vid_size_x/2 -24, screen_origin_y,
-                          48, effective_lisa_vid_size_y);
+  my_skinDC->SetPen(FILLERPEN);
+  my_skinDC->SetBrush(FILLERBRUSH);
+  my_skinDC->DrawRectangle( _H(skin.screen_origin_x) + effective_lisa_vid_size_x/2 -_H(24), _H(skin.screen_origin_y),
+                            _H(48), effective_lisa_vid_size_y);
 
- videoramdirty=0; my_lisawin->RefreshRect(wxRect(screen_origin_x + effective_lisa_vid_size_x/2 -24, screen_origin_y,
-                          48, effective_lisa_vid_size_y),false);
+  videoramdirty=0; my_lisawin->RefreshRect(wxRect( _H(skin.screen_origin_x ) + effective_lisa_vid_size_x/2 -_H(24), 
+                                                  _H(skin.screen_origin_y ),
+                                                  _H(48), effective_lisa_vid_size_y),false);
 
- my_lisawin->Refresh(); my_lisawin->Update();
- wxMilliSleep(100);
+  flushscreen();
+  wxMilliSleep(100);
 
  /* Blacken the screen */
- my_skinDC->SetPen(*wxBLACK_PEN);
- my_skinDC->SetBrush(*wxBLACK_BRUSH);
+  my_skinDC->SetPen(*wxBLACK_PEN);
+  my_skinDC->SetBrush(*wxBLACK_BRUSH);
 
 
- for (int i=12; i>-1; i-=4)
- {
+  for (int i=_H(12); i>-1; i-=4)
+  {
    // left
+    ALERT_LOG(0,"%d",i);
+    my_skinDC->SetPen(*wxBLACK_PEN);
+    my_skinDC->SetBrush(*wxBLACK_BRUSH);
 
-   my_skinDC->SetPen(*wxBLACK_PEN);
-   my_skinDC->SetBrush(*wxBLACK_BRUSH);
-
-   my_skinDC->DrawRectangle(screen_origin_x, screen_origin_y,
-                            effective_lisa_vid_size_x/2 -i, effective_lisa_vid_size_y);
+    my_skinDC->DrawRectangle( _H(skin.screen_origin_x),         _H(skin.screen_origin_y),
+                                 effective_lisa_vid_size_x/2 -i, effective_lisa_vid_size_y);
 
    // right
-   my_skinDC->DrawRectangle(screen_origin_x + effective_lisa_vid_size_x/2 + i, screen_origin_y,
-                            effective_lisa_vid_size_x/2 -i+1,
-                            effective_lisa_vid_size_y);
+    my_skinDC->DrawRectangle( _H(skin.screen_origin_x) + effective_lisa_vid_size_x/2 + i, _H(skin.screen_origin_y),
+                              effective_lisa_vid_size_x/2 -i+1,                         effective_lisa_vid_size_y);
 
-   videoramdirty=0;
-   my_lisawin->RefreshRect(wxRect(screen_origin_x, screen_origin_y,
-                                  effective_lisa_vid_size_x,effective_lisa_vid_size_y),
-                                  false);
-   my_lisawin->Refresh(); my_lisawin->Update();
-   wxMilliSleep(75);
- }
+    videoramdirty=0;
+    my_lisawin->RefreshRect(wxRect( _H(skin.screen_origin_x), _H(skin.screen_origin_y),
+                                    effective_lisa_vid_size_x, effective_lisa_vid_size_y ),
+                                    false);
+    flushscreen();
+    wxMilliSleep(75);
+  }
 
 
-     my_lisawin->powerstate = POWER_NEEDS_REDRAW;
-     my_lisawin->powerstate = POWER_NEEDS_REDRAW;     my_lisawin->dirtyscreen=1;     my_lisawin->repaintall|=1;
-     my_lisawin->powerstate = POWER_OFF;
-    contrast=0xf;
-    contrastchange();
-
-    my_lisawin->Refresh(); my_lisawin->Update();
+  my_lisawin->powerstate = POWER_NEEDS_REDRAW;     my_lisawin->dirtyscreen=1;     my_lisawin->repaintall|=1;
+  flushscreen();
+  my_lisawin->powerstate = POWER_OFF;
+  contrast=0xf;
+  contrastchange();
+  flushscreen();
 }
+
 
 int initialize_all_subsystems(void);
 
-
 void handle_powerbutton(void)
 {
+      ALERT_LOG(0,"powerstate: %d",my_lisawin->powerstate);
+      if ((my_lisawin->powerstate & POWER_ON_MASK) == POWER_ON) // power is already on, send a power-key event instead
+         {
+            int i;
+            ALERT_LOG(0,"Power is on, sending power key event to COPS");
+            setstatusbar("Sending power key event");
+            presspowerswitch();                      // send keyboard event.
+            my_lisaconfig->Save(pConfig, floppy_ram);
 
-//   ALERT_LOG(0,"Power Button Pressed.");
+            if  (running_lisa_os==LISA_OFFICE_RUNNING)
+                {
+                   refresh_rate_used=5*REFRESHRATE;       // speed up contrast ramp by lowering the refresh rate
+                   my_lisaframe->clockfactor=0;           // speed up shutdown to compensane for printing slowdown
+                }
 
+            setstatusbar("Flushing any queued print jobs.");
+            for (i=0; i<9; i++) iw_formfeed(i);
+            //setstatusbar("Shutting down printers");
+            //iw_shutdown();                             // this is too slow, so skip it
+            setstatusbar("Waiting for Lisa to shut down...");
+            ALERT_LOG(0,"Waiting for OS to shut down");
+          }
+      else
+          {
+            int ret;
+                
+            ALERT_LOG(0,"Powering on");   
+            // 20071204 hack to fix windows bugs with RAWBITMAP
+            #ifdef USE_RAW_BITMAP_ACCESS
+              #ifdef __WXMSW__
+                if (skins_on) {turn_skins_off(); turn_skins_on();}
+                black();
+              #endif
+            #endif
+    
+            ret=initialize_all_subsystems();
+            if  (!ret)
+                {
+                  my_lisawin->powerstate|= POWER_NEEDS_REDRAW | POWER_ON;
+                  my_lisaframe->running=emulation_running; 
+                  my_lisaframe->runtime.Start(0);
+                  my_lisaframe->lastcrtrefresh=0;
+                }    
+            else
+                  if (!romless) wxMessageBox(_T("Power on failed."), _T("Poweron Failed"), wxICON_INFORMATION | wxOK);
 
-              if ((my_lisawin->powerstate & POWER_ON_MASK) == POWER_ON) // power is already on, send a power-key event instead
-              {
-               int i;
-
-               setstatusbar("Sending power key event");
-               presspowerswitch();                      // send keyboard event.
-
-               if (running_lisa_os==LISA_OFFICE_RUNNING)
-                  {
-                    refresh_rate_used=5*REFRESHRATE;       // speed up contrast ramp by lowering the refresh rate
-                    my_lisaframe->clockfactor=0;           // speed up shutdown to compensane for printing slowdown
-                  }
-               my_lisaconfig->Save(pConfig, floppy_ram);
-
-               setstatusbar("Flushing any queued print jobs.");
-               for (i=0; i<9; i++) iw_formfeed(i);
-               //setstatusbar("Shutting down printers");
-               //iw_shutdown();                             // this is too slow, so skip it
-               setstatusbar("Waiting for Lisa to shut down...");
-              }
-              else
-              {
-				  int ret;
-				
-				  // 20071204 hack to fix windows bugs with RAWBITMAP
-				  #ifdef USE_RAW_BITMAP_ACCESS
-        
-				    #ifdef __WXMSW__
-					if (skins_on) {turn_skins_off(); turn_skins_on();}
-					black();
-				    #endif  
-        
-				  #endif
-	
-                  ret=initialize_all_subsystems();
-                  if (!ret)
-                  {
-                        my_lisawin->powerstate|= POWER_NEEDS_REDRAW | POWER_ON;
-                        my_lisaframe->running=emulation_running; 
-                        my_lisaframe->runtime.Start(0);
-						my_lisaframe->lastcrtrefresh=0;
-                  }
-                  else 
-                       if (!romless) wxMessageBox(_T("Power on failed."), _T("Poweron Failed"), wxICON_INFORMATION | wxOK);
-                  if (ret>1) EXIT(999,0,"Out of memory or other fatal error.");  // out of memory or other fatal error!
-                  contrast=0;
-
-                  presspowerswitch();                      // send keyboard event.
-
-                  my_lisawin->dirtyscreen=1;
-              }
+            if (ret>1) EXIT(999,0,"Out of memory or other fatal error.");  // out of memory or other fatal error!
+            contrast=0;
+            presspowerswitch();                      // send keyboard event.
+          }
 
         my_lisawin->dirtyscreen=1;
-
         save_global_prefs();
         my_lisaframe->UpdateProfileMenu();
 }
 
 
+void quit_lisaem(void) {  wxCommandEvent foo; my_lisaframe->OnQuit(foo); }
+
 extern "C" void lisa_powered_off(void)
 {
-   my_lisaframe->running=emulation_off;                // no longer running
-   if ((my_lisawin->floppystate & FLOPPY_ANIM_MASK)!=FLOPPY_EMPTY) 
-   {
-	 eject_floppy_animation();
-     my_lisaframe->Refresh(false,NULL);                // clean up display
-     my_lisaframe->Update();
-     my_lisaframe->Refresh(false,NULL);                // clean up display
-     my_lisaframe->Update();
-     my_lisaframe->Refresh(false,NULL);                // clean up display
-     my_lisaframe->Update();
-   }
-   
-   if (skins_on) lightning();					     // CRT lightning
-   else black();
+  my_lisaframe->running=emulation_off;                // no longer running
+  if  ((my_lisawin->floppystate & FLOPPY_ANIM_MASK)!=FLOPPY_EMPTY) 
+      {
+        eject_floppy_animation();
+        flushscreen();
+      }
 
-   unvars();					                     // reset global vars
-   my_lisaconfig->Save(pConfig, floppy_ram);         // save PRAM, configuration
-   fileMenu->Check(ID_RUN,false);		             // emulator no longer running
-   my_lisaframe->runtime.Pause();                    // pause the stopwatch
+  if (skins_on) lightning();                         // CRT lightning
+  else          black();
 
-   my_lisawin->powerstate= POWER_NEEDS_REDRAW | POWER_OFF;
-   my_lisawin->Update();
+  unvars();                                         // reset global vars
+  my_lisaconfig->Save(pConfig, floppy_ram);         // save PRAM, configuration
+  my_lisaframe->runtime.Pause();                    // pause the stopwatch
 
-   setstatusbar("The Lisa has powered off");         // status
-   my_lisaframe->Refresh(false,NULL);                // clean up display
-   my_lisaframe->Update();
+  my_lisawin->powerstate= POWER_NEEDS_REDRAW | POWER_OFF;
+  flushscreen();
+  ALERT_LOG(0,"The Lisa has powered off powerstate:%d",my_lisawin->powerstate);         // status
 
-   iw_enddocuments();
+  setstatusbar("The Lisa has powered off");         // status
+  flushscreen();
+  iw_enddocuments();
+
+  if (on_start_quit_on_poweroff) quit_lisaem();
 }
+
+extern "C" void free_all_ipcts(void);
 
 extern "C" void lisa_rebooted(void)
 {
-   setstatusbar("The Lisa is rebooting.");
-   my_lisaconfig->Save(pConfig, floppy_ram);         // save PRAM, configuration
-   unvars();                                         // reset global vars and all
-   my_lisaframe->running=emulation_off;              // prevent init_all_subs from barking
-   my_lisawin->powerstate = POWER_OFF;               // will be turned back on immediately
-   handle_powerbutton();                             // back on we go.
+  setstatusbar("The Lisa is rebooting.");
+  my_lisaconfig->Save(pConfig, floppy_ram);         // save PRAM, configuration
+  unvars();                                         // reset global vars and all
+  my_lisaframe->running=emulation_off;              // prevent init_all_subs from barking
+  my_lisawin->powerstate = POWER_OFF;               // will be turned back on immediately
+  handle_powerbutton();                             // back on we go.
+  free_all_ipcts();
+  free(lisaram);
+  lisaram=NULL;
 }
-
 
 
 void LisaWin::OnMouseMove(wxMouseEvent &event)
@@ -3877,169 +4765,431 @@ void LisaWin::OnMouseMove(wxMouseEvent &event)
 
     //PrepareDC(dc);
     wxString str;
-    int vbX,vbY;                     // scrollbar location
+    int vbX=0,vbY=0;                     // scrollbar location
 
-	mousemoved++;
+    mousemoved++;
 
-     // windows bug - crashes because it gets a mouse event before the window is ready.
+    wxPoint pos = event.GetLogicalPosition(  skins_on ? *my_skinDC : *my_memDC  );
 
-     wxPoint pos = event.GetPosition();
+    // windows bug - crashes because it gets a mouse event before the window is ready.
+    if (skins_on && my_skin==NULL) return;
+    if (my_lisabitmap==NULL)       return;
+    if (!FullScreenCheckMenuItem)  return; // incase we somehow got here before the menu was built
 
-     if (skins_on && my_skin==NULL) return;
-     if (my_lisabitmap==NULL) return;
+     // in full screen mode, show menu bar when above line.
+     // or maybe disable this and always show the menu bar, but that's fugly. :(  Grrr.
+    #if (!defined(__WXOSX__)) && (!defined(SHOW_MENU_IN_FULLSCREEN))
+    if (my_lisaframe->IsFullScreen() || FullScreenCheckMenuItem->IsChecked() )
+    {  int menuline= _H(16);
 
-     GetViewStart(&vbX,&vbY);
-    // convert scrollbar position into skin relative pixels
-     if (skins_on && my_skin!=NULL)
-        {
-         vbX=vbX * (my_skin->GetWidth()/100);
-         vbY=vbY * (my_skin->GetHeight()/100);
-        }
-     else
-        {
-         vbX=vbX * (my_lisabitmap->GetWidth()/100);
-         vbY=vbY * (my_lisabitmap->GetHeight()/100);
-        }
-
-     pos.x+=vbX;
-     pos.y+=vbY;
-
-    long x= pos.x;
-    long yy= pos.y;
-
-    long y = doubley ? (yy>>1) : yy;
-    long tempy;
-
-    tempy=pos.y-screen_origin_y;
-    if (tempy<0) tempy=0;
-    if (tempy>500) tempy=499;
-
-
-    y=screen_to_mouse[tempy];
-
-    x=x-screen_origin_x;
-
-
-    // power animation + button
-
-	if (skins_on)
-	{
-
-      if (pos.x>1143 && pos.x<1185 && pos.y>836 && pos.y<876)
-      {
-       my_lisawin->powerstate &= POWER_ON;
-
-        // unlike normal UI buttons, where the action happens when you let go of the mouse button,
-        // this is as it should be, as the Lisa turns on when the power button is pushed in.
-        if (event.LeftDown())    {  if (sound_effects_on) my_lisa_power_switch01->Play(wxSOUND_ASYNC);
-                                    my_lisawin->powerstate |= POWER_NEEDS_REDRAW | POWER_PUSHED;
-                                    handle_powerbutton();
-								    my_lisaframe->Refresh(false,NULL);                // clean up display
-								    my_lisaframe->Update();
-
-                                 }
-
-        if (event.LeftUp())      {
-	                                 if (sound_effects_on) my_lisa_power_switch02->Play(wxSOUND_ASYNC);
-	                                 my_lisawin->powerstate |= POWER_NEEDS_REDRAW;
-								     my_lisaframe->Refresh(false,NULL);                // clean up display
-								     my_lisaframe->Update();
-	
-                                 }
-
-
-      }
-
-      if    (my_floppy0!=NULL)
-	        {
-	         if	(pos.x>FLOPPY_LEFT && pos.x<FLOPPY_LEFT+my_floppy0->GetWidth() &&
-    		     pos.y>FLOPPY_TOP  && pos.y<FLOPPY_TOP +my_floppy0->GetHeight()    )
-	             {
-	   	           if (event.LeftDown())   my_lisaframe->OnxFLOPPY();
-  				   if (event.RightDown())  my_lisaframe->OnxNewFLOPPY();
-	             }
-			}
-	} // end if skins on
-
-    if ( (y>0 && y<lisa_vid_size_y) && (x>=0 && x<lisa_vid_size_x) && my_lisaframe->running)
+        if  ( pos.y < menuline && last_mouse_pos_y >= menuline )
             {
-                static long lastup;
-                long now;                              // tee hee, the long now.
-                int lu=event.LeftUp();
-                now=my_lisaframe->runtime.Time();
-#if defined(__WXX11__) || defined(__WXGTK__) || defined(__WXOSX__)
-                if (hide_host_mouse) SetCursor(wxCURSOR_BLANK);
-                else                 SetCursor(*m_dot_cursor);
-#else
-                if (hide_host_mouse) SetCursor(wxCURSOR_BLANK);
-                else                 SetCursor(wxCURSOR_CROSS);
-#endif
-                add_mouse_event(x,y, lu ? -1:  (event.LeftDown() ? 1:0) );
-				seek_mouse_event();
+              // this is retarded. ShowFullScreen works, but only once, need to turn it off
+              // if you want to enable menus, and that causes the window to flash.  :(
+              my_lisaframe->ShowFullScreen(false, 0);
+              my_lisaframe->Maximize(true);
 
-                // double click hack  - fixme BUG BUG BUG - fixme - well timing bug, will not be fixed if 32Mhz is allowed
-                if (lu)
-                   {
-                          if (now-lastup<1500)
-                          {
-                           add_mouse_event(x,y,  1);
-                           add_mouse_event(x,y, -1);
-                           add_mouse_event(x,y,  1);
-                           add_mouse_event(x,y, -1);
-                          }
+              //my_lisaframe->ShowFullScreen(true, wxFULLSCREEN_NOBORDER);
 
-                          lastup=now;
-                   }
-
-
+              // 2019.09.04 even worse, now I have to get out of full screen mode entirely to
+              // display the menu. grrrr. issue with lightdm/enlightenment?
+              //my_lisaframe->ShowFullScreen(true, wxFULLSCREEN_NOBORDER    |
+              //                                    wxFULLSCREEN_NOCAPTION    );
             }
+        else
+            if  (pos.y > menuline && last_mouse_pos_y <= menuline )
+                {
+                  my_lisaframe->ShowFullScreen(false, wxFULLSCREEN_ALL ); 
+                  my_lisaframe->ShowFullScreen(true,  wxFULLSCREEN_ALL );
+                }
+
+        if  (FullScreenCheckMenuItem->IsChecked() && !my_lisaframe->IsFullScreen() && pos.y > menuline)
+            {
+              my_lisaframe->ShowFullScreen(false, wxFULLSCREEN_ALL ); 
+              my_lisaframe->ShowFullScreen(true,  wxFULLSCREEN_ALL );
+            }
+    }
+    #endif
+
+    last_mouse_pos_y=pos.y;  // not hidpi corrected - used for full screen menu pop-up
+    last_mouse_pos_x=pos.x;
+
+    // convert scrollbar position into skin relative pixels
+    if  (skins_on && !!my_skin)
+        {
+          vbX=vbX * (my_skin->GetWidth() /(100*hidpi_scale));
+          vbY=vbY * (my_skin->GetHeight()/(100*hidpi_scale));
+        }
     else
+        {
+          vbX=vbX * (my_lisabitmap->GetWidth() /(100*hidpi_scale));
+          vbY=vbY * (my_lisabitmap->GetHeight()/(100*hidpi_scale));
+        }
+    pos.x+=vbX;
+    pos.y+=vbY;
+    
+    // correct for hidpi - these are relative to the wxWindow
+    long xh=  pos.x   /  hidpi_scale;
+    long yh=  pos.y   /  hidpi_scale;
+
+    // correct for Lisa display on CRT screen - relative to where the Lisa display should be.
+    long y = yh; 
+    long x = xh;
+//    if (lisa_ui_video_mode==vidmod_3y) {y=y/3; x=x/2;}  // 2X3Y
+//    if (lisa_ui_video_mode==vidmod_2y) {y=y/2;       }  // double y
+
+    // adjust mouse location to Lisa display
+    if  (skins_on && !!my_skin)
+        {
+            x-=skin.screen_origin_x; 
+            y-=skin.screen_origin_y;
+        }
+    else
+        {
+            int w_width, w_height;  
+            GetClientSize(&w_width,&w_height);
+            ox=(w_width  - o_effective_lisa_vid_size_x)/2;
+            oy=(w_height - o_effective_lisa_vid_size_y)/2;
+            x-=skin.screen_origin_x; y-=skin.screen_origin_y;
+        }
+
+    // restrict mouse to Lisa display - this isn't working the size is too small
+    int  mouse_in_crt=1;
+    if (y<  0)                     {y=0;   mouse_in_crt=0;}
+    if (y>500)                     {y=499; mouse_in_crt=0;}
+    if (x<0 || x>lisa_vid_size_x)  {mouse_in_crt=0;       }
+
+    // translate AA/AAG modes from the virtual 720x500 square pixels to the 720x384 rectagnular pixels  
+    y=screen_to_mouse[y];
+
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // power animation + button
+    if (skins_on)
+    {
+      //----------------------------------------------------------------------------------------------------------------------------------
+      // draw flashing boxes around where we think CRT area, power, and floppy drives are - useful for debugging skins
+//#define DEBUG_HOTBUTTONS
+//#define DEBUG_MOUSE_LOG 1 
+      #ifdef  DEBUG_HOTBUTTONS
+      if (mouse_in_crt)
+      {
+          my_skinDC->SetPen(*wxBLUE_PEN);
+          my_skinDC->SetBrush(*wxTRANSPARENT_BRUSH);
+      }
+      else
+      {
+          my_skinDC->SetPen(*wxRED_PEN);
+          my_skinDC->SetBrush(*wxTRANSPARENT_BRUSH);
+      }
+      my_skinDC->DrawRectangle( _H(skin.screen_origin_x),    _H(skin.screen_origin_y),
+                                  effective_lisa_vid_size_x,    effective_lisa_vid_size_y );
+
+
+      // draw where we think the mouse position is
+      my_skinDC->SetPen(*wxGREEN_PEN);
+      my_skinDC->SetBrush(*wxTRANSPARENT_BRUSH );
+      my_skinDC->DrawRectangle( xh-2,yh-2,4,4);
+      #endif
+      //----------------------------------------------------------------------------------------------------------------------------------
+      //----------------------------------------------------------------------------------------------------------------------------------
+      //----------------------------------------------------------------------------------------------------------------------------------
+
+      #ifdef DEBUG_MOUSE_LOG
+      {
+        char text[128];
+        snprintf(text,128, "Mouse actual xh,yh: (%3d,%3d)  translated x,y: (%3d,%3d) display:(%3d,%3d)+(%d,%d)",xh,yh,x,y,
+                            skin.screen_origin_x,skin.screen_origin_y,effective_lisa_vid_size_x,    effective_lisa_vid_size_y);
+        setstatusbar(text);
+      }
+      #endif
+      //----------------------------------------------------------------------------------------------------------------------------------
+
+      #if defined(DEBUG) && defined(DEBUG_MOUSE_LOCATION)
+      if (xh > _H(skin.power_button_tl_x) &&  xh < _H(skin.power_button_br_x)  && 
+          yh > _H(skin.power_button_tl_y) &&  yh < _H(skin.power_button_br_y)  )
+      {
+          my_skinDC->SetPen(*wxCYAN_PEN);
+          my_skinDC->SetBrush(*wxTRANSPARENT_BRUSH);
+      }
+      else
+      {   my_skinDC->SetPen(*wxMEDIUM_GREY_PEN);
+          my_skinDC->SetBrush(*wxTRANSPARENT_BRUSH ); 
+      }
+      my_skinDC->DrawRectangle( _H(skin.power_button_tl_x), _H(skin.power_button_tl_y),
+                                _H(skin.power_button_br_x  -   skin.power_button_tl_x), 
+                                _H(skin.power_button_br_y  -   skin.power_button_tl_y)   );
+      my_skinDC->DrawRectangle( skin.power_button_tl_x,  skin.power_button_tl_y ,
+                              ( skin.power_button_br_x - skin.power_button_tl_x), 
+                              ( skin.power_button_br_y - skin.power_button_tl_y));
+      #endif
+
+      #if defined(DEBUG) && defined(DEBUG_MOUSE_LOCATION)
+       if  (xh>_H(skin.floppy2_tl_x) && xh<_H(skin.floppy2_tl_x+my_floppy0->GetWidth() )  &&
+            yh>_H(skin.floppy2_tl_y) && yh<_H(skin.floppy2_tl_y+my_floppy0->GetHeight())    )
+      {
+        my_skinDC->SetPen(*wxGREEN_PEN);
+        my_skinDC->SetBrush(*wxTRANSPARENT_BRUSH);
+      }
+      else
+      {
+        my_skinDC->SetPen(*wxYELLOW_PEN);
+        my_skinDC->SetBrush(*wxTRANSPARENT_BRUSH);
+      }
+      my_skinDC->DrawRectangle( _H(skin.floppy2_tl_x),      _H(skin.floppy2_tl_y),
+                                _H(my_floppy0->GetWidth()), _H(my_floppy0->GetHeight() ) );
+      #endif
+      //----------------------------------------------------------------------------------------------------------------------------------
+
+      /*
+      ALERT_LOG(0,"h:%d,%d floppy:%d,%d-%d,%d * 1.0",(xh),(yh),
+               (skin.floppy2_tl_x),(skin.floppy2_tl_y),
+              ((skin.floppy2_tl_x+(my_floppy0->GetWidth())    ) ),
+              ((skin.floppy2_tl_y+(my_floppy0->GetHeight())   ) )
+        );
+
+      ALERT_LOG(0,"h:%d,%d floppy:%d,%d-%d,%d * HIDPI\n",_H(xh),_H(yh),
+              _H(skin.floppy2_tl_x), _H(skin.floppy2_tl_y),
+              _H(skin.floppy2_tl_x+(my_floppy0->GetWidth())    ),
+              _H(skin.floppy2_tl_y+(my_floppy0->GetHeight())   )
+        );
+      */
+     // lisaem_wx.cpp:OnMouseMove:4214:sizeof int:4, long:8
+     // lisaem_wx.cpp:OnMouseMove:4220:h:52,1220 floppy:1099,481-1430,672 * 1.0
+     // lisaem_wx.cpp:OnMouseMove:4226:h:0,0 floppy:31,1447161952-0,1112539136 * HIDPI  <<<-- some kind of overflow happened here
+     // lisaem_wx.cpp:OnMouseMove:4214:sizeof int:4, long:8                      replacing * hidpi_scale with H() everywhere because of this.
+     // lisaem_wx.cpp:OnMouseMove:4220:h:38,1215 floppy:1099,481-1430,672 * 1.0
+     //lisaem_wx.cpp:OnMouseMove:4217:h:46,680 floppy:1099,481-1430,672
+     //                                 xh,yh         flox,y  
+     //lisaem_wx.cpp:OnMouseMove:4217:h:0,0 floppy:31,1447161952-1458,1446274496
+      //----------------------------------------------------------------------------------------------------------------------------------
+      //----------------------------------------------------------------------------------------------------------------------------------
+      //----------------------------------------------------------------------------------------------------------------------------------
+
+
+      if  ( xh > skin.power_button_tl_x  &&  xh < skin.power_button_br_x  && 
+            yh > skin.power_button_tl_y  &&  yh < skin.power_button_br_y    )
+          {
+            //my_lisawin->powerstate &= POWER_ON;
+            // ALERT_LOG(0,"\n hover over power button")
+            // unlike normal UI/key/mouse buttons, where the action happens when you let go of the mouse button,
+            // this is as it should be, as IRL the Lisa turns on when the power button is pushed in.
+            if  (event.LeftDown())    
+                {
+                  ALERT_LOG(0,"push power button %d via skin",my_lisawin->powerstate);
+                  if (sound_effects_on) my_lisa_power_switch01->Play(wxSOUND_ASYNC);
+                  my_lisawin->powerstate |= POWER_NEEDS_REDRAW | POWER_PUSHED;
+                  ALERT_LOG(0,"after push power button  (|=POWER_NEEDS_REDRAW|POWER_PUSHED) %d",my_lisawin->powerstate);
+                  handle_powerbutton();
+                  ALERT_LOG(0,"after handle_powerbutton() %d",my_lisawin->powerstate);
+                  flushscreen();
+                }
+            if  (event.LeftUp())
+                {
+                  ALERT_LOG(0,"release power button %d",my_lisawin->powerstate);
+                  if (sound_effects_on) my_lisa_power_switch02->Play(wxSOUND_ASYNC);
+                  my_lisawin->powerstate |= POWER_NEEDS_REDRAW;
+                  ALERT_LOG(0,"release power button |=POWER_NEEDS_REDRAW %d",my_lisawin->powerstate);
+                  flushscreen();   
+                }
+          }
+
+      if  (!!my_floppy0)
+          {
+            if (xh>skin.floppy2_tl_x && xh<skin.floppy2_tl_x+(my_floppy0->GetWidth()   )  &&
+                yh>skin.floppy2_tl_y && yh<skin.floppy2_tl_y+(my_floppy0->GetHeight()  )  )
+                {
+                      //ALERT_LOG(0,"\n  Hover over floppy %d,%d-%d,%d",skin.floppy2_tl_x,skin.floppy2_tl_y, 
+                      //                                                skin.floppy2_tl_x+my_floppy0->GetWidth(),
+                      //                                                skin.floppy2_tl_y+my_floppy0->GetHeight() );
+                      if (event.LeftDown())   my_lisaframe->OnxFLOPPY();
+                      if (event.RightDown())  my_lisaframe->OnxNewFLOPPY();
+                }
+          }
+
+    } // end if (skins_on)  power animation + button
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
+    // hide host mouse pointer when running and over Lisa CRT display, so we can use Lisa's mouse sprite
+    if  (mouse_in_crt && my_lisaframe->running)
+        {
+            static long lastup;
+            long now=my_lisaframe->runtime.Time();                              // tee hee, the long now.
+            int lu=event.LeftUp();
+            #if defined(__WXX11__) || defined(__WXGTK__) || defined(__WXOSX__)
+              if (hide_host_mouse) SetCursor(wxCURSOR_BLANK);
+              else                 SetCursor(*m_dot_cursor);
+            #else
+              if (hide_host_mouse) SetCursor(wxCURSOR_BLANK);
+              else                 SetCursor(wxCURSOR_CROSS);
+            #endif
+          //----------------------------------------------------------------------------------------------
+            #ifdef DEBUG
+              if (event.LeftDown() && debug_log_onclick)
+                {
+                  debug_log_onclick=0;
+                  debug_log_enabled=!debug_log_enabled;
+                  if (debug_log_enabled) debug_on("onclick");
+                  else                   debug_off();
+                }
+
+                if (my_lisaframe->running==emuation_paused_for_screen)
+                {
+                    SetCursor(wxCURSOR_CROSS);
+                    if (event.LeftDown()==1)
+                    {
+                      box_x=x;   box_y=y;
+                      box_xh=xh; box_yh=yh;
+                    }
+
+                    if (box_x!=-1)
+                    {
+                      my_skinDC->SetPen(*wxRED_PEN);
+                      my_skinDC->SetBrush(*wxTRANSPARENT_BRUSH);
+                      my_skinDC->DrawRectangle( box_xh, box_yh, abs(box_xh-xh),abs(box_yh-yh));
+                      flushscreen();
+
+                      ALERT_LOG(0,"%ld,%ld - %ld,%ld",(long)box_xh,(long)box_yh,(long)xh,(long)yh);
+                      videoramdirty=32768; //my_lisaframe->Refresh(false,NULL);
+                    }
+
+                    if (event.LeftUp()==1) 
+                    {
+                      log_screen_box(stderr, MIN(x,box_x), MIN(y,box_y), MAX(x,box_x), MAX(y,box_y) );
+                      box_x=-1; box_y=-1;
+                      resume_run();
+                    }
+                } //--- end if (my_lisaframe->running==emuation_paused_for_screen)
+            #endif
+          //----------------------------------------------------------------------------------------------
+
+
+          // not sure what these will do or even if they're supported. if they do nothing in LOS try 4,5,6
+          // may also need to do the double click hack below for each of them too.
+          if      (event.RightDown())   {add_mouse_event(x,y, 2); ALERT_LOG(0,"Sending right click down"); }
+          else if (event.RightUp())     {add_mouse_event(x,y,-2); ALERT_LOG(0,"Sending right click up");   }
+          else if (event.MiddleDown())  {add_mouse_event(x,y, 3); ALERT_LOG(0,"Sending middle click down");}
+          else if (event.MiddleUp())    {add_mouse_event(x,y,-3); ALERT_LOG(0,"Sending middle click up");  }
+          else                          {add_mouse_event(x,y, lu ? -1:  (event.LeftDown() ? 1:0) );        }
+          seek_mouse_event();
+
+          // double click hack  - fixme BUG BUG BUG - fixme - well timing bug, will not be fixed if 32Mhz is allowed
+          if  (lu)
+              {
+                if  (now-lastup<1500)
+                    {
+                      add_mouse_event(x,y,  1); add_mouse_event(x,y, -1);
+                      add_mouse_event(x,y,  1); add_mouse_event(x,y, -1);
+                    }
+                lastup=now;
+              }
+      }
+    else //    if  (mouse_in_crt && my_lisaframe->running)
             my_lisawin->SetCursor(wxNullCursor);
 
-    if (event.RightDown())   {videoramdirty=32768; my_lisaframe->Refresh(false,NULL);} // force screen refresh
+    if  (event.RightDown())   // force screen refresh, and also for debugging
+        {
+          videoramdirty=32768; flushscreen(); 
+          #if defined(DEBUG) && defined(RIGHT_CLICK_TRACELOG)
+            debug_log_onclick=0;
+            debug_log_enabled=!debug_log_enabled;
+            if (debug_log_enabled) debug_on("right-click");
+            else                   debug_off();
+          #endif
+        }
+
+//#define DEBUG_MOUSE_LOCATION
+    // aka mouse droppings
+    #if defined(DEBUG) && defined(DEBUG_MOUSE_LOCATION)
+      my_skinDC->SetPen(*wxRED_PEN);
+      my_skinDC->SetBrush(*wxRED_BRUSH);
+      //my_skinDC->DrawRectangle( xh      * hidpi_scale, yh      * hidpi_scale,
+      //                          5       * hidpi_scale,  5      * hidpi_scale                );
+      my_skinDC->DrawRectangle( xh, yh, 2, 2);
+    #endif
+
+//#define DEBUG_MOUSE_COORDINATES 1
+
+    #ifdef DEBUG_MOUSE_COORDINATES
+    {
+        int vx,vy;
+        GetViewStart(&vx,&vy);
+        ALERT_LOG(0,"mouse: %d,%d\n  in CRT:%d,%d  skinorigin:%d,%d   hidpi_scale:%f\n  pos:%d,%d",
+                              xh,yh, x,y,
+                              skin.screen_origin_x,skin.screen_origin_y, 
+                              hidpi_scale,
+                              pos.x, pos.y);
+    }
+    #endif
 }
 
 
-void LisaEmFrame::OnRun(wxCommandEvent& WXUNUSED(event))
-{
-    if (my_lisaframe->running==emulation_off)    {handle_powerbutton(); return;                 }
-    if (my_lisaframe->running==emulation_paused) {my_lisaframe->running=emulation_running;      }
 
-    fileMenu->Check(ID_RUN,  true);
-}
 
 
 extern "C" void pause_run(void)
 {
-   if (my_lisaframe->running==emulation_off) return;
+    if (my_lisaframe->running==emulation_off) return;
 
-   if (my_lisaframe->running==emulation_running)
-   {
-     my_lisaframe->runtime.Pause();
-     my_lisaframe->running=emulation_paused;
-     return;
-   }
+    if (my_lisaframe->running==emulation_running)
+    {
+        my_lisaframe->runtime.Pause();
+        my_lisaframe->running=emulation_paused;
+        return;
+    }
 }
+
+#ifdef DEBUG
+extern "C" void pause_for_screen(void)
+{
+    if (my_lisaframe->running==emulation_off) return;
+
+    if (my_lisaframe->running==emulation_running)
+    {
+        my_lisaframe->runtime.Pause();
+        my_lisaframe->running=emuation_paused_for_screen;
+        return;
+    }
+
+}
+#endif
+
 
 extern "C" void resume_run(void)
 {
-   if (my_lisaframe->running==emulation_off) return;
+    if (my_lisaframe->running==emulation_off) return;
 
-   if (my_lisaframe->running==emulation_paused)
-   {
-     my_lisaframe->runtime.Resume();
-     my_lisaframe->running=emulation_running;
-     return;
-   }
+    if (my_lisaframe->running==emulation_paused || my_lisaframe->running==emuation_paused_for_screen)
+    {
+        my_lisaframe->runtime.Resume();
+        my_lisaframe->running=emulation_running;
+        return;
+    }
 }
 
 
 void LisaEmFrame::OnPause(wxCommandEvent& WXUNUSED(event))
 {
-    if (my_lisaframe->running==emulation_off)      {                                                return;}
-    if (my_lisaframe->running==emulation_running)  {pause_run();   fileMenu->Check(ID_PAUSE,true);  return;}
-    if (my_lisaframe->running==emulation_paused)   {resume_run();  fileMenu->Check(ID_PAUSE,false); return;}
+    ALERT_LOG(0,"Pause, status before change is:%d",my_lisaframe->running);
+    if (my_lisaframe->running==emulation_off)      {                                          return;}
+    if (my_lisaframe->running==emulation_running)  {pause_run();   update_menu_checkmarks();  return;}
+    if (my_lisaframe->running==emulation_paused)   {resume_run();  update_menu_checkmarks();  return;}
 }
+
+
+#ifdef DEBUG
+void LisaEmFrame::OnScreenRegion(wxCommandEvent& WXUNUSED(event))
+{
+    if (my_lisaframe->running==emulation_off)                {                                return;}
+    if (my_lisaframe->running==emulation_running)            {pause_for_screen();             return;}
+    if (my_lisaframe->running==emuation_paused_for_screen)   {resume_run();                   return;}
+}
+#endif
 
 
 void LisaEmFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
@@ -4047,106 +5197,107 @@ void LisaEmFrame::OnAbout(wxCommandEvent& WXUNUSED(event))
     wxAboutDialogInfo info;
     info.SetName(_T("LisaEm"));
 
-#ifdef VERSION
+    #ifdef VERSION
     info.SetVersion(_T(VERSION));
-#else
+    #else
     info.SetVersion(_T("1.x.x Unknown"));
-#endif
+    #endif
 
-	info.SetDescription(_T("The first fully functional Apple Lisa emulator."));
-    info.SetCopyright(_T("\xa9 2007 Ray Arachelian"));
-	info.SetWebSite(_T("http://lisaem.sunder.net"));
+    info.SetDescription(_T("The first fully functional Apple Lisa emulator."));
+    info.SetCopyright(_T("\xa9 2007, 2019 Ray Arachelian"));
+    info.SetWebSite(_T("http://lisaem.sunder.net"));
+
+//#ifdef BUILTBY
+    info.AddDeveloper(_T("\n\n" BUILTBY));
+//#endif
+
     info.AddDeveloper(_T("Ray Arachelian - Emulator"));
-	info.AddDeveloper(_T("Brian Foley - OS X UI"));
-	info.AddDeveloper(_T("James Ponder - 68K core.\n"));
-#ifdef LICENSE
-	info.SetLicense(_T(LICENSE));
-#endif
-	
-#ifdef BUILTBY
-	info.AddDeveloper(_T("\n\n" BUILTBY));
-#endif
+    info.AddDeveloper(_T("James Ponder - 68K core.\n"));
+    info.AddDeveloper(_T("Maxim Stepin, Cameron Zemek, Francois Gannaz - hqx") );
 
-	wxAboutBox(info);
+    #ifdef LICENSE
+    info.SetLicense(_T(LICENSE));
+    #endif
+    
+    wxAboutBox(info);
 }
-#ifdef __WXOSX__
+
+
+//#ifdef __WXOSX__
 void LisaEmFrame::OnQuit(wxCommandEvent& WXUNUSED(event))
-#else
-void LisaEmApp::OnQuit(wxCommandEvent& WXUNUSED(event))
-#endif
+//#else
+//void LisaEmApp::OnQuit(wxCommandEvent& WXUNUSED(event))
+//#endif
 {
-    if (NULL!=my_lisabitmap          )             {delete my_lisabitmap          ;   my_lisabitmap=NULL;           }
-    if (NULL!=my_memDC               )             {delete my_memDC               ;   my_memDC=NULL;                }
+    save_global_prefs();
 
-    if (NULL!=my_lisa_sound          )             {delete my_lisa_sound          ;   my_lisa_sound=NULL;           }
+    EXTERMINATE(my_lisabitmap          );
+    EXTERMINATE(my_memDC               );
+    EXTERMINATE(my_lisa_sound          );
+    EXTERMINATE(my_floppy_eject        );
+    EXTERMINATE(my_floppy_insert       );
+    EXTERMINATE(my_floppy_motor1       );
+    EXTERMINATE(my_floppy_motor2       );
+    EXTERMINATE(my_lisa_power_switch01 );
+    EXTERMINATE(my_lisa_power_switch02 );
+    EXTERMINATE(my_poweroffclk         );
+    EXTERMINATE(my_skin                );
+    EXTERMINATE(my_skin0               );
+    EXTERMINATE(my_skin1               );
+    EXTERMINATE(my_skin2               );
+    EXTERMINATE(my_skin3               );
+    EXTERMINATE(my_floppy0             );
+    EXTERMINATE(my_floppy1             );
+    EXTERMINATE(my_floppy2             );
+    EXTERMINATE(my_floppy3             );
+    EXTERMINATE(my_floppy4             );
+    EXTERMINATE(my_poweron             );
+    EXTERMINATE(my_poweroff            );
+    EXTERMINATE(my_skinDC              );
+    EXTERMINATE(my_floppy0DC           );
+    EXTERMINATE(my_floppy1DC           );
+    EXTERMINATE(my_floppy2DC           );
+    EXTERMINATE(my_floppy3DC           );
+    EXTERMINATE(my_floppy4DC           );
+    EXTERMINATE(my_poweronDC           );
+    EXTERMINATE(my_poweroffDC          );
 
-    if (NULL!=my_floppy_eject        )             {delete my_floppy_eject        ;   my_floppy_eject=NULL;         }
-    if (NULL!=my_floppy_insert       )             {delete my_floppy_insert       ;   my_floppy_insert=NULL;        }
-    if (NULL!=my_floppy_motor1       )             {delete my_floppy_motor1       ;   my_floppy_motor1=NULL;        }
-    if (NULL!=my_floppy_motor2       )             {delete my_floppy_motor2       ;   my_floppy_motor2=NULL;        }
-    if (NULL!=my_lisa_power_switch01 )             {delete my_lisa_power_switch01 ;   my_lisa_power_switch01=NULL;  }
-    if (NULL!=my_lisa_power_switch02 )             {delete my_lisa_power_switch02 ;   my_lisa_power_switch02=NULL;  }
-    if (NULL!=my_poweroffclk         )             {delete my_poweroffclk         ;   my_poweroffclk=NULL;          }
-    if (NULL!=my_bytemap)                          {delete my_bytemap;     my_bytemap=NULL; }
-    if (NULL!=my_alias  )                          {delete my_alias  ;     my_alias  =NULL; }
-
-    if (NULL!=my_skin   )                          {delete my_skin   ;     my_skin   =NULL; }
-    if (NULL!=my_skin0  )                          {delete my_skin0  ;     my_skin   =NULL; }
-    if (NULL!=my_skin1  )                          {delete my_skin1  ;     my_skin   =NULL; }
-    if (NULL!=my_skin2  )                          {delete my_skin2  ;     my_skin   =NULL; }
-    if (NULL!=my_skin3  )                          {delete my_skin3  ;     my_skin   =NULL; }
-
-
-
-    if (NULL!=my_floppy0)                          {delete my_floppy0;     my_floppy0=NULL; }
-    if (NULL!=my_floppy1)                          {delete my_floppy1;     my_floppy1=NULL; }
-    if (NULL!=my_floppy2)                          {delete my_floppy2;     my_floppy2=NULL; }
-    if (NULL!=my_floppy3)                          {delete my_floppy3;     my_floppy3=NULL; }
-    if (NULL!=my_floppy4)                          {delete my_floppy4;     my_floppy4=NULL; }
-
-    if (NULL!=my_poweron   )                       {delete my_poweron   ;  my_poweron   =NULL; }
-    if (NULL!=my_poweroff  )                       {delete my_poweroff  ;  my_poweroff  =NULL; }
-
-    if (NULL!=my_bytemapDC )                       {delete my_bytemapDC ;  my_bytemapDC =NULL; }
-    if (NULL!=my_aliasDC   )                       {delete my_aliasDC   ;  my_aliasDC   =NULL; }
-
-    if (NULL!=my_skinDC    )                       {delete my_skinDC    ;  my_skinDC    =NULL; }
-    if (NULL!=my_floppy0DC )                       {delete my_floppy0DC ;  my_floppy0DC =NULL; }
-    if (NULL!=my_floppy1DC )                       {delete my_floppy1DC ;  my_floppy1DC =NULL; }
-    if (NULL!=my_floppy2DC )                       {delete my_floppy2DC ;  my_floppy2DC =NULL; }
-    if (NULL!=my_floppy3DC )                       {delete my_floppy3DC ;  my_floppy3DC =NULL; }
-    if (NULL!=my_floppy4DC )                       {delete my_floppy4DC ;  my_floppy4DC =NULL; }
-
-    if (NULL!=my_poweronDC )                       {delete my_poweronDC ;  my_poweronDC =NULL; }
-    if (NULL!=my_poweroffDC)                       {delete my_poweroffDC;  my_poweroffDC=NULL; }
-
-#ifdef __WXOSX__
-     my_lisaframe->m_emulation_timer->Stop();  // stop the timer
-  	 wxMilliSleep(emulation_time*2);	       // ensure that any pending timer events are allowed to finish
-	 delete my_lisaframe->m_emulation_timer;   // delete the timer
-     if (my_LisaConfigFrame) {delete my_LisaConfigFrame; my_LisaConfigFrame=NULL;}  // close any ConfigFrame
-	 Close();                                  // and bye bye we go.
-#else
-     my_lisaframe->m_emulation_timer->Stop();  // stop the timer
-     wxMilliSleep(750);
-     delete my_lisaframe->m_emulation_timer;
- 	 wxMilliSleep(250);
-     delete my_lisaframe;
-     wxExit();
-#endif
+    #ifdef __WXOSX__
+     my_lisaframe->m_emulation_timer->Stop();     // stop the timer
+     wxMilliSleep(emulation_time*2);              // ensure that any pending timer events are allowed to finish
+     delete my_lisaframe->m_emulation_timer;      // delete the timer
+     if (my_LisaConfigFrame) // close any ConfigFrame 
+        {
+          my_LisaConfigFrame->Hide();
+          my_LisaConfigFrame->Close();
+          delete my_LisaConfigFrame; my_LisaConfigFrame=NULL;
+        }  
+     Close();                                      // and bye bye we go.
+    #else
+     my_lisaframe->m_emulation_timer->Stop();      // stop the timer
+     if (my_LisaConfigFrame)                       // close any ConfigFrame 
+        {
+          my_LisaConfigFrame->Hide();
+          my_LisaConfigFrame->Close();
+          delete my_LisaConfigFrame; my_LisaConfigFrame=NULL;
+        }  
+      wxMilliSleep(750);
+      EXTERMINATE(my_lisaframe->m_emulation_timer);
+      wxMilliSleep(250);
+      EXTERMINATE(my_lisaframe);
+      wxExit();
+    #endif
 }
 
-void LisaEmFrame::OnLisaWeb(wxCommandEvent& WXUNUSED(event)) {::wxLaunchDefaultBrowser(_T("http://lisaem.sunder.net"));}
-void LisaEmFrame::OnLisaFaq(wxCommandEvent& WXUNUSED(event)) {::wxLaunchDefaultBrowser(_T("http://lisafaq.sunder.net"));}
-
-
+void LisaEmFrame::OnLisaWeb(  wxCommandEvent& WXUNUSED(event)) {::wxLaunchDefaultBrowser(_T("https://lisaem.sunder.net" ));}
+void LisaEmFrame::OnLisaFaq(  wxCommandEvent& WXUNUSED(event)) {::wxLaunchDefaultBrowser(_T("https://lisafaq.sunder.net"));}
+void LisaEmFrame::OnLisaList2(wxCommandEvent& WXUNUSED(event)) {::wxLaunchDefaultBrowser(_T("https://lisalist2.com"     ));}
 
 
 void LisaEmFrame::OnConfig(wxCommandEvent& WXUNUSED(event))
 {
-          if (my_LisaConfigFrame) {delete my_LisaConfigFrame; my_LisaConfigFrame=NULL;}
-
-          if (!my_LisaConfigFrame)    my_LisaConfigFrame=new LisaConfigFrame( wxT("Preferences"), my_lisaconfig);
+      EXTERMINATE(my_LisaConfigFrame);
+          my_LisaConfigFrame=new LisaConfigFrame( wxT("Preferences"), my_lisaconfig);
           #if defined(__WXMOTIF__)
           int x, y;
 
@@ -4156,79 +5307,69 @@ void LisaEmFrame::OnConfig(wxCommandEvent& WXUNUSED(event))
           #endif
 
           my_LisaConfigFrame->Show();
-
 }
+
 
 void LisaEmFrame::OnOpen(wxCommandEvent& WXUNUSED(event))
 {
-       wxString openfile;
-       wxFileDialog open(this,                  wxT("Open LisaEm Preferences:"),
-                                                wxEmptyString,
-                                                wxEmptyString,
-                                                wxT("LisaEm Preferences (*.lisaem)|*.lisaem|All (*.*)|*.*"),
-                                                (long int)wxFD_OPEN,wxDefaultPosition);
+      wxString openfile;
 
-       if (open.ShowModal()==wxID_OK)           openfile=open.GetPath();
-       else return;
+      wxFileDialog open(this,         wxT("Open LisaEm Preferences:"),
+                                      wxEmptyString,
+                                      wxEmptyString,
+                                      wxT("LisaEm Preferences (*.lisaem)|*.lisaem|All (*.*)|*.*"),
+                                      (long int)wxFD_OPEN,wxDefaultPosition);
 
+      if (open.ShowModal()==wxID_OK)  openfile=open.GetPath();
+      else return;
 
-       if (pConfig) {pConfig->Flush();  delete pConfig; pConfig=NULL;}
-       if (my_LisaConfigFrame) {delete my_LisaConfigFrame; my_LisaConfigFrame=NULL;}
+      if (pConfig) {pConfig->Flush();  EXTERMINATE(pConfig);}
+      if (my_LisaConfigFrame) {EXTERMINATE(my_LisaConfigFrame);}
 
-       pConfig=new wxFileConfig(_T("LisaEm"),
+      pConfig=new wxFileConfig(_T("LisaEm"),
                               _T("sunder.NET"),
                                 (openfile),     //local
                                 (openfile),     //global
-                              wxCONFIG_USE_LOCAL_FILE,
-                              wxConvAuto() );   // or wxConvUTF8
+                                wxCONFIG_USE_LOCAL_FILE,
+                                wxConvAuto() );   // or wxConvUTF8
 
       pConfig->Get(true);
-      if (my_lisaconfig) delete my_lisaconfig;
+      EXTERMINATE(my_lisaconfig);
       my_lisaconfig = new LisaConfig();
       my_lisaconfig->Load(pConfig, floppy_ram);// load it in
-
-
-
-
 
       myconfigfile=openfile;  // update global file to point to new config
       save_global_prefs();    // and save them.
 }
 
+
 void LisaEmFrame::OnSaveAs(wxCommandEvent& WXUNUSED(event))
 {
-       wxString savefile;
+      wxString savefile;
 
-	   wxFileName prefs=wxFileName(myconfigfile);
-	   wxString justTheFilename=prefs.GetFullName();
- 	   wxString justTheDir=prefs.GetPath(wxPATH_GET_VOLUME|wxPATH_GET_SEPARATOR,wxPATH_NATIVE);
+      wxFileName prefs=wxFileName(myconfigfile);
+      wxString justTheFilename=prefs.GetFullName();
+      wxString justTheDir=prefs.GetPath(wxPATH_GET_VOLUME|wxPATH_GET_SEPARATOR,wxPATH_NATIVE);
 
-
-       wxFileDialog open(this,                  wxT("Save LisaEm Preferences As:"),
-                                                justTheDir,  // path
-                                                justTheFilename,  // prefs file name
-                                                wxT("LisaEm Preferences (*.lisaem)|*.lisaem|All (*.*)|*.*"),
-                                                (long int)wxFD_SAVE,wxDefaultPosition
+      wxFileDialog open(this,          wxT("Save LisaEm Preferences As:"),
+                                       justTheDir,  // path
+                                       justTheFilename,  // prefs file name
+                                        wxT("LisaEm Preferences (*.lisaem)|*.lisaem|All (*.*)|*.*"),
+                                        (long int)wxFD_SAVE,wxDefaultPosition
                         );
 
-       if (open.ShowModal()==wxID_OK)           savefile=open.GetPath();
-       else return;
+      if (open.ShowModal()==wxID_OK)   savefile=open.GetPath();
+      else return;
 
-       wxFileOutputStream out(savefile);
+      wxFileOutputStream out(savefile);
 
-       if (pConfig->Save(out,wxConvUTF8) )
+      if  (pConfig->Save(out,wxConvUTF8) )
           {
             myconfigfile=savefile;
             save_global_prefs();
           }
 }
 
-
-void LisaEmFrame::OnDebugger(wxCommandEvent& WXUNUSED(event))            {}
-
-
-
-void LisaEmFrame::OnPOWERKEY(wxCommandEvent& WXUNUSED(event))            {fileMenu->Check(ID_RUN,true); handle_powerbutton();}
 
 
 void LisaEmFrame::OnAPPLEPOWERKEY(wxCommandEvent& WXUNUSED(event))
@@ -4238,79 +5379,59 @@ void LisaEmFrame::OnAPPLEPOWERKEY(wxCommandEvent& WXUNUSED(event))
             send_cops_keycode(KEYCODE_COMMAND|KEY_UP);
         }
 
+#ifdef DEBUG
 void LisaEmFrame::OnTraceLog(wxCommandEvent& WXUNUSED(event))
-     {
+    {
+      debug_log_onclick=0;
       debug_log_enabled=!debug_log_enabled;
       if (debug_log_enabled) debug_on("user enabled");
       else                   debug_off();
+    }
 
-      ALERT_LOG(0,"Debug has been turned %s",debug_log_enabled?"on":"off");
-     }
 
-void LisaEmFrame::OnKEY_APL_DOT(wxCommandEvent& WXUNUSED(event))         {apple_dot();}
-void LisaEmFrame::OnKEY_APL_S(wxCommandEvent& WXUNUSED(event))           {apple_S();}
-void LisaEmFrame::OnKEY_APL_ENTER(wxCommandEvent& WXUNUSED(event))       {apple_enter();}
-void LisaEmFrame::OnKEY_APL_RENTER(wxCommandEvent& WXUNUSED(event))      {apple_renter();}
-void LisaEmFrame::OnKEY_APL_1(wxCommandEvent& WXUNUSED(event))           {apple_1();}
-void LisaEmFrame::OnKEY_APL_2(wxCommandEvent& WXUNUSED(event))           {apple_2();}
-void LisaEmFrame::OnKEY_APL_3(wxCommandEvent& WXUNUSED(event))           {apple_3();}
+void LisaEmFrame::OnTraceLog2(wxCommandEvent& WXUNUSED(event))           { debug_log_onclick=1;                   }
+#endif
 
-void LisaEmFrame::OnKEY_OPT_0(wxCommandEvent& WXUNUSED(event))           {shift_option_0();}
-void LisaEmFrame::OnKEY_OPT_4(wxCommandEvent& WXUNUSED(event))           {shift_option_4();}
-void LisaEmFrame::OnKEY_OPT_7(wxCommandEvent& WXUNUSED(event))           {shift_option_7();}
-void LisaEmFrame::OnKEY_NMI(wxCommandEvent& WXUNUSED(event))             {send_nmi_key();}
+void LisaEmFrame::OnKEY_APL_DOT(wxCommandEvent& WXUNUSED(event))         { apple_dot();                           }
+void LisaEmFrame::OnKEY_APL_S(wxCommandEvent& WXUNUSED(event))           { apple_S();                             }
+void LisaEmFrame::OnKEY_APL_ENTER(wxCommandEvent& WXUNUSED(event))       { apple_enter();                         }
+void LisaEmFrame::OnKEY_APL_RENTER(wxCommandEvent& WXUNUSED(event))      { apple_renter();                        }
+void LisaEmFrame::OnKEY_APL_1(wxCommandEvent& WXUNUSED(event))           { apple_1();                             }
+void LisaEmFrame::OnKEY_APL_2(wxCommandEvent& WXUNUSED(event))           { apple_2();                             }
+void LisaEmFrame::OnKEY_APL_3(wxCommandEvent& WXUNUSED(event))           { apple_3();                             }
+
+void LisaEmFrame::OnKEY_OPT_0(wxCommandEvent& WXUNUSED(event))           { shift_option_0();                      }
+void LisaEmFrame::OnKEY_OPT_4(wxCommandEvent& WXUNUSED(event))           { shift_option_4();                      }
+void LisaEmFrame::OnKEY_OPT_7(wxCommandEvent& WXUNUSED(event))           { shift_option_7();                      }
+void LisaEmFrame::OnKEY_NMI(wxCommandEvent& WXUNUSED(event))             { send_nmi_key();                        }
+
+void LisaEmFrame::OnASCIIKB(wxCommandEvent& WXUNUSED(event))             { asciikeyboard= 1; save_global_prefs(); }
+void LisaEmFrame::OnRAWKB(wxCommandEvent& WXUNUSED(event))               { asciikeyboard= 0; save_global_prefs(); }
+void LisaEmFrame::OnRAWKBBUF(wxCommandEvent& WXUNUSED(event))            { asciikeyboard=-1; save_global_prefs(); }
+
+// not yet implemented :(
+void LisaEmFrame::OnDebugger(wxCommandEvent& WXUNUSED(event))            {                                        }
+
+void LisaEmFrame::OnPOWERKEY(wxCommandEvent& WXUNUSED(event))            { handle_powerbutton();                  }
+
+
+// display a floating keyboard and allow keymap edits - not yet implemented. :(
+void LisaEmFrame::OnKEYBOARD(wxCommandEvent& WXUNUSED(event))            {                                        }
+
 void LisaEmFrame::OnKEY_RESET(wxCommandEvent& WXUNUSED(event))
 {
-	if (!running)
-	{
-		wxMessageBox(wxT("The Lisa isn't powered.  Pressing RESET now won't do anything interesting."),
-					 wxT("Lisa isn't powered on"), wxICON_INFORMATION | wxOK);
-		return;
-	}
+    if (!running)
+    {
+        wxMessageBox( wxT("The Lisa isn't powered.  Pressing RESET now won't do anything interesting."),
+                      wxT("Lisa isn't powered on"), wxICON_INFORMATION | wxOK);
+        return;
+    }
 
-   if (yesnomessagebox("This will reboot the Lisa, but may cause file system corruption",
-					   "Really RESET the Lisa?")==0) return;
+    if (yesnomessagebox(  "This will reboot the Lisa, but may cause file system corruption",
+                          "Really RESET the Lisa?")==0) return;
 
-   lisa_rebooted();
+    lisa_rebooted();
 }
-
-// display a floating keyboard and allow edits.
-void LisaEmFrame::OnKEYBOARD(wxCommandEvent& WXUNUSED(event))  {}
-
-
-
-
-void LisaEmFrame::OnASCIIKB(wxCommandEvent& WXUNUSED(event))   {asciikeyboard= 1; save_global_prefs();}
-void LisaEmFrame::OnRAWKB(wxCommandEvent& WXUNUSED(event))     {asciikeyboard= 0; save_global_prefs();}
-void LisaEmFrame::OnRAWKBBUF(wxCommandEvent& WXUNUSED(event))  {asciikeyboard=-1; save_global_prefs();}
-
-/* Make sure only one of the Throttle menu items is checked at any time. */
-void updateThrottleMenus(float throttle)
-{
-    if (!my_lisaframe) return;
-    if (!throttleMenu) return;
-
-    my_lisaframe->reset_throttle_clock();
-
-    throttleMenu->Check(ID_THROTTLE5,   throttle ==  5.0);
-    throttleMenu->Check(ID_THROTTLE8,   throttle ==  8.0);
-    throttleMenu->Check(ID_THROTTLE10,  throttle == 10.0);
-    throttleMenu->Check(ID_THROTTLE12,  throttle == 12.0);
-    throttleMenu->Check(ID_THROTTLE16,  throttle == 16.0);
-    throttleMenu->Check(ID_THROTTLE32,  throttle == 32.0);
-//    throttleMenu->Check(ID_THROTTLEX,   throttle == 10000000);
-
-	throttleMenu->Check(ID_ET100_75,    emulation_time==100 && emulation_tick==75);
-	throttleMenu->Check(ID_ET50_30,     emulation_time== 50 && emulation_tick==30);
-	throttleMenu->Check(ID_ET40_25,     emulation_time== 40 && emulation_tick==25);
-	throttleMenu->Check(ID_ET30_20,     emulation_time== 30 && emulation_tick==20);
-
-
-    #ifdef TIE_VIA_TIMER_TO_HOST
-    via_throttle_factor=throttle/5.0;
-    #endif
-}
-
 
 
 // This is necessary since if we change the throttle, the OnIdle
@@ -4329,80 +5450,175 @@ void LisaEmFrame::reset_throttle_clock(void)
 }
 
 
-void LisaEmFrame::OnET100_75(wxCommandEvent& WXUNUSED(event))  {emulation_time=100; emulation_tick=75; reset_throttle_clock(); save_global_prefs();}
-void LisaEmFrame::OnET50_30(wxCommandEvent& WXUNUSED(event))   {emulation_time= 50; emulation_tick=30; reset_throttle_clock(); save_global_prefs();}
-void LisaEmFrame::OnET40_25(wxCommandEvent& WXUNUSED(event))   {emulation_time= 40; emulation_tick=25; reset_throttle_clock(); save_global_prefs();}
-void LisaEmFrame::OnET30_20(wxCommandEvent& WXUNUSED(event))   {emulation_time= 30; emulation_tick=20; reset_throttle_clock(); save_global_prefs();}
+void LisaEmFrame::OnET100_75(wxCommandEvent& WXUNUSED(event))   {emulation_time=100; emulation_tick=75; reset_throttle_clock(); save_global_prefs();}
+void LisaEmFrame::OnET50_30( wxCommandEvent& WXUNUSED(event))   {emulation_time= 50; emulation_tick=30; reset_throttle_clock(); save_global_prefs();}
+void LisaEmFrame::OnET40_25( wxCommandEvent& WXUNUSED(event))   {emulation_time= 40; emulation_tick=25; reset_throttle_clock(); save_global_prefs();}
+void LisaEmFrame::OnET30_20( wxCommandEvent& WXUNUSED(event))   {emulation_time= 30; emulation_tick=20; reset_throttle_clock(); save_global_prefs();}
 
+#define Throttle_MENU(XspeedX)                                           \
+  void LisaEmFrame::OnThrottle##XspeedX(wxCommandEvent &WXUNUSED(event)) \
+    {  throttle = XspeedX; reset_throttle_clock(); save_global_prefs(); update_menu_checkmarks(); ALERT_LOG(0,"Set CPU to %f MHz",throttle);}
 
-void LisaEmFrame::OnThrottle5(wxCommandEvent& WXUNUSED(event))
-{
-    throttle = 5;
-    reset_throttle_clock();
-    save_global_prefs();
-}
-
-void LisaEmFrame::OnThrottle8(wxCommandEvent& WXUNUSED(event))
-{
-    throttle = 8;
-    reset_throttle_clock();
-    save_global_prefs();
-}
-
-void LisaEmFrame::OnThrottle10(wxCommandEvent& WXUNUSED(event))
-{
-    throttle = 10;
-    reset_throttle_clock();
-    save_global_prefs();
-}
-
-void LisaEmFrame::OnThrottle12(wxCommandEvent& WXUNUSED(event))
-{
-    throttle = 12;
-    reset_throttle_clock();
-    save_global_prefs();
-}
-void LisaEmFrame::OnThrottle16(wxCommandEvent& WXUNUSED(event))
-{
-    throttle = 16;
-    reset_throttle_clock();
-    save_global_prefs();
-}
-
-void LisaEmFrame::OnThrottle32(wxCommandEvent& WXUNUSED(event))
-{
-    throttle=32;
-    reset_throttle_clock();
-    save_global_prefs();
-}
-
-void LisaEmFrame::OnThrottleX(wxCommandEvent& WXUNUSED(event))
-{
-    throttle=10000000;
-    reset_throttle_clock();
-    save_global_prefs();
-}
-
-
-
+Throttle_MENU(5);
+Throttle_MENU(8);
+Throttle_MENU(10);
+Throttle_MENU(12);
+Throttle_MENU(16);
+Throttle_MENU(32);
+Throttle_MENU(48);
+Throttle_MENU(64);
+Throttle_MENU(100);
+Throttle_MENU(128);
+Throttle_MENU(256);
+#ifdef DEBUG
+Throttle_MENU(1);
+Throttle_MENU(512);
+#endif
 
 extern "C" void messagebox(char *s, char *t)  // messagebox string of text, title
            {
-           	 wxString text =wxString(s, wxConvLocal, 2048); //wxSTRING_MAXLEN);
- 			 wxString title=wxString(t, wxConvLocal, 2048); //wxSTRING_MAXLEN);
-             wxMessageBox(text,title, wxICON_INFORMATION | wxOK);
+              char ss[2048];
+              char tt[2048];
+              strncpy(ss,s,2047);
+              strncpy(tt,t,2047);
+              ALERT_LOG(0,"%s:%s",t,s);  // this works, but the conversion below does not.
+              wxString text =wxString(ss, wxConvLocal, 2048); //wxSTRING_MAXLEN);
+              wxString title=wxString(tt, wxConvLocal, 2048); //wxSTRING_MAXLEN);
+              wxMessageBox(text,title, wxICON_INFORMATION | wxOK);
            }
 
 extern "C" int yesnomessagebox(char *s, char *t)  // messagebox string of text, title
-           {
-           	 wxString text =wxString(s, wxConvLocal, 2048); //wxSTRING_MAXLEN);
- 			 wxString title=wxString(t, wxConvLocal, 2048); //wxSTRING_MAXLEN);
-             wxMessageDialog w(my_lisawin,text,title, wxICON_QUESTION  | wxYES_NO |wxNO_DEFAULT,wxDefaultPosition );
-             if (w.ShowModal()==wxID_YES) return 1;
-             return 0;
+           {              char ss[2048];
+              char tt[2048];
+              strncpy(ss,s,2047);
+              strncpy(tt,t,2047);
+              ALERT_LOG(0,"%s:%s",t,s);  // this works, but the conversion below does not.
+              wxString text =wxString(ss, wxConvLocal, 2048); //wxSTRING_MAXLEN);
+              wxString title=wxString(tt, wxConvLocal, 2048); //wxSTRING_MAXLEN);
+              wxMessageDialog w(my_lisawin,text,title, wxICON_QUESTION  | wxYES_NO |wxNO_DEFAULT,wxDefaultPosition );
+              if (w.ShowModal()==wxID_YES) return 1;
+              return 0;
            }
 
 
+// Yes, I know this is a global C function and I'm not doing it the C++ way! 
+// this way all the menus get updated from a single place whenever needed,
+// not including the profile menu here as that's special
+// Byte my shiny metal C function!
+void update_menu_checkmarks(void)
+{
+
+  static float lastthrottle;
+
+  if (!!DisplayMenu)
+     {
+       DisplayMenu->Enable(ID_VID_AA,   lisa_ui_video_mode != 0x3a);
+       DisplayMenu->Enable(ID_VID_AAG,  lisa_ui_video_mode != 0x3a);
+       DisplayMenu->Enable(ID_VID_AAG,  lisa_ui_video_mode != 0x3a);
+       DisplayMenu->Enable(ID_VID_DY,   lisa_ui_video_mode != 0x3a);
+       DisplayMenu->Enable(ID_VID_SY,   lisa_ui_video_mode != 0x3a);
+       DisplayMenu->Enable(ID_VID_2X3Y, lisa_ui_video_mode != 0x3a);
+
+       DisplayMenu->Check(ID_VID_AA,    (lisa_ui_video_mode == vidmod_aa)  );
+       DisplayMenu->Check(ID_VID_AAG,   (lisa_ui_video_mode == vidmod_aag) );
+       DisplayMenu->Check(ID_VID_DY,    (lisa_ui_video_mode == vidmod_2y)  );
+       DisplayMenu->Check(ID_VID_SY,    (lisa_ui_video_mode == vidmod_raw) );
+       DisplayMenu->Check(ID_VID_2X3Y,  (lisa_ui_video_mode == vidmod_3y)  );
+      //DisplayMenu->Check(ID_VID_SCALED,     lisa_ui_video_mode==5);  DisplayMenu->Enable(ID_VID_SCALED,mode!=0x3a);
+
+       DisplayMenu->Check(ID_VID_SKINS, !!skins_on);
+
+       if (!!my_lisaframe)
+       {
+           fileMenu->Check(ID_PAUSE, (my_lisaframe->running == emulation_running) );
+           DisplayMenu->Check(ID_HIDE_HOST_MOUSE,!!hide_host_mouse);
+           DisplayMenu->Check(ID_VID_FULLSCREEN, (my_lisaframe->IsFullScreen())); // wit what?
+       }
+
+       if (!!DisplayScaleSub)
+       {
+          switch( (int)(hidpi_scale * 100)) {
+            case 125: DisplayScaleSub->Check(ID_VID_SCALE_125, true); break;
+            case 150: DisplayScaleSub->Check(ID_VID_SCALE_150, true); break;
+            case 175: DisplayScaleSub->Check(ID_VID_SCALE_175, true); break;
+            case 200: DisplayScaleSub->Check(ID_VID_SCALE_200, true); break;  
+            case 225: DisplayScaleSub->Check(ID_VID_SCALE_225, true); break;
+            case 250: DisplayScaleSub->Check(ID_VID_SCALE_250, true); break;
+            case 275: DisplayScaleSub->Check(ID_VID_SCALE_275, true); break;
+            case 300: DisplayScaleSub->Check(ID_VID_SCALE_300, true); break;
+            default:  DisplayScaleSub->Check(ID_VID_SCALE_100, true); break;
+          }
+
+       }
+
+      if (!!DisplayRefreshSub && !!my_lisaframe)
+      {
+          DisplayRefreshSub->Check(ID_REFRESH_4Hz, refresh_rate==9*REFRESHRATE);  if (refresh_rate==9*REFRESHRATE) my_lisaframe->hostrefresh=1000/ 4;
+          DisplayRefreshSub->Check(ID_REFRESH_8Hz, refresh_rate==7*REFRESHRATE);  if (refresh_rate==7*REFRESHRATE) my_lisaframe->hostrefresh=1000/ 8;
+          DisplayRefreshSub->Check(ID_REFRESH_12Hz,refresh_rate==5*REFRESHRATE);  if (refresh_rate==5*REFRESHRATE) my_lisaframe->hostrefresh=1000/12;
+          DisplayRefreshSub->Check(ID_REFRESH_20Hz,refresh_rate==3*REFRESHRATE);  if (refresh_rate==3*REFRESHRATE) my_lisaframe->hostrefresh=1000/20;
+          DisplayRefreshSub->Check(ID_REFRESH_60Hz,refresh_rate==1*REFRESHRATE);  if (refresh_rate==1*REFRESHRATE) my_lisaframe->hostrefresh=1000/60;
+      }
+
+      #ifdef DEBUG
+      #ifdef TRACE
+      if (!!fileMenu)
+      {
+          fileMenu->Check(ID_DEBUG, !!debug_log_enabled);
+          fileMenu->Check(ID_DEBUG2,!!debug_log_onclick);
+      }
+      #endif
+      #endif
+   }
+
+   if (!!fileMenu)
+   {
+      keyMenu->Check(ID_ASCIIKB,  asciikeyboard== 1);
+      keyMenu->Check(ID_RAWKB,    asciikeyboard== 0);
+      keyMenu->Check(ID_RAWKBBUF, asciikeyboard==-1);
+   }
+
+//    updateThrottleMenus(my_lisaframe->throttle);
+
+    if (!!my_lisaframe && !!throttleMenu) 
+    { 
+
+        if (lastthrottle!=my_lisaframe->throttle)
+           {
+             my_lisaframe->reset_throttle_clock();
+             lastthrottle=my_lisaframe->throttle;
+             #ifdef TIE_VIA_TIMER_TO_HOST
+             via_throttle_factor=throttle/5.0;
+             #endif
+            }
+
+       #ifdef DEBUG
+           throttleMenu->Check(ID_THROTTLEX,   my_lisaframe->throttle == 512 );
+           throttleMenu->Check(ID_THROTTLE1,   my_lisaframe->throttle ==  1.0);
+       #else
+           if (my_lisaframe->throttle>256.0) my_lisaframe->throttle=256.0;    
+       #endif
+       
+           throttleMenu->Check(ID_THROTTLE5,    my_lisaframe->throttle ==  5.0);
+           throttleMenu->Check(ID_THROTTLE8,    my_lisaframe->throttle ==  8.0);
+           throttleMenu->Check(ID_THROTTLE10,   my_lisaframe->throttle == 10.0);
+           throttleMenu->Check(ID_THROTTLE12,   my_lisaframe->throttle == 12.0);
+           throttleMenu->Check(ID_THROTTLE16,   my_lisaframe->throttle == 16.0);
+           throttleMenu->Check(ID_THROTTLE32,   my_lisaframe->throttle == 32.0);
+           throttleMenu->Check(ID_THROTTLE48,   my_lisaframe->throttle == 48.0);
+           throttleMenu->Check(ID_THROTTLE64,   my_lisaframe->throttle == 64.0);
+           throttleMenu->Check(ID_THROTTLE100,  my_lisaframe->throttle == 100.0);
+           throttleMenu->Check(ID_THROTTLE128,  my_lisaframe->throttle == 128.0);
+           throttleMenu->Check(ID_THROTTLE256,  my_lisaframe->throttle == 256.0);
+
+           throttleMenu->Check(ID_ET100_75,     emulation_time==100 && emulation_tick==75);
+           throttleMenu->Check(ID_ET50_30,      emulation_time== 50 && emulation_tick==30);
+           throttleMenu->Check(ID_ET40_25,      emulation_time== 40 && emulation_tick==25);
+           throttleMenu->Check(ID_ET30_20,      emulation_time== 30 && emulation_tick==20);
+    }
+
+
+} // -- end of update_menu_checkmarks(void)
 
 
 
@@ -4442,15 +5658,15 @@ void LisaEmFrame::UpdateProfileMenu(void)
     if (my_lisaconfig->s1l.IsSameAs(_T("NOTHING"), false)) profileMenu->SetLabel(ID_PROFILE_S1L,wxT("Nothing on Slot 1 Lower Port"));
 
 
-	profileMenu->Enable(ID_PROFILE_S1U,( !my_lisaconfig->s1h.IsSameAs(_T("NOTHING"), false)) );      
-	profileMenu->Enable(ID_PROFILE_S1L,( !my_lisaconfig->s1l.IsSameAs(_T("NOTHING"), false)) );
+    profileMenu->Enable(ID_PROFILE_S1U,( !my_lisaconfig->s1h.IsSameAs(_T("NOTHING"), false)) );      
+    profileMenu->Enable(ID_PROFILE_S1L,( !my_lisaconfig->s1l.IsSameAs(_T("NOTHING"), false)) );
   }
   else 
   {
-	profileMenu->Enable(ID_PROFILE_S1U,false );      
-	profileMenu->Enable(ID_PROFILE_S1L,false );
-	profileMenu->SetLabel(ID_PROFILE_S1U,_T("No Card"));
-	profileMenu->SetLabel(ID_PROFILE_S1L,_T("No Card"));
+    profileMenu->Enable(ID_PROFILE_S1U,false );      
+    profileMenu->Enable(ID_PROFILE_S1L,false );
+    profileMenu->SetLabel(ID_PROFILE_S1U,_T("No Card"));
+    profileMenu->SetLabel(ID_PROFILE_S1L,_T("No Card"));
   }
 
 
@@ -4466,15 +5682,15 @@ void LisaEmFrame::UpdateProfileMenu(void)
     if (my_lisaconfig->s2l.IsSameAs(_T("NOTHING"), false)) profileMenu->SetLabel(ID_PROFILE_S2L,wxT("Nothing on Slot 2 Lower Port"));
 
 
-	profileMenu->Enable(ID_PROFILE_S2U,( !my_lisaconfig->s2h.IsSameAs(_T("NOTHING"), false)) );      
-	profileMenu->Enable(ID_PROFILE_S2L,( !my_lisaconfig->s2l.IsSameAs(_T("NOTHING"), false)) );
+    profileMenu->Enable(ID_PROFILE_S2U,( !my_lisaconfig->s2h.IsSameAs(_T("NOTHING"), false)) );      
+    profileMenu->Enable(ID_PROFILE_S2L,( !my_lisaconfig->s2l.IsSameAs(_T("NOTHING"), false)) );
   }
   else 
   {
-	profileMenu->Enable(ID_PROFILE_S2U,false );      
-	profileMenu->Enable(ID_PROFILE_S2L,false );
-	profileMenu->SetLabel(ID_PROFILE_S2U,_T("No Card"));
-	profileMenu->SetLabel(ID_PROFILE_S2L,_T("No Card"));
+    profileMenu->Enable(ID_PROFILE_S2U,false );      
+    profileMenu->Enable(ID_PROFILE_S2L,false );
+    profileMenu->SetLabel(ID_PROFILE_S2U,_T("No Card"));
+    profileMenu->SetLabel(ID_PROFILE_S2L,_T("No Card"));
   }
 
 
@@ -4489,15 +5705,15 @@ void LisaEmFrame::UpdateProfileMenu(void)
     if (my_lisaconfig->s3h.IsSameAs(_T("NOTHING"), false)) profileMenu->SetLabel(ID_PROFILE_S3U,wxT("Nothing on Slot 3 Upper Port"));
     if (my_lisaconfig->s3l.IsSameAs(_T("NOTHING"), false)) profileMenu->SetLabel(ID_PROFILE_S3L,wxT("Nothing on Slot 3 Lower Port"));
 
-	profileMenu->Enable(ID_PROFILE_S3U,( !my_lisaconfig->s3h.IsSameAs(_T("NOTHING"), false)) );      
-	profileMenu->Enable(ID_PROFILE_S3L,( !my_lisaconfig->s3l.IsSameAs(_T("NOTHING"), false)) );
+    profileMenu->Enable(ID_PROFILE_S3U,( !my_lisaconfig->s3h.IsSameAs(_T("NOTHING"), false)) );      
+    profileMenu->Enable(ID_PROFILE_S3L,( !my_lisaconfig->s3l.IsSameAs(_T("NOTHING"), false)) );
   }
   else 
   {
-	profileMenu->Enable(ID_PROFILE_S3U,false );      
-	profileMenu->Enable(ID_PROFILE_S3L,false );
-	profileMenu->SetLabel(ID_PROFILE_S3U,_T("No Card"));
-	profileMenu->SetLabel(ID_PROFILE_S3L,_T("No Card"));
+    profileMenu->Enable(ID_PROFILE_S3U,false );      
+    profileMenu->Enable(ID_PROFILE_S3L,false );
+    profileMenu->SetLabel(ID_PROFILE_S3U,_T("No Card"));
+    profileMenu->SetLabel(ID_PROFILE_S3L,_T("No Card"));
   }
 
 }
@@ -4513,7 +5729,7 @@ void LisaEmFrame::OnProFilePowerX(int bit)
    {
    switch(bit)
    { 
- 	case 2: if (my_lisaconfig->parallel.IsSameAs(_T("PROFILE"), false)) devtype=1; break;
+     case 2: if (my_lisaconfig->parallel.IsSameAs(_T("PROFILE"), false)) devtype=1; break;
 
     case 3: if (my_lisaconfig->s1h.IsSameAs(_T("PROFILE"), false)) devtype=1; break;
     case 4: if (my_lisaconfig->s1l.IsSameAs(_T("PROFILE"), false)) devtype=1; break;
@@ -4566,17 +5782,17 @@ void LisaEmFrame::OnNewProFile(wxCommandEvent& WXUNUSED(event))
        //               0     1     2     3     4     5     6
        //              5M   10M   16M   20M   32M   40M    64M
 
-	 char cfilename[MAXPATHLEN];
-	 wxFileDialog open(this,                        wxT("Create blank ProFile drive as:"),
-	                                                wxEmptyString,
-	                                                wxT("lisaem-profile.dc42"),
-	                                                wxT("Disk Copy (*.dc42)|*.dc42|All (*.*)|*.*"),
-	                                                (long int)wxFD_SAVE,wxDefaultPosition);
+     char cfilename[MAXPATHLEN];
+     wxFileDialog open(this,                        wxT("Create blank ProFile drive as:"),
+                                                    wxEmptyString,
+                                                    wxT("lisaem-profile.dc42"),
+                                                    wxT("Disk Copy (*.dc42)|*.dc42|All (*.*)|*.*"),
+                                                    (long int)wxFD_SAVE,wxDefaultPosition);
 
-	 if (open.ShowModal()==wxID_OK)                 
-	 {
-	 wxString filename=open.GetPath();
-	 strncpy(cfilename,filename.fn_str(),MAXPATHLEN);
+     if (open.ShowModal()==wxID_OK)                 
+     {
+     wxString filename=open.GetPath();
+     strncpy(cfilename,filename.fn_str(),MAXPATHLEN);
      sz=pickprofilesize(cfilename);  if (sz<0 || sz>6) return;
      int i=dc42_create(cfilename,"-lisaem.sunder.net hd-",blocks[sz]*512,blocks[sz]*20);
      if (i) 
@@ -4584,7 +5800,6 @@ void LisaEmFrame::OnNewProFile(wxCommandEvent& WXUNUSED(event))
         wxT("Failed to create drive!"));
      }
 }
-
 
 
 
@@ -4603,22 +5818,21 @@ extern "C" void eject_floppy_animation(void)
 extern "C" void floppy_motor_sounds(int track)
 {
 // there really are 3-4 speeds, however, my admittedly Bolt Thrower damaged ears can only distinguish two  :)
-// close enough for government work, I guess.
+// close enough for government work, I guess. Or perhaps the other two speeds are handled by disk logic and the
+// drive motor only really has two speeds?
 
-#ifndef __WXMSW__
- if (wxSound::IsPlaying()) return;       // doesn't work on windows
-#else
- if (my_lisaframe->soundplaying)
-    if (my_lisaframe->soundsw.Time()<200) return;
-my_lisaframe->soundplaying=1;
+//#ifndef __WXMSW__
+// if (wxSound::IsPlaying()) return;       // doesn't work on windows
+//#else
+
+my_lisaframe->soundplaying=1+(track>35);
 my_lisaframe->soundsw.Start(0);
-#endif
- wxSound::Stop();
+//#endif
 
  if (sound_effects_on)
  {
-   if (track>35)  {if (my_floppy_motor1->IsOk()) my_floppy_motor1->Play(wxSOUND_ASYNC);}
-   else           {if (my_floppy_motor2->IsOk()) my_floppy_motor2->Play(wxSOUND_ASYNC);}
+   if (track>35)  {if (my_floppy_motor1->IsOk()) my_floppy_motor1->Play(wxSOUND_ASYNC|wxSOUND_LOOP);}
+   else           {if (my_floppy_motor2->IsOk()) my_floppy_motor2->Play(wxSOUND_ASYNC|wxSOUND_LOOP);}
  }
 
 }
@@ -4671,7 +5885,7 @@ void LisaEmFrame::OnNewFLOPPY(wxCommandEvent& WXUNUSED(event)) {OnxNewFLOPPY();}
 void LisaEmFrame::OnxNewFLOPPY(void)
 {
     if (!my_lisaframe->running) {
-        wxMessageBox(_T("Please turn the Lisa on before inserting a diskette."),
+        wxMessageBox(_T("Please turn the Lisa on before creating a new diskette image."),
             _T("The Lisa is Off"), wxICON_INFORMATION | wxOK);
         return;
     }
@@ -4722,54 +5936,55 @@ void LisaEmFrame::OnxNewFLOPPY(void)
 //  which causes garbage in the non-refreshed space.
 void LisaEmFrame::UnloadImages(void)
 {
-   if (display_image)   {   delete display_image; display_image  = NULL;}
-	 
-   if ( my_skinDC     )  {  delete my_skinDC;     my_skinDC      = NULL;}
-   if ( my_skin0DC    )  {  delete my_skin0DC;    my_skin0DC     = NULL;}
-   if ( my_skin1DC    )  {  delete my_skin1DC;    my_skin1DC     = NULL;}
-   if ( my_skin2DC    )  {  delete my_skin2DC;    my_skin2DC     = NULL;}
-   if ( my_skin3DC    )  {  delete my_skin3DC;    my_skin3DC     = NULL;}
-   if ( my_floppy0DC  )  {  delete my_floppy0DC;  my_floppy0DC   = NULL;}
-   if ( my_floppy1DC  )  {  delete my_floppy1DC;  my_floppy1DC   = NULL;}
-   if ( my_floppy2DC  )  {  delete my_floppy2DC;  my_floppy2DC   = NULL;}
-   if ( my_floppy3DC  )  {  delete my_floppy3DC;  my_floppy3DC   = NULL;}
-   if ( my_floppy4DC  )  {  delete my_floppy4DC;  my_floppy4DC   = NULL;}
-   if ( my_poweronDC  )  {  delete my_poweronDC;  my_poweronDC   = NULL;}
-   if ( my_poweroffDC )  {  delete my_poweroffDC; my_poweroffDC  = NULL;}
+   EXTERMINATE( display_image );
+     
+   EXTERMINATE( my_skinDC     );
+   EXTERMINATE( my_skin0DC    );
+   EXTERMINATE( my_skin1DC    );
+   EXTERMINATE( my_skin2DC    );
+   EXTERMINATE( my_skin3DC    );
+   EXTERMINATE( my_floppy0DC  );
+   EXTERMINATE( my_floppy1DC  );
+   EXTERMINATE( my_floppy2DC  );
+   EXTERMINATE( my_floppy3DC  );
+   EXTERMINATE( my_floppy4DC  );
+   EXTERMINATE( my_poweronDC  );
+   EXTERMINATE( my_poweroffDC );
 
-   if ( my_skin       )  {  delete my_skin;       my_skin        = NULL;}
-   if ( my_skin0      )  {  delete my_skin0;      my_skin0       = NULL;}
-   if ( my_skin1      )  {  delete my_skin1;      my_skin1       = NULL;}
-   if ( my_skin2      )  {  delete my_skin2;      my_skin2       = NULL;}
-   if ( my_skin3      )  {  delete my_skin3;      my_skin3       = NULL;}
-   if ( my_floppy0    )  {  delete my_floppy0;    my_floppy0     = NULL;}
-   if ( my_floppy1    )  {  delete my_floppy1;    my_floppy1     = NULL;}
-   if ( my_floppy2    )  {  delete my_floppy2;    my_floppy2     = NULL;}
-   if ( my_floppy3    )  {  delete my_floppy3;    my_floppy3     = NULL;}
-   if ( my_floppy4    )  {  delete my_floppy4;    my_floppy4     = NULL;}
-   if ( my_poweron    )  {  delete my_poweron;    my_poweron     = NULL;}
-   if ( my_poweroff   )  {  delete my_poweroff;   my_poweroff    = NULL;}
+   EXTERMINATE( my_skin       );
+   EXTERMINATE( my_skin0      );
+   EXTERMINATE( my_skin1      );
+   EXTERMINATE( my_skin2      );
+   EXTERMINATE( my_skin3      );
+   EXTERMINATE( my_floppy0    );
+   EXTERMINATE( my_floppy1    );
+   EXTERMINATE( my_floppy2    );
+   EXTERMINATE( my_floppy3    );
+   EXTERMINATE( my_floppy4    );
+   EXTERMINATE( my_poweron    );
+   EXTERMINATE( my_poweroff   );
 
    skins_on=0;
 
    int x,y;
-   my_lisawin->SetClientSize(wxSize(effective_lisa_vid_size_x,effective_lisa_vid_size_y));     // LisaWin //
-   my_lisawin->GetClientSize(&x,&y);                                                           // LisaWin //
-   my_lisawin->GetSize(&x,&y);                                                                 // LisaWin //
-
-   screen_origin_x=(x  - effective_lisa_vid_size_x)>>1;                                        // center display
-   screen_origin_y=(y  - effective_lisa_vid_size_y)>>1;                                        // on skinless
-   screen_origin_x= (screen_origin_x<0 ? 0:screen_origin_x);
-   screen_origin_y= (screen_origin_y<0 ? 0:screen_origin_y);
-
+   if (my_lisawin)
+   {   my_lisawin->SetClientSize(wxSize(effective_lisa_vid_size_x,effective_lisa_vid_size_y));     // LisaWin //
+       my_lisawin->GetClientSize(&x,&y);                                                           // LisaWin //
+       my_lisawin->GetSize(&x,&y);                                                                 // LisaWin //
+       skin.screen_origin_x=( _N(x)  - effective_lisa_vid_size_x)>>1;                              // center display
+       skin.screen_origin_y=( _N(y)  - effective_lisa_vid_size_y)>>1;                              // on skinless
+       skin.screen_origin_x= (skin.screen_origin_x<0 ? 0:skin.screen_origin_x);
+       skin.screen_origin_y= (skin.screen_origin_y<0 ? 0:skin.screen_origin_y);
 
 // X11, Windows return too small a value for getsize
-   x+=WINXDIFF; y+=WINYDIFF;
-   SetMaxSize(wxSize(ISKINSIZE));                                                              // Frame   //
-   SetMinSize(wxSize(720,384));                                                                // Frame   //
+       x+=WINXDIFF; y+=WINYDIFF;
+       SetMaxSize(wxSize(ISKINSIZE));                                                              // Frame   //
+       SetMinSize(wxSize(720,384));                                                                // Frame   //
+       SendSizeEvent();
+   }
 
-   SendSizeEvent();
 }
+
 
 void LisaEmFrame::LoadImages(void)
 {
@@ -4780,34 +5995,51 @@ void LisaEmFrame::LoadImages(void)
  * smaller too since we can use PNGs.
  * On Linux/Win32 use embedded XPM strings/BMP resources.
  */
-
+ALERT_LOG(0,"In LoadImages");
 if (skins_on)
 {
+
+   // Ask our Dalek friends to wipe DC and skin because when we call this a 2nd time, it's due to scale changes
+   // and without it, it causes crashes
+   EXTERMINATE(my_skin);
+   EXTERMINATE(my_skinDC);
+   EXTERMINATE(display_image);
+
+   // will ofc always happen now, but this looks cleaner as it continues the if ... pattern
    if (!my_skin) my_skin     = new wxBitmap(ISKINSIZEX,ISKINSIZEY,DEPTH);//, -1);  //20061228//
-   if (display_image)   {   delete display_image; display_image  = NULL;}
 
    wxString pngfile;
    wxStandardPathsBase& stdp = wxStandardPaths::Get();
-   wxString rscDir = stdp.GetResourcesDir() + wxFileName::GetPathSeparator(wxPATH_NATIVE);
-	
-    // stare not upon the insanity that predated this code, for it was written by drunkards! (*Burp*)
+   wxString rscDir = stdp.GetResourcesDir() + wxFileName::GetPathSeparator(wxPATH_NATIVE); // valgrind: ==24726== Conditional jump or move depends on uninitialised value(s)
+    
+   // stare not upon the insanity that predated this code, for it was written by drunkards! (*Burp*)
 
-// OS X, and Unixen will use resource dirs to load png files
+   // OS X, and Unixen will use resource dirs to load png files
 #ifndef __WXMSW__
+   pngfile=rscDir + skin.lisaface0name; if (!my_skin0)    my_skin0    = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
+   ALERT_LOG(0,"Opening %s filename",(const char *)pngfile);
+   if (!my_skin0->IsOk()) EXIT(0,0,"something went wrong with loading %s",(const char *)pngfile);
 
-   pngfile=rscDir + _T("lisaface0.png");  if (!my_skin0)    my_skin0    = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
-   pngfile=rscDir + _T("lisaface1.png");  if (!my_skin1)    my_skin1    = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
-   pngfile=rscDir + _T("lisaface2.png");  if (!my_skin2)    my_skin2    = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
-   pngfile=rscDir + _T("lisaface3.png");  if (!my_skin3)    my_skin3    = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
-                  
-   pngfile=rscDir + _T("floppy0.png");    if (!my_floppy0)  my_floppy0  = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
-   pngfile=rscDir + _T("floppy1.png");    if (!my_floppy1)  my_floppy1  = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
-   pngfile=rscDir + _T("floppy2.png");    if (!my_floppy2)  my_floppy2  = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
-   pngfile=rscDir + _T("floppy3.png");    if (!my_floppy3)  my_floppy3  = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
-   pngfile=rscDir + _T("floppyN.png");    if (!my_floppy4)  my_floppy4  = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
-                  
-   pngfile=rscDir + _T("power_on.png");   if (!my_poweron ) my_poweron  = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
-   pngfile=rscDir + _T("power_off.png");  if (!my_poweroff) my_poweroff = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
+   pngfile=rscDir + skin.lisaface1name; if (!my_skin1)    my_skin1    = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
+   ALERT_LOG(0,"Opening %s filename",(const char *)pngfile);
+   if (!my_skin1->IsOk()) EXIT(0,0,"something went wrong with loading %s",(const char *)pngfile);
+
+   pngfile=rscDir + skin.lisaface2name; if (!my_skin2)    my_skin2    = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
+   ALERT_LOG(0,"Opening %s filename",(const char *)pngfile);
+   if (!my_skin2->IsOk()) EXIT(0,0,"something went wrong with loading %s",(const char *)pngfile);
+
+   pngfile=rscDir + skin.lisaface3name; if (!my_skin3)    my_skin3    = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
+   ALERT_LOG(0,"Opening %s filename",(const char *)pngfile);
+   if (!my_skin3->IsOk()) EXIT(0,0,"something went wrong with loading %s",(const char *)pngfile);
+
+   pngfile=rscDir + skin.floppy2anim0;  if (!my_floppy0)  my_floppy0  = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
+   pngfile=rscDir + skin.floppy2anim1;  if (!my_floppy1)  my_floppy1  = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
+   pngfile=rscDir + skin.floppy2anim2;  if (!my_floppy2)  my_floppy2  = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
+   pngfile=rscDir + skin.floppy2anim3;  if (!my_floppy3)  my_floppy3  = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
+   pngfile=rscDir + skin.floppy2animN;  if (!my_floppy4)  my_floppy4  = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
+
+   pngfile=rscDir + skin.powerOn;       if (!my_poweron ) my_poweron  = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
+   pngfile=rscDir + skin.powerOff;      if (!my_poweroff) my_poweroff = new wxBitmap(pngfile, wxBITMAP_TYPE_PNG);
 
 // windoze will load BMP resources from the .EXE file
 #else
@@ -4849,11 +6081,8 @@ if (skins_on)
    my_skin2DC->SelectObject(*my_skin2);
    my_skin3DC->SelectObject(*my_skin3);
 
-   int y=0;
-   my_skinDC->Blit(0,y, my_skin0->GetWidth(),my_skin0->GetHeight(),my_skin0DC, 0,0 ,wxCOPY, false);   y+=my_skin0->GetHeight();
-   my_skinDC->Blit(0,y, my_skin1->GetWidth(),my_skin1->GetHeight(),my_skin1DC, 0,0 ,wxCOPY, false);   y+=my_skin1->GetHeight();
-   my_skinDC->Blit(0,y, my_skin2->GetWidth(),my_skin2->GetHeight(),my_skin2DC, 0,0 ,wxCOPY, false);   y+=my_skin2->GetHeight();
-   my_skinDC->Blit(0,y, my_skin3->GetWidth(),my_skin3->GetHeight(),my_skin3DC, 0,0 ,wxCOPY, false); //y+=my_skin3->GetHeight();
+   ALERT_LOG(0,"From Load Images");
+   prepare_skin();
 
    my_floppy0DC->SelectObject(*my_floppy0);
    my_floppy1DC->SelectObject(*my_floppy1);
@@ -4866,21 +6095,34 @@ if (skins_on)
    my_lisawin->SetMinSize(wxSize(IWINSIZE));
    my_lisawin->SetClientSize(wxSize(IWINSIZE));                                                     // Lisawin   //
    my_lisawin->SetMaxSize(wxSize(ISKINSIZE));                                                       // Lisawin   //
-   my_lisawin->SetScrollbars(ISKINSIZEX/100, ISKINSIZEY/100,  100,100,  0,0,  true);                // Lisawin   //
+   ALERT_LOG(0,"SetScrollbars");
+   my_lisawin->SetScrollbars(ISKINSIZEX/_H(100), ISKINSIZEY/_H(100),  _H(100),_H(100),  0,0,  true);                // Lisawin   //
+   ALERT_LOG(0,"Enabled Scrollbars");
    my_lisawin->EnableScrolling(true,true);                                                          // Lisawin   //
 
    SendSizeEvent();
 
-   screen_origin_x=140;
-   screen_origin_y=130;
+   skin.screen_origin_x=skin.default_screen_origin_x;
+   skin.screen_origin_y=skin.default_screen_origin_y;
   }
 
 }
 
+wxSize get_size_prefs(void)
+{
+   static wxSize size;
+   int x,y;
+   y=myConfig->Read(_T("/lisaframe/sizey"),(long)0);
+   x=myConfig->Read(_T("/lisaframe/sizex"),(long)0);
+   if (x<=0 || y<=0) { ALERT_LOG(0,"** Reset LisaEmFrame config Size because x,y=(%d,%d) ***\n\n",x,y); x=IWINSIZEX;y=IWINSIZEY;}
+   size=wxSize(x,y);
+   return size;
+}
 
 
 LisaEmFrame::LisaEmFrame(const wxString& title)
-       : wxFrame(NULL, wxID_ANY, title, wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE)
+       : wxFrame(NULL, wxID_ANY, title, wxDefaultPosition, get_size_prefs(), wxDEFAULT_FRAME_STYLE)
+//     : wxFrame(NULL, wxID_ANY, title, wxDefaultPosition, wxSize(ISKINSIZE), wxDEFAULT_FRAME_STYLE)
 {
    effective_lisa_vid_size_y=500;
    wxInitAllImageHandlers();
@@ -4896,138 +6138,186 @@ LisaEmFrame::LisaEmFrame(const wxString& title)
    y=myConfig->Read(_T("/lisaframe/sizey"),(long)0);
    x=myConfig->Read(_T("/lisaframe/sizex"),(long)0);
 
-   if (x<=0 || x>4096 || y<=0 || y>2048) {x=IWINSIZEX;y=IWINSIZEY;}
+    if (x<=0 || y<=0) { ALERT_LOG(0,"** Reset LisaEmFrame config Size because x,y=(%d,%d) ***\n\n",x,y); x=IWINSIZEX;y=IWINSIZEY;}
    //wxScreenDC theScreen;
    //theScreen.GetSize(&screensizex,&screensizey);
 
+   ALERT_LOG(0,"Getting display size")
    wxDisplaySize(&screensizex,&screensizey);
-   // Grrr! OS X sometimes returns garbage here
+   ALERT_LOG(0,"Got (%d,%d) screen size from wxDisplaySize",screensizex, screensizey);
    if (screensizex< 0 || screensizex>8192 || screensizey<0 || screensizey>8192)
       {ALERT_LOG(0,"Got Garbage screen size: %d,%d",screensizex,screensizey);
-	   screensizex=1024; screensizey=768;}
+       screensizex=1024; screensizey=768;}
 
    if (x>screensizex || y>screensizey)  // make sure we don't get too big
       {
+       ALERT_LOG(0,"**** Got display size %d,%d but it's out of bounds because %d,%d",screensizex,screensizey,x,y);
+
         x=MIN(screensizex-100,IWINSIZEX);
         y=MIN(screensizey-150,IWINSIZEY);
       }
 
+    ALERT_LOG(0,"Loading skin configs");
+    wxString skinconfigfile=myConfig->Read(_T("/lisaskin/name"),_T("default") );  // default skin is named default
+    skinconfig=new wxFileConfig(_T("LisaEm"),
+                             _T("sunder.NET"),     // company
+                             (skinconfigfile),     //local
+                             (myconfigfile),       //global
+                             wxCONFIG_USE_LOCAL_FILE,
+                             wxConvAuto() );      // or wxConvUTF8
+    skin.Load(skinconfig);
+
+    ALERT_LOG(0,"Using display size %d,%d",screensizex,screensizey);
+
 #ifndef __WXOSX__
+    ALERT_LOG(0,"Setting icon");
     SetIcon( wxICON( lisa2icon ));
 #endif
 
     if (skins_on)
     {
-       SetMinSize(wxSize(IWINSIZE));                                                                // Frame    //
+       ALERT_LOG(0,"sizing skin on %d,%d",x,y);
+       //SetMinSize(wxSize(IWINSIZE));                                                                // Frame    //
        if (x<IWINSIZEX || y<IWINSIZEY) {x=IWINSIZEX; y=IWINSIZEY;}
-       SetMinSize(wxSize(720,384));
-       SetClientSize(wxSize(x,y));                                                                  // Frame    //
+       //SetMinSize(wxSize(720,500));
+       //SetClientSize(wxSize(x,y));                                                                  // Frame    //
        GetClientSize(&dwx,&dwy);
        dwx-=x; dwy-=y;
-       SetClientSize(wxSize(x-dwx,y-dwy));
-       SetMaxSize(wxSize(ISKINSIZE));                                                               // Frame    //
+       //SetClientSize(wxSize(x-dwx,y-dwy));
+       //SetMaxSize(wxSize(ISKINSIZE));                                                               // Frame    //
     }                                                                                               // Frame    //
     else
     {
+       ALERT_LOG(0,"sizing skins off");
+
        // try to fit the Lisa's display on the screen at least.
        if (x<effective_lisa_vid_size_x || y<effective_lisa_vid_size_y)
-	      {x=effective_lisa_vid_size_x;   y=effective_lisa_vid_size_y;}
+          {x=effective_lisa_vid_size_x;   y=effective_lisa_vid_size_y;}
 
        // but if it's too big, ensure we don't go over the display'size.
        x=MIN(screensizex-100,x); y=MIN(screensizey-150,x);
 
-       SetMinSize(wxSize(720,384));
-	   SetClientSize(wxSize(x,y));                                                                  // Frame    //
-       GetClientSize(&dwx,&dwy);
+       //SetMinSize(wxSize(720,384));
+       //SetClientSize(wxSize(x,y));                                                                  // Frame    //
+       //GetClientSize(&dwx,&dwy);
        dwx-=x; dwy-=y;
 
-       SetMaxSize(wxSize(ISKINSIZE));                                                               // Frame    //
- 	}
+       //SetMaxSize(wxSize(ISKINSIZE));                                                               // Frame    //
+     }
 
 
     buildscreenymap();
 
+    ALERT_LOG(0,"Setting menu items");
     // Create a menu bar
-    fileMenu     = new wxMenu;
-    editMenu     = new wxMenu;
-    keyMenu      = new wxMenu;
-    DisplayMenu  = new wxMenu;
-    throttleMenu = new wxMenu;
-	profileMenu  = new wxMenu;
-    helpMenu     = new wxMenu;
+    fileMenu          = new wxMenu;
+    editMenu          = new wxMenu;
+    keyMenu           = new wxMenu;
+    DisplayMenu       = new wxMenu;
+    DisplayRefreshSub = new wxMenu;
+    DisplayScaleSub   = new wxMenu;
+    throttleMenu      = new wxMenu;
+    profileMenu       = new wxMenu;
+    helpMenu          = new wxMenu;
 
+    /* https://wiki.wxwidgets.org/WxMac-specific_topics#Keyboard_Shortcuts
+       Keyboard shortcuts use the command-key (the cloverleaf or open-apple key on the keyboard) instead of the control key. wxMac lets you specify 
+       keyboard shortcuts MS Windows style, and they are automatically translated. So Open should be specified as "&Open\tCtrl+O", and on the Mac 
+       the accelerator will be removed and the Ctrl will be replaced with a cloverleaf in the menu.
+    */
 
-
-
-	profileMenu->Append(ID_PROFILE_ALL_ON,   wxT("Power On all Parallel Devices"), wxT("Powers on all parallel port attached devices.")  );
-    profileMenu->Append(ID_PROFILE_ALL_OFF,  wxT("Power off all Parallel Devices"), wxT("Shuts off all parallel port attached devices.")  );
+    profileMenu->Append(ID_PROFILE_ALL_ON,   wxT("Power On all Parallel Devices"), wxT("Powers on all parallel port attached devices.")  );
+    profileMenu->Append(ID_PROFILE_ALL_OFF,  wxT("Power off all Parallel Devices"), wxT("Shuts off all parallel port attached devices.")  ); //valgrind ==24726== Conditional jump or move depends on uninitialised value(s)
 
     profileMenu->AppendSeparator();
 
-	profileMenu->AppendCheckItem(ID_PROFILEPWR,       wxT("Power ProFile on Parallel Port"), wxT("Toggles power to the Profile drive on the parallel port") );
+    profileMenu->AppendCheckItem(ID_PROFILEPWR,       wxT("Power ProFile on Parallel Port"), wxT("Toggles power to the Profile drive on the parallel port") );
 
-	profileMenu->AppendSeparator();
+    profileMenu->AppendSeparator();
 
-    profileMenu->AppendCheckItem(ID_PROFILE_S1U,      wxT("Power ProFile on Slot 1 Upper Port"),wxT("Toggle power to the device") );
-	profileMenu->AppendCheckItem(ID_PROFILE_S1L,      wxT("Power ProFile on Slot 1 Lower Port"),wxT("Toggle power to the device") );
-	profileMenu->AppendSeparator();                                                                                      
+    profileMenu->AppendCheckItem(ID_PROFILE_S1U,      wxT("Power ProFile on Slot 1 Upper Port"),wxT("Toggle power to the drive") );
+    profileMenu->AppendCheckItem(ID_PROFILE_S1L,      wxT("Power ProFile on Slot 1 Lower Port"),wxT("Toggle power to the drive") );
+    profileMenu->AppendSeparator();                                                                                      
                                                                                                                          
-    profileMenu->AppendCheckItem(ID_PROFILE_S2U,      wxT("Power ProFile on Slot 2 Upper Port"),wxT("Toggle power to the device") );
-    profileMenu->AppendCheckItem(ID_PROFILE_S2L,      wxT("Power ProFile on Slot 2 Lower Port"),wxT("Toggle power to the device") );
-	profileMenu->AppendSeparator();                                                                                      
+    profileMenu->AppendCheckItem(ID_PROFILE_S2U,      wxT("Power ProFile on Slot 2 Upper Port"),wxT("Toggle power to the drive") );
+    profileMenu->AppendCheckItem(ID_PROFILE_S2L,      wxT("Power ProFile on Slot 2 Lower Port"),wxT("Toggle power to the drive") );
+    profileMenu->AppendSeparator();                                                                                      
                                                                                                                          
-    profileMenu->AppendCheckItem(ID_PROFILE_S3U,      wxT("Power ProFile on Slot 3 Upper Port"),wxT("Toggle power to the device") );
-    profileMenu->AppendCheckItem(ID_PROFILE_S3L,      wxT("Power ProFile on Slot 3 Lower Port"),wxT("Toggle power to the device") );
+    profileMenu->AppendCheckItem(ID_PROFILE_S3U,      wxT("Power ProFile on Slot 3 Upper Port"),wxT("Toggle power to the drive") );
+    profileMenu->AppendCheckItem(ID_PROFILE_S3L,      wxT("Power ProFile on Slot 3 Lower Port"),wxT("Toggle power to the drive") );
                                                                                                                         
-    editMenu->Append(wxID_PASTE, wxT("Paste") ,       wxT("Paste clipboard text to keyboard.") );
-
-    DisplayMenu->AppendCheckItem(ID_VID_AA  ,         wxT("AntiAliased")           ,  wxT("Aspect Corrected with Anti Aliasing") );
-    DisplayMenu->AppendCheckItem(ID_VID_AAG ,         wxT("AntiAliased with Gray Replacement"),  wxT("Aspect Corrected with Anti Aliasing and Gray Replacing") );
+    editMenu->Append(wxID_PASTE, wxT("Paste") ,       wxT("Paste clipboard text to keyboard.") ); //valgrind: ==24726== Conditional jump or move depends on uninitialised value(s)
     //DisplayMenu->AppendCheckItem(ID_VID_SCALED,  wxT("Scaled")                ,  wxT("Scaled by wxWidgets") );
 
-    DisplayMenu->AppendSeparator();
-    DisplayMenu->AppendCheckItem(ID_VID_SY  ,         wxT("Raw")                   ,  wxT("Uncorrected Aspect Ratio") );
-    DisplayMenu->AppendSeparator();
-
-    DisplayMenu->AppendCheckItem(ID_VID_DY  ,         wxT("Double Y")              ,  wxT("Double Vertical Size") );
-    DisplayMenu->AppendCheckItem(ID_VID_2X3Y,         wxT("Double X, Triple Y")    ,  wxT("Corrected Aspect Ratio, Large Display") );
-
-    DisplayMenu->AppendSeparator();
-
-    DisplayMenu->AppendCheckItem(ID_VID_SKINS_ON,     wxT("Turn Skins On"),         wxT("Turn on skins") );
-    DisplayMenu->AppendCheckItem(ID_VID_SKINS_OFF,    wxT("Turn Skins Off"),        wxT("Turn off skins") );
+    DisplayMenu->AppendRadioItem(ID_VID_AA  ,         wxT("AntiAliased")           ,  wxT("Aspect Corrected with Anti Aliasing") ); //valgrind==24726== Conditional jump or move depends on uninitialised value(s)
+    DisplayMenu->AppendRadioItem(ID_VID_AAG ,         wxT("AntiAliased with Gray Replacement"),  wxT("Aspect Corrected with Anti Aliasing and Gray Replacing") );
+    DisplayMenu->AppendRadioItem(ID_VID_SY  ,         wxT("Raw")                   ,  wxT("Uncorrected Aspect Ratio") );
+    DisplayMenu->AppendRadioItem(ID_VID_DY  ,         wxT("Double Y")              ,  wxT("Double Vertical Size") );
+    DisplayMenu->AppendRadioItem(ID_VID_2X3Y,         wxT("Double X, Triple Y")    ,  wxT("Corrected Aspect Ratio, Large Display") ); //valgrind:==24726== Conditional jump or move depends on uninitialised value(s)
 
     DisplayMenu->AppendSeparator();
+    DisplayMenu->AppendCheckItem(ID_VID_SKINS,        wxT("Skin"),                    wxT("Turn skins on/off") );
+    DisplayMenu->AppendSeparator();
 
-  // reinstated as per request by Kallikak
-    DisplayMenu->AppendCheckItem(ID_REFRESH_60Hz,wxT("60Hz Refresh"),wxT("60Hz Display Refresh - skip no frames - for fast machines"));
-    DisplayMenu->AppendCheckItem(ID_REFRESH_20Hz,wxT("20Hz Refresh"),wxT("20Hz Display Refresh - display every 2nd frame"));
-    DisplayMenu->AppendCheckItem(ID_REFRESH_12Hz,wxT("12Hz Refresh"),wxT("12Hz Display Refresh - display every 5th frame - for slow machines"));
-    DisplayMenu->AppendCheckItem(ID_REFRESH_8Hz,wxT( " 8Hz Refresh"),wxT("8Hz Display Refresh - display every 7th frame - for slow machines"));
-    DisplayMenu->AppendCheckItem(ID_REFRESH_4Hz,wxT( " 4Hz Refresh"),wxT("4Hz Display Refresh - display every 9th frame - for super slow machines"));
+    DisplayRefreshSub->AppendRadioItem(ID_REFRESH_60Hz,wxT("60Hz Refresh"),wxT("60Hz Display Refresh - skip no frames - for fast machines"));
+    DisplayRefreshSub->AppendRadioItem(ID_REFRESH_20Hz,wxT("20Hz Refresh"),wxT("20Hz Display Refresh - display every 2nd frame"));
+    DisplayRefreshSub->AppendRadioItem(ID_REFRESH_12Hz,wxT("12Hz Refresh"),wxT("12Hz Display Refresh - display every 5th frame - for slow machines"));
+    DisplayRefreshSub->AppendRadioItem(ID_REFRESH_8Hz, wxT(" 8Hz Refresh"),wxT("8Hz Display Refresh - display every 7th frame - for slow machines"));
+    DisplayRefreshSub->AppendRadioItem(ID_REFRESH_4Hz, wxT(" 4Hz Refresh"),wxT("4Hz Display Refresh - display every 9th frame - for super slow machines"));
+
+    DisplayMenu->Append(ID_REFRESH_SUB,wxT("Refresh Rate"), DisplayRefreshSub );
+    DisplayMenu->AppendSeparator();
+
+    DisplayScaleSub->AppendRadioItem(ID_VID_SCALE_100,  wxT("1.00x"), wxT("Set Video Magnification Size 1.00x") );
+    DisplayScaleSub->AppendRadioItem(ID_VID_SCALE_125,  wxT("1.25x"), wxT("Set Video Magnification Size 1.25x") );
+    DisplayScaleSub->AppendRadioItem(ID_VID_SCALE_150,  wxT("1.50x"), wxT("Set Video Magnification Size 1.50x") );
+    DisplayScaleSub->AppendRadioItem(ID_VID_SCALE_175,  wxT("1.75x"), wxT("Set Video Magnification Size 1.75x") );
+    DisplayScaleSub->AppendRadioItem(ID_VID_SCALE_200,  wxT("2.00x"), wxT("Set Video Magnification Size 2.00x") );
+    DisplayScaleSub->AppendRadioItem(ID_VID_SCALE_225,  wxT("2.25x"), wxT("Set Video Magnification Size 2.25x") );
+    DisplayScaleSub->AppendRadioItem(ID_VID_SCALE_250,  wxT("2.50x"), wxT("Set Video Magnification Size 2.50x") );
+    DisplayScaleSub->AppendRadioItem(ID_VID_SCALE_275,  wxT("2.75x"), wxT("Set Video Magnification Size 2.75x") );
+    DisplayScaleSub->AppendRadioItem(ID_VID_SCALE_300,  wxT("3.00x"), wxT("Set Video Magnification Size 3.00x") );
+
+    DisplayScaleSub->AppendSeparator();
+
+    DisplayScaleSub->Append(ID_VID_SCALE_ZOOMIN,    wxT("Zoom In \tCTRL++"),  wxT("Zoom In") );
+    DisplayScaleSub->Append(ID_VID_SCALE_ZOOMOUT,   wxT("Zoom Out \tCTRL+-"), wxT("Zoom Out") );
+
+    DisplayMenu->Append(ID_VID_SCALED_SUB, wxT("Zoom/Scale"), DisplayScaleSub);
 
     DisplayMenu->AppendSeparator();
 
     DisplayMenu->AppendCheckItem(ID_HIDE_HOST_MOUSE,wxT("Hide Host Mouse Pointer"),wxT("Hides the host mouse pointer - may cause lag"));
 
+    DisplayMenu->AppendSeparator();
 
-    throttleMenu->AppendCheckItem(ID_THROTTLE5,       wxT("5 MHz")                  , wxT("5 MHz - Stock Lisa Speed, recommended.") );
-    throttleMenu->AppendCheckItem(ID_THROTTLE8,       wxT("8 MHz")                  , wxT("8 MHz - Original Macintosh 128 Speed") );
-    throttleMenu->AppendCheckItem(ID_THROTTLE10,      wxT("10 MHz")                 , wxT("10Mhz"));
-    throttleMenu->AppendCheckItem(ID_THROTTLE12,      wxT("12 MHz")                 , wxT("12Mhz"));
-    throttleMenu->AppendCheckItem(ID_THROTTLE16,      wxT("16 MHz")                 , wxT("16Mhz"));
-    throttleMenu->AppendCheckItem(ID_THROTTLE32,      wxT("32 MHz")                 , wxT("32Mhz - For modern machines") );
+    FullScreenCheckMenuItem=DisplayMenu->AppendCheckItem(ID_VID_FULLSCREEN,wxT("Fullscreen"), wxT("Enter/leave full screen mode"));
+
+
+
+    #ifdef DEBUG
+    throttleMenu->AppendCheckItem(ID_THROTTLE1,       wxT("1 MHz")  , wxT("1 MHz - Slowdown for debugging") );
+    #endif
+    throttleMenu->AppendRadioItem(ID_THROTTLE5,       wxT("5 MHz")  , wxT("5 MHz - Stock Lisa Speed, recommended.") );
+    throttleMenu->AppendRadioItem(ID_THROTTLE8,       wxT("8 MHz")  , wxT("8 MHz - Original Macintosh 128 Speed") );
+    throttleMenu->AppendRadioItem(ID_THROTTLE10,      wxT("10 MHz") , wxT("10Mhz"));
+    throttleMenu->AppendRadioItem(ID_THROTTLE12,      wxT("12 MHz") , wxT("12Mhz"));
+    throttleMenu->AppendRadioItem(ID_THROTTLE16,      wxT("16 MHz") , wxT("16Mhz"));
+    throttleMenu->AppendRadioItem(ID_THROTTLE32,      wxT("32 MHz") , wxT("32Mhz - For modern machines") );
+    throttleMenu->AppendRadioItem(ID_THROTTLE48,      wxT("48 MHz") , wxT("48Mhz - For modern machines") );
+    throttleMenu->AppendRadioItem(ID_THROTTLE64,      wxT("64 MHz") , wxT("64Mhz - For modern machines") );
+    throttleMenu->AppendRadioItem(ID_THROTTLE100,     wxT("100 MHz"), wxT("100Mhz - For modern machines") );
+    throttleMenu->AppendRadioItem(ID_THROTTLE128,     wxT("128 MHz"), wxT("128Mhz - For modern machines") );
+    throttleMenu->AppendRadioItem(ID_THROTTLE256,     wxT("256 MHz"), wxT("256MHz - For modern machines") );
+    #ifdef DEBUG
+    throttleMenu->AppendCheckItem(ID_THROTTLEX,       wxT("512 Mhz"), wxT("Ludicrous Speed!") );
+    #endif
 
     throttleMenu->AppendSeparator();
-
-	throttleMenu->AppendCheckItem(ID_ET100_75,       wxT("Higher 68000 Performance"),     wxT("Normal 100/75ms duty timer - faster emulated CPU, less smooth animations"));
-    throttleMenu->AppendCheckItem(ID_ET50_30,        wxT("Balanced 68000/Graphics"),      wxT("Medium  50/30ms duty timer - smoother animation, slower CPU"));
-    throttleMenu->AppendCheckItem(ID_ET40_25,        wxT("Smoother Graphics"),            wxT("Small   40/25ms duty timer - even smoother animation, slower CPU"));
-    throttleMenu->AppendCheckItem(ID_ET30_20,        wxT("Smoothest display, lowest 68000 Performance"),     wxT("Tiny    30/20ms duty timer - smoothest animation, slowest CPU"));
-
-
-//    throttleMenu->AppendCheckItem(ID_THROTTLEX,  wxT("Unthrottled")            , wxT("Dangerous to your machine!") );
-
+    throttleMenu->AppendRadioItem(ID_ET100_75,        wxT("Higher 68000 Performance"),     wxT("Normal 100/75ms duty timer - faster emulated CPU, less smooth animations"));
+    throttleMenu->AppendRadioItem(ID_ET50_30,         wxT("Balanced 68000/Graphics"),      wxT("Medium  50/30ms duty timer - smoother animation, slower CPU"));
+    throttleMenu->AppendRadioItem(ID_ET40_25,         wxT("Smoother Graphics"),            wxT("Small   40/25ms duty timer - even smoother animation, slower CPU"));
+    throttleMenu->AppendRadioItem(ID_ET30_20,         wxT("Smoothest display, lower 68000 Performance"),     wxT("Tiny    30/20ms duty timer - smoothest animation, slowest CPU"));
 
     // The "About" item should be in the help menu
 
@@ -5037,138 +6327,146 @@ LisaEmFrame::LisaEmFrame(const wxString& title)
     //helpMenu->Append(wxID_ABOUT, wxT("Lisa Help"),                wxT("How to use Lisa software"));
     //helpMenu->AppendSeparator();
 
-	helpMenu->Append(wxID_ABOUT, wxT("&About LisaEm"),                   wxT("About the Lisa Emulator"));
-	#ifndef __WXOSX__
-	    helpMenu->AppendSeparator();
-	#endif
+    helpMenu->Append(wxID_ABOUT,         wxT("&About LisaEm"),            wxT("About the Lisa Emulator"));
+    #ifndef __WXOSX__
+    helpMenu->AppendSeparator();
+    #endif
+    helpMenu->Append(ID_LISAWEB,         wxT("Lisa Emulator Webpage"),    wxT("https://lisaem.sunder.net"));
+    helpMenu->Append(ID_LISAFAQ,         wxT("Lisa FAQ webpage"),         wxT("https://lisafaq.sunder.net"));
+    helpMenu->Append(ID_LISALIST2,       wxT("Lisa FAQ webpage"),         wxT("https://lisalist2.com"));
 
-    helpMenu->Append(ID_LISAWEB, wxT("Lisa Emulator Webpage"),    wxT("http://lisaem.sunder.net"));
-    helpMenu->Append(ID_LISAFAQ, wxT("Lisa FAQ webpage"),         wxT("http://lisafaq.sunder.net"));
-
-
-    keyMenu->Append(ID_POWERKEY,         wxT("Power Button"),     wxT("Push the Power Button"));
-    keyMenu->Append(ID_APPLEPOWERKEY,    wxT("Apple+Power Button"),wxT("Push Apple + the Power Button"));
+    keyMenu->Append(ID_POWERKEY,         wxT("Power Button"),             wxT("Push the Power Button"));
+    keyMenu->Append(ID_APPLEPOWERKEY,    wxT("Apple+Power Button"),       wxT("Push Apple + the Power Button"));
     keyMenu->AppendSeparator();
 
-    keyMenu->Append(ID_KEY_APL_DOT,      wxT("Apple ."),          wxT("Apple + ."));
+    keyMenu->Append(ID_KEY_APL_DOT,      wxT("Apple ."),                  wxT("Apple + ."));
 
-    keyMenu->Append(ID_KEY_APL_S,        wxT("Apple S"),          wxT("Apple + S"));
-    keyMenu->Append(ID_KEY_APL_ENTER,    wxT("Apple Enter"),      wxT("Apple + Enter"));
-    keyMenu->Append(ID_KEY_APL_RENTER,   wxT("Apple Right Enter"),wxT("Apple + Numpad Enter"));
+    keyMenu->Append(ID_KEY_APL_S,        wxT("Apple S"),                  wxT("Apple + S"));
+    keyMenu->Append(ID_KEY_APL_ENTER,    wxT("Apple Enter"),              wxT("Apple + Enter"));
+    keyMenu->Append(ID_KEY_APL_RENTER,   wxT("Apple Right Enter"),        wxT("Apple + Numpad Enter"));
 
-    keyMenu->Append(ID_KEY_APL_1,        wxT("Apple 1"),          wxT("Apple + 1"));
-    keyMenu->Append(ID_KEY_APL_2,        wxT("Apple 2"),          wxT("Apple + 2"));
-    keyMenu->Append(ID_KEY_APL_3,        wxT("Apple 3"),          wxT("Apple + 3"));
+    keyMenu->Append(ID_KEY_APL_1,        wxT("Apple 1"),                  wxT("Apple + 1"));
+    keyMenu->Append(ID_KEY_APL_2,        wxT("Apple 2"),                  wxT("Apple + 2"));
+    keyMenu->Append(ID_KEY_APL_3,        wxT("Apple 3"),                  wxT("Apple + 3"));
 
 
-    keyMenu->Append(ID_KEY_OPT_0,        wxT("Option 0"),         wxT("Option 0"));
-    keyMenu->Append(ID_KEY_OPT_4,        wxT("Option 4"),         wxT("Option 4"));
-    keyMenu->Append(ID_KEY_OPT_7,        wxT("Option 7"),         wxT("Option 7"));
-
-    keyMenu->AppendSeparator();
-    keyMenu->Append(ID_KEY_NMI,          wxT("NMI Key"),          wxT("Send Non-Maskable Interrupt key - for LisaBug"));
-	keyMenu->Append(ID_KEY_RESET,        wxT("Reset Button"),     wxT("Reset the Lisa - use only if the running OS has crashed!"));
+    keyMenu->Append(ID_KEY_OPT_0,        wxT("Option 0"),                 wxT("Option 0"));
+    keyMenu->Append(ID_KEY_OPT_4,        wxT("Option 4"),                 wxT("Option 4"));
+    keyMenu->Append(ID_KEY_OPT_7,        wxT("Option 7"),                 wxT("Option 7"));
 
     keyMenu->AppendSeparator();
-    keyMenu->AppendCheckItem(ID_ASCIIKB, wxT("ASCII Keyboard"),    wxT("Translate host keys into ASCII, then to Lisa keys (preferred)"));
-    keyMenu->AppendCheckItem(ID_RAWKB,   wxT("Raw Keyboard"),      wxT("Map host keys to Lisa keys directly"));
-    keyMenu->AppendCheckItem(ID_RAWKBBUF,wxT("Raw Buffered Keyboard"),wxT("Map host keys to Lisa keys directly, buffer to prevent repeats"));
+    keyMenu->Append(ID_KEY_NMI,          wxT("NMI Key"),                  wxT("Send Non-Maskable Interrupt key - for LisaBug"));
+    keyMenu->Append(ID_KEY_RESET,        wxT("Reset Button"),             wxT("Reset the Lisa - use only if the running OS has crashed!"));
+
+    keyMenu->AppendSeparator();
+    keyMenu->AppendRadioItem(ID_ASCIIKB, wxT("ASCII Keyboard"),           wxT("Translate host keys into ASCII, then to Lisa keys (preferred)"));
+    keyMenu->AppendRadioItem(ID_RAWKB,   wxT("Raw Keyboard"),             wxT("Map host keys to Lisa keys directly"));
+    keyMenu->AppendRadioItem(ID_RAWKBBUF,wxT("Raw Buffered Keyboard"),    wxT("Map host keys to Lisa keys directly, buffer to prevent repeats"));
     //not-yet-used//keyMenu->AppendSeparator();
     //not-yet-used//keyMenu->Append(ID_KEYBOARD,         wxT("Keyboard"),         wxT("Lisa Keyboard"));
 
-    fileMenu->Append(wxID_OPEN,          wxT("Open Preferences"), wxT("Open a LisaEm Preferences file"));
-    fileMenu->Append(wxID_SAVEAS,        wxT("Save Preferences As"), wxT("Save current LisaEm Preferences to a new file"));
-    fileMenu->Append(wxID_PREFERENCES,   wxT("Preferences"),      wxT("Configure this Lisa"));
+    fileMenu->Append(wxID_OPEN,          wxT("Open Preferences"),         wxT("Open a LisaEm Preferences file"));
+    fileMenu->Append(wxID_SAVEAS,        wxT("Save Preferences As"),      wxT("Save current LisaEm Preferences to a new file"));
+    fileMenu->Append(wxID_PREFERENCES,   wxT("Preferences"),              wxT("Configure this Lisa"));
+
+    fileMenu->AppendSeparator();
+    fileMenu->AppendCheckItem(ID_PAUSE,  wxT("Pause"),                    wxT("Pause Emulation") );
+    fileMenu->AppendSeparator();
+
+    fileMenu->Append(  ID_FLOPPY,        wxT("Insert diskette"),          wxT("Insert a disk image"));
+    fileMenu->Append(ID_NewFLOPPY,       wxT("Insert blank diskette"),    wxT("Create, and insert, a blank disk image"));
+    fileMenu->AppendSeparator();
+    fileMenu->Append(ID_PROFILE_NEW,     wxT("Create new Profile image"), wxT("Creates a blank ProFile storage file")  );
+    fileMenu->AppendSeparator();
+
+    #if DEBUG
+    fileMenu->Append(ID_SCREENREGION,    wxT("Grab Screen Region"),       wxT("Grab bits of a screen region for scripting"));
+    fileMenu->AppendSeparator();
+    #endif
+    fileMenu->Append(ID_SCREENSHOT,      wxT("Screenshot"),               wxT("Save the current screen as an image"));
+    fileMenu->Append(ID_SCREENSHOT2,     wxT("Full Screenshot"),          wxT("Save a screenshot along with the skin"));
+    fileMenu->Append(ID_SCREENSHOT3,     wxT("Raw Screenshot"),           wxT("Save a raw screenshot"));
 
     fileMenu->AppendSeparator();
 
-    fileMenu->AppendCheckItem(ID_RUN,    wxT("Run"), wxT("Run Emulation") );
-    fileMenu->AppendCheckItem(ID_PAUSE,  wxT("Pause"), wxT("Pause Emulation") );
+    fileMenu->Append(ID_FUSH_PRNT,       wxT("Flush Print Jobs"),         wxT("Force pending print jobs to print"));
 
     fileMenu->AppendSeparator();
 
-    fileMenu->Append(  ID_FLOPPY,        wxT("Insert diskette"),    wxT("Insert a disk image"));
-    fileMenu->Append(ID_NewFLOPPY,       wxT("Insert blank diskette"),wxT("Create, and insert, a blank disk image"));
+    #ifndef __WXMSW__
+    #ifdef TRACE
+    fileMenu->AppendCheckItem(ID_DEBUG,  wxT("Trace Log"),                wxT("Trace Log On/Off"));
+    fileMenu->AppendCheckItem(ID_DEBUG2, wxT("Trace Log on Click/Key"),   wxT("Trace Log On/Off on next mouse click or keypress"));
     fileMenu->AppendSeparator();
-	fileMenu->Append(ID_PROFILE_NEW,     wxT("Create new Profile image"), wxT("Creates a blank ProFile storage file")  );
-    fileMenu->AppendSeparator();
+    #endif
+    #endif
 
-    fileMenu->Append(ID_SCREENSHOT,      wxT("Screenshot"),       wxT("Save the current screen as an image"));
-    fileMenu->Append(ID_SCREENSHOT2,     wxT("Full Screenshot"),  wxT("Save a screenshot along with the skin"));
-    fileMenu->Append(ID_SCREENSHOT3,     wxT("Raw Screenshot"),   wxT("Save a raw screenshot"));
-
-    fileMenu->AppendSeparator();
-
-    fileMenu->Append(ID_FUSH_PRNT,       wxT("Flush Print Jobs"),   wxT("Force pending print jobs to print"));
-
-    fileMenu->AppendSeparator();
-
-#ifndef __WXMSW__
-#ifdef TRACE
-    fileMenu->AppendCheckItem(ID_DEBUG,  wxT("Trace Log"),     wxT("Trace Log On/Off"));
-    fileMenu->AppendSeparator();
-#endif
-#endif
-
-
-    fileMenu->Append(wxID_EXIT,          wxT("Exit"),             wxT("Quit the Emulator"));
+    fileMenu->Append(wxID_EXIT,          wxT("Exit"),                     wxT("Quit the Emulator"));
 
     // Now append the freshly created menu to the menu bar...
-
+    ALERT_LOG(0,"New menubar");
     menuBar = new wxMenuBar();
 
-    menuBar->Append(fileMenu, wxT("File"));
-    menuBar->Append(editMenu, wxT("Edit"));
-    menuBar->Append(keyMenu,  wxT("Key"));
-    menuBar->Append(DisplayMenu, wxT("Display"));
+    menuBar->Append(fileMenu,     wxT("File"));
+    menuBar->Append(editMenu,     wxT("Edit"));
+    menuBar->Append(keyMenu,      wxT("Key"));
+    menuBar->Append(DisplayMenu,  wxT("Display"));
     menuBar->Append(throttleMenu, wxT("Throttle"));
-    menuBar->Append(profileMenu, wxT("Parallel Port"));
+    menuBar->Append(profileMenu,  wxT("Parallel Port"));
 
-    menuBar->Append(helpMenu, wxT("&Help"));
+    menuBar->Append(helpMenu,     wxT("&Help"));
 
-
+    ALERT_LOG(0,"Set menubar");
     SetMenuBar(menuBar);
-	UpdateProfileMenu();
 
+    ALERT_LOG(0,"Update profile");
+    UpdateProfileMenu();
+
+    ALERT_LOG(0,"Create Status Bar 1");
     CreateStatusBar(1);
 
-    SetStatusText(wxT("Welcome to the Lisa Emulator Project!"));
+    ALERT_LOG(0,"Welcome status")
+
+//    SetStatusText(wxT("Welcome to the Lisa Emulator Project!"));
+    char *t=get_title();
+    SetStatusText(t);
     soundplaying=0;
 
-    if (!my_lisawin) my_lisawin = new LisaWin(this);
+    ALERT_LOG(0,"Creating window.")
+    if (!my_lisawin) my_lisawin = new LisaWin(this); // valgrind: ==24726== Conditional jump or move depends on uninitialised value(s)
+    ALERT_LOG(0,"Setting options.")
 
     my_lisawin->doubley = 0;
     my_lisawin->dirtyscreen = 1;
     my_lisawin->brightness = 0;
     my_lisawin->refresh_bytemap = 1;
 
-   if (skins_on)
-      {
-           int x,y;
-           LoadImages();
+    if  (skins_on)
+        {
+            int x,y;
+            LoadImages();
+            x=my_skin->GetWidth();
+            y=my_skin->GetHeight();
+            my_lisawin->SetMaxSize(wxSize(x,y));
+            my_skinDC->SelectObject(*my_skin);
+            my_lisawin->SetVirtualSize(x,y);
+            ALERT_LOG(0,"SetScrollbars");
+            my_lisawin->SetScrollbars(x/100, y/100,  100,100,  0,0,  true);
+            ALERT_LOG(0,"Enable Scrollbars");
+            my_lisawin->EnableScrolling(true,true);
+        }
+    else
+        {
+            int x,y;
+            y=myConfig->Read(_T("/lisaframe/sizey"),(long)0);
+            x=myConfig->Read(_T("/lisaframe/sizex"),(long)0);
+            if  (x<effective_lisa_vid_size_x || y<effective_lisa_vid_size_y )
+                {x=effective_lisa_vid_size_x;   y=effective_lisa_vid_size_y;}
+//             ALERT_LOG(0,"Setting frame size to:%d,%d",x,y);
 
-           x=my_skin->GetWidth();
-           y=my_skin->GetHeight();
-
-           my_lisawin->SetMaxSize(wxSize(x,y));
-           my_skinDC->SelectObject(*my_skin);
-
-           my_lisawin->SetVirtualSize(x,y);
-           my_lisawin->SetScrollbars(x/100, y/100,  100,100,  0,0,  true);
-           my_lisawin->EnableScrolling(true,true);
-      }
-   else
-      {
-           int x,y;
-           y=myConfig->Read(_T("/lisaframe/sizey"),(long)0);
-           x=myConfig->Read(_T("/lisaframe/sizex"),(long)0);
-           if (x<effective_lisa_vid_size_x || y<effective_lisa_vid_size_y )
-              {x=effective_lisa_vid_size_x;   y=effective_lisa_vid_size_y;}
-//           ALERT_LOG(0,"Setting frame size to:%d,%d",x,y);
-
-	       SetClientSize(wxSize(x,y));															 // Frame    //
+           SetClientSize(wxSize(x,y));                                                           // Frame    //
            GetClientSize(&x,&y);                                                                 // Frame    //
-		   SetMinSize(wxSize(720,384));
+           SetMinSize( wxSize( _H(720),_H(384) ) );
            x+=WINXDIFF; y+=WINYDIFF;                                                             // LisaWin  //
            my_lisawin->SetClientSize(wxSize(x,y));
            my_lisawin->GetSize(&x,&y);                                                           // LisaWin  //
@@ -5176,23 +6474,68 @@ LisaEmFrame::LisaEmFrame(const wxString& title)
            x+=WINXDIFF; y+=WINYDIFF;                                                             // LisaWin  //
 
            my_lisawin->SetMaxSize(wxSize(ISKINSIZE));                                            // LisaWin  //
-           my_lisawin->SetMinSize(wxSize(720,384));                                              // LisaWin  //
+           my_lisawin->SetMinSize(wxSize( _H(720), _H(384) ));                                   // LisaWin  //
+           ALERT_LOG(0,"disable scrollbar");
            my_lisawin->EnableScrolling(false,false);                                             // LisaWin  //
-      }
+        }
 
-   SendSizeEvent();
-   my_lisawin->Show(true);
-   fileMenu->Check(ID_PAUSE,false);
-   fileMenu->Check(ID_RUN,  false);
+    SendSizeEvent();
+    my_lisawin->Show(true);
+    fileMenu->Check(ID_PAUSE,false);
 
 
-   m_emulation_timer = new wxTimer(this, ID_EMULATION_TIMER);
-   m_emulation_timer->Start(emulation_tick, wxTIMER_CONTINUOUS);
+    m_emulation_timer = new wxTimer(this, ID_EMULATION_TIMER);
+    m_emulation_timer->Start(emulation_tick, wxTIMER_CONTINUOUS);
+
+    update_menu_checkmarks();
+
 }
 
 
 void LisaEmFrame::OnFlushPrint(wxCommandEvent& WXUNUSED(event))  {iw_enddocuments();iw_enddocuments();}
 
+
+#ifdef DEBUG
+extern "C" void tracelog_screenshot(char *filename)
+{
+    FILE *rawdump;
+    int updated=0;    
+
+    uint32 a3,xx;
+    uint16 val;
+    uint8  d;
+    uint8 bright[8];
+    char rawdumpname[1024];
+    wxImage *image = new class wxImage(lisa_vid_size_x, lisa_vid_size_y, true);
+
+    bright[0]=240;                                          
+    bright[1]=240;                        
+    bright[2]=240;               
+    bright[4]=bright[5]=bright[6]=bright[7]=0;
+    pause_run();
+    snprintf(rawdumpname,1023,"%s.bin",filename);
+    rawdump=fopen(rawdumpname,"wb");
+    if (!!rawdump)
+    {
+        fwrite( &lisaram[videolatchaddress],32768, 1, rawdump);
+        fclose(rawdump);
+    }
+
+    for ( int yi=0; yi < lisa_vid_size_y; yi++)
+    {
+        for ( int xi=0; xi < lisa_vid_size_x;)
+            { SETRGB16_RAW_X(xi,yi,{image->SetRGB(xi,yi,d,d,d+EXTRABLUE);});   }
+    }
+
+    image->SetOption(wxIMAGE_OPTION_PNG_FORMAT, wxPNG_TYPE_GREY);
+    image->SetOption(wxIMAGE_OPTION_PNG_BITDEPTH, 8);
+    image->SaveFile(filename);
+
+    delete image;
+    resume_run();
+}
+
+#endif
 
 // copied/based on wxWidgets samples image.cpp (c) 1998-2005 Robert Roebling
 void LisaEmFrame::OnScreenshot(wxCommandEvent& event)
@@ -5204,62 +6547,72 @@ void LisaEmFrame::OnScreenshot(wxCommandEvent& event)
     pause_run();
 
     if ( event.GetId()==ID_SCREENSHOT3)
-         {
-		   int updated=0;	
-		   uint32 a3,xx;
-		   uint16 val;
-		   uint8  d;
+    {
+        int updated=0;    
+        uint32 a3,xx;
+        uint16 val;
+        uint8  d;
+        uint8 bright[8];
 
-		   uint8 bright[8];
+        if (my_lisaframe->running==emulation_off)
+          {
+            wxMessageBox(_T("I can't take a raw screenshot while the Lisa is powered off. It wouldn't be much fun anyway. Just a black rectangle"),
+                         _T("If you stare into the black void, it will stare back!")); // Choronzon is that you? 
+            return;
+          }
 
-  		   bright[0]=240;                                          
-  		   bright[1]=240;                        
-  		   bright[2]=240;               
-           bright[4]=bright[5]=bright[6]=bright[7]=0;
+        bright[0]=240;                                          
+        bright[1]=240;                        
+        bright[2]=240;               
+        bright[4]=bright[5]=bright[6]=bright[7]=0;
 
-           description = _T("Save RAW Screenshot");
-           image = new class wxImage(lisa_vid_size_x, lisa_vid_size_y, true);
+        description = _T("Save RAW Screenshot");
+        image = new class wxImage(lisa_vid_size_x, lisa_vid_size_y, true);
 
-		   for ( int yi=0; yi < lisa_vid_size_y; yi++)
-			    {
-				   for ( int xi=0; xi < lisa_vid_size_x;)
-					{ SETRGB16_RAW_X(xi,yi,{image->SetRGB(xi,yi,d,d,d+EXTRABLUE);});   }
-			    }
-         }
-    else  if ( event.GetId()==ID_SCREENSHOT2 && skins_on)
-         {
+        for ( int yi=0; yi < lisa_vid_size_y; yi++)
+            {
+              for ( int xi=0; xi < lisa_vid_size_x;)
+                  { SETRGB16_RAW_X(xi,yi,{image->SetRGB(xi,yi,d,d,d+EXTRABLUE);});   }
+            }
+
+    }
+    else if ( event.GetId()==ID_SCREENSHOT2 && skins_on )
+    {
           description = _T("Save Screenshot with Skin");
           image = new class wxImage(my_skin->ConvertToImage());
-         }
+    }
     else if ( event.GetId()==ID_SCREENSHOT ||( event.GetId()==ID_SCREENSHOT2 && !skins_on) )
-         {
-         
+    {
           if (!skins_on) image = new class wxImage(my_lisabitmap->ConvertToImage());
-          else {
-  			    wxBitmap   *bitmap=NULL;   
-                wxMemoryDC *dc=NULL;
-				dc=new class wxMemoryDC;
-			    
-			    bitmap=new class wxBitmap(effective_lisa_vid_size_x, effective_lisa_vid_size_y,DEPTH);
-		        dc->SelectObject(*bitmap);
+          else  {
+                    wxBitmap   *bitmap=NULL;   
+                    wxMemoryDC *dc=NULL;
+                    dc=new class wxMemoryDC;
+                
+                    bitmap=new class wxBitmap(effective_lisa_vid_size_x, effective_lisa_vid_size_y,DEPTH);
+                    dc->SelectObject(*bitmap);
 
- 		        dc->Blit(0,0, effective_lisa_vid_size_x, effective_lisa_vid_size_y,
-	                      (skins_on ? my_skinDC:my_memDC), 
-	                      screen_origin_x,screen_origin_y, wxCOPY, false);
-				DEBUG_LOG(0,"converting to image");
+                    dc->StretchBlit(0,0, 
+                                    effective_lisa_vid_size_x, effective_lisa_vid_size_y,  // these are already * hidpi_scale
+                                    (skins_on ? my_skinDC:my_memDC), 
+                                    skin.screen_origin_x,skin.screen_origin_y, 
+                                    o_effective_lisa_vid_size_x, o_effective_lisa_vid_size_y,
+                                    wxCOPY, false);
+                    DEBUG_LOG(0,"converting to image");
 
-                image = new class wxImage(bitmap->ConvertToImage());
-				delete bitmap;
-				delete dc;
-               }
+                    image = new class wxImage(bitmap->ConvertToImage());
+                    delete bitmap;
+                    delete dc;
+                }
+
           description = _T("Save Screenshot");
 
-         }
+    }
     else
-         {
+    {
           resume_run();
-		  return;
-		 }
+          return;
+    }
 
 
 wxString filter;
@@ -5285,9 +6638,9 @@ wxString filter;
                                         filter+=_T("BMP files (*.bmp)|");
 
     wxString savefilename = wxFileSelector(   description,
-                                            wxEmptyString,
-                                            wxEmptyString,
-                                            wxEmptyString,
+                                              wxEmptyString,
+                                              wxEmptyString,
+                                              wxEmptyString,
                                                 filter,
 //#ifdef wxFD_SAVE
                                             wxFD_SAVE);
@@ -5301,6 +6654,8 @@ wxString filter;
     wxString extension;
     wxFileName::SplitPath(savefilename, NULL, NULL, &extension);
 
+    if (extension.empty()) {extension=_T(".png"); savefilename=savefilename + ".png";}
+
     if ( extension == _T("bpp") )
     {
             image->SetOption(wxIMAGE_OPTION_BMP_FORMAT, wxBMP_1BPP_BW);
@@ -5308,27 +6663,27 @@ wxString filter;
     else if ( extension == _T("png") )
     {
 
-       if ( event.GetId()==ID_SCREENSHOT2 && skins_on)
+      if  ( event.GetId()==ID_SCREENSHOT2 && skins_on)
           {
             image->SetOption(wxIMAGE_OPTION_PNG_FORMAT, wxPNG_TYPE_COLOUR );
           }
-       else
+      else
           {
             image->SetOption(wxIMAGE_OPTION_PNG_FORMAT, wxPNG_TYPE_GREY);
             image->SetOption(wxIMAGE_OPTION_PNG_BITDEPTH, 8);
           }
     }
 
-   image->SaveFile(savefilename);
-   resume_run();
+    image->SaveFile(savefilename);
+    resume_run();
 }
 
 /* Connects a Dual Parallel port card to the specified slot (numbered 0-2). */
 void connect_2x_parallel_to_slot(int slot)
 {
-	
-//	ALERT_LOG(0,"Connecting Dual Parallel card to slot %d",slot+1);
-	
+    
+//    ALERT_LOG(0,"Connecting Dual Parallel card to slot %d",slot+1);
+    
     int low, high, v;
     switch (slot)
     {
@@ -5349,13 +6704,13 @@ void connect_2x_parallel_to_slot(int slot)
            return;
     }
 
-    mem68k_memptr    [low] = lisa_mptr_2x_parallel_l;
-    mem68k_fetch_byte[low] = lisa_rb_2x_parallel_l;
-    mem68k_fetch_word[low] = lisa_rw_2x_parallel_l;
-    mem68k_fetch_long[low] = lisa_rl_2x_parallel_l;
-    mem68k_store_byte[low] = lisa_wb_2x_parallel_l;
-    mem68k_store_word[low] = lisa_ww_2x_parallel_l;
-    mem68k_store_long[low] = lisa_wl_2x_parallel_l;
+    mem68k_memptr    [low]  = lisa_mptr_2x_parallel_l;
+    mem68k_fetch_byte[low]  = lisa_rb_2x_parallel_l;
+    mem68k_fetch_word[low]  = lisa_rw_2x_parallel_l;
+    mem68k_fetch_long[low]  = lisa_rl_2x_parallel_l;
+    mem68k_store_byte[low]  = lisa_wb_2x_parallel_l;
+    mem68k_store_word[low]  = lisa_ww_2x_parallel_l;
+    mem68k_store_long[low]  = lisa_wl_2x_parallel_l;
 
     mem68k_memptr    [high] = lisa_mptr_2x_parallel_h;
     mem68k_fetch_byte[high] = lisa_rb_2x_parallel_h;
@@ -5374,10 +6729,10 @@ void connect_2x_parallel_to_slot(int slot)
 /* Connects a printer/profile to the specified VIA */
 void connect_device_to_via(int v, wxString device, wxString *file)
 {
-	char tmp[MAXPATHLEN];
+    char tmp[MAXPATHLEN];
 
 //    if (v==2) {ALERT_LOG(0,"Connecting %s filename:%s to VIA #%d (motherboard parallel port)",device.c_str(),file->c_str(), v );}
-// 	  else      {ALERT_LOG(0,"Connecting %s filename:%s to VIA #%d (slot #%d %s)",device.c_str(),file->c_str(), v,1+((v-2)/2), ((v&1) ? "upper":"lower") );}
+//       else      {ALERT_LOG(0,"Connecting %s filename:%s to VIA #%d (slot #%d %s)",device.c_str(),file->c_str(), v,1+((v-2)/2), ((v&1) ? "upper":"lower") );}
 
     if (device.IsSameAs(_T("ADMP"), false))
     {
@@ -5385,14 +6740,14 @@ void connect_device_to_via(int v, wxString device, wxString *file)
         ImageWriter_LisaEm_Init(v);                 // &ADMP,pcl,ps,xlib
         DEBUG_LOG(0, "Attached ADMP to VIA#%d", v);
         return;
-	} else via[v].ADMP=0;
+    } else via[v].ADMP=0;
 
 
     if (device.IsSameAs(_T("PROFILE"), false))
     {
         if (file->Len()==0)
         {
-         static const wxString def[]={  _T("null"),_T("COPS"),
+          static const wxString def[]={  _T("null"),_T("COPS"),
                             _T("lisaem-profile.dc42"),
                             _T("lisaem-s1h-profile.dc42"),
                             _T("lisaem-s1l-profile.dc42"),
@@ -5400,21 +6755,26 @@ void connect_device_to_via(int v, wxString device, wxString *file)
                             _T("lisaem-s2l-profile.dc42"),
                             _T("lisaem-s3h-profile.dc42"),
                             _T("lisaem-s3l-profile.dc42") };
+          static const wxString widget={_T("lisaem-widget")};
 
-         if (v>1 && v<9) *file =def[v];
-         else return;
+          if (v>1 && v<9) 
+            {
+                *file =def[v];
+                if (v==2 && my_lisaconfig->iorom==0x88) *file=widget;
+            }
+          else return;
         }
 
-		strncpy(tmp,(file->fn_str()),MAXPATHLEN);
-	    ALERT_LOG(0, "Attempting to attach VIA#%d to profile %s", v, tmp);
-        via[v].ProFile = (ProFileType *)malloc(sizeof(ProFileType));
+        strncpy(tmp,(file->fn_str()),MAXPATHLEN);
+        ALERT_LOG(0, "Attempting to attach VIA#%d to profile %s", v, tmp);
+        via[v].ProFile = (ProFileType *)calloc(1,sizeof(ProFileType));
         int i = profile_mount(tmp, via[v].ProFile);
         if (i) {
             free(via[v].ProFile);
             via[v].ProFile = NULL;
             ALERT_LOG(0, "Couldn't get profile because: %d",i);
         } else {
-			via[v].ProFile->vianum=v;
+            via[v].ProFile->vianum=v;
             ProfileReset(via[v].ProFile);
         }
     }
@@ -5428,9 +6788,9 @@ void connect_device_to_via(int v, wxString device, wxString *file)
 void connect_device_to_serial(int port, FILE **scc_port_F, uint8 *serial,
     wxString *setting, wxString *param, int *scc_telnet_port)
 {
-	char cstr_param[MAXPATHLEN];
-	strncpy(cstr_param,param->fn_str(),MAXPATHLEN);
-	
+    char cstr_param[MAXPATHLEN];
+    strncpy(cstr_param,param->fn_str(),MAXPATHLEN);
+    
     if (port !=0 && port != 1) {
         DEBUG_LOG(0, "Warning Serial port is not A/B: %d", port);
         return;
@@ -5502,21 +6862,44 @@ void connect_device_to_serial(int port, FILE **scc_port_F, uint8 *serial,
         return;
     }
 
-	strncpy(cstr_param,setting->fn_str(),MAXPATHLEN);
+    strncpy(cstr_param,setting->fn_str(),MAXPATHLEN);
     DEBUG_LOG(0, "Warning: unrecognised Serial %c setting '%s'", port==0?'A':'B', cstr_param);
 }
 
-int romlessboot_pick(void)
+int romlessboot_pick(void) //returns 0=profile, 1=floppy
 {
  int r;
  wxString choices[]={
-	                     wxT( "ProFile Hard Drive on Parallel Port"),
+                         wxT( "ProFile Hard Drive on Parallel Port"),
                          wxT( "Floppy Diskette")
                     };
 
  wxString txt;
  wxSingleChoiceDialog *d=NULL;
  txt.Printf(_T("Which device should the virtual Lisa boot from?"));
+
+ // command line insert floppy
+ if ( on_start_floppy != "" )
+ {
+      char s[1024];
+      strncpy(s,on_start_floppy.mb_str(wxConvUTF8),1023 );
+      int i=floppy_insert(s);
+      wxMilliSleep(100);  // wait for insert sound to complete to prevent crash.
+      if (i) { eject_floppy_animation(); return -1;}
+      my_lisaframe->floppy_to_insert=_T("");
+      on_start_floppy="";
+      on_start_harddisk=0;
+      return 1;
+ }
+
+
+ if (on_start_harddisk)
+ {
+     on_start_floppy="";
+     on_start_harddisk=0;
+     return 0;
+ }
+
 
  // if the parallel port device is a profile, offer a choice between the floppy and the profile
  if ( my_lisaconfig->parallel.IsSameAs(_T("PROFILE"), false) )  
@@ -5548,121 +6931,118 @@ int romlessboot_pick(void)
 }
 
 
- int initialize_all_subsystems(void)
- {
-   /*
-   In the beginning there was data.  The data was without form and null,
-   and darkness was upon the face of the console; and the Spirit of IBM
-   was moving over the face of the market.  And DEC said, "Let there be
-   registers"; and there were registers.  And DEC saw that they carried;
-   and DEC separated the data from the instructions.  DEC called the data
-   Stack, and the instructions they called Code.  And there was evening
-   and there was morning, one interrupt.         -- Rico Tudor            */
+int initialize_all_subsystems(void)
+{
+    /*
+    In the beginning there was data.  The data was without form and null,
+    and darkness was upon the face of the console; and the Spirit of IBM
+    was moving over the face of the market.  And DEC said, "Let there be
+    registers"; and there were registers.  And DEC saw that they carried;
+    and DEC separated the data from the instructions.  DEC called the data
+    Stack, and the instructions they called Code.  And there was evening
+    and there was morning, one interrupt.         -- Rico Tudor            */
 
-   int pickprofile=-1;
-   char tmp[MAXPATHLEN];
+    int pickprofile=-1;
+    char tmp[MAXPATHLEN];
 
-       if (my_lisaframe->running) {ALERT_LOG(0,"Already running!"); 
-                                   return 0;}
-       buglog=stderr;
+    if (my_lisaframe->running) {ALERT_LOG(0,"Already running!"); 
+                                return 0;}
+    buglog=stderr;
 
-       setstatusbar("initializing all subsystems...");
+    setstatusbar("initializing all subsystems...");
 
-       // initialize parity array (it's 2x faster to use an array than to call the fn)
-       setstatusbar("Initializing Parity calculation cache array...");
-       {uint16 i;
-       for (i=0; i<256; i++) eparity[i]=evenparity((uint8) i);
-       }
+    // initialize parity array (it's 2x faster to use an array than to call the fn)
+    setstatusbar("Initializing Parity calculation cache array...");
+    { uint16 i;
+      for (i=0; i<256; i++) eparity[i]=evenparity((uint8) i);
+    }
 
-       segment1=0; segment2=0; start=1;
+    segment1=0; segment2=0; start=1;
 
-       // needs to be above read_config_files
-       scc_a_port=NULL;
-       scc_b_port=NULL;
-       scc_a_IW=-1;
-       scc_b_IW=-1;
-       serial_a=0;
-       serial_b=0;
+    // needs to be above read_config_files
+    scc_a_port=NULL;
+    scc_b_port=NULL;
+    scc_a_IW=-1;
+    scc_b_IW=-1;
+    serial_a=0;
+    serial_b=0;
 
-       init_floppy(my_lisaconfig->iorom);
+    floppy_iorom=my_lisaconfig->iorom;
+    init_floppy(my_lisaconfig->iorom);
 
-       bitdepth=8;                             // have to get this from the X Server side...
+    bitdepth=8;                             // have to get this from the X Server side...
 
 
-       DEBUG_LOG(0,"serial number");
-       serialnum[0]=0x00;                      // "real" ones will be loaded from the settings file
-       serialnum[1]=0x00;
-       serialnum[2]=0x00;
-       serialnum[3]=0x00;
-       serialnum[4]=0x00;
-       serialnum[5]=0x00;
-       serialnum[6]=0x00;
-       serialnum[7]=0x00;
-       serialnumshiftcount=0; serialnumshift=0;
+    DEBUG_LOG(0,"serial number");
+    serialnum[0]=0x00;                      // "real" ones will be loaded from the settings file
+    serialnum[1]=0x00;
+    serialnum[2]=0x00;
+    serialnum[3]=0x00;
+    serialnum[4]=0x00;
+    serialnum[5]=0x00;
+    serialnum[6]=0x00;
+    serialnum[7]=0x00;
+    serialnumshiftcount=0; serialnumshift=0;
 
 
        // Is there no explicit way to init the COPS?
-       DEBUG_LOG(0,"copsqueue");
-       init_cops();
+    DEBUG_LOG(0,"copsqueue");
+    init_cops();
 
+    setstatusbar("Initializing irq handlers");
+    init_IRQ();
 
-       setstatusbar("Initializing irq handlers");
-       init_IRQ();
+    setstatusbar("Initializing vias");
+    init_vias();
 
+    setstatusbar("Initializing profile hd's");
+    init_Profiles();
 
-       setstatusbar("Initializing vias");
-       init_vias();
+    setstatusbar("Initializing Lisa RAM");
+    TWOMEGMLIM=0x001fffff;
 
-
-       setstatusbar("Initializing profile hd's");
-       init_Profiles();
-
-
-       setstatusbar("Initializing Lisa RAM");
-       TWOMEGMLIM=0x001fffff;
-
-      // Simulate physical Lisa memory boards
-      switch(my_lisaconfig->mymaxlisaram)
-      {
+    // Simulate physical Lisa memory boards
+    switch(my_lisaconfig->mymaxlisaram)
+    {
        case 512  : maxlisaram=0x100000;  minlisaram=0x080000;  break;     // single 512KB board in slot 1
        case 1024 : maxlisaram=0x180000;  minlisaram=0x080000;  break;     // two 512KB boards in slot1, slot 2
        case 1536 : maxlisaram=0x200000;  minlisaram=0x080000;  break;     // 512KB board in slot1, 1024KB board in slot 2
        default:    maxlisaram=0x200000;  minlisaram=0x000000;  break;     // two 1024KB boards in slot 1,2
-      }
+    }
 
-       // maxlisaram! New!  And! Improved! Now available in bytes at a register Store Near You!  OpCodes are Standing by!
-       // Act now!  don't delay!  Limited Time Offer!  JSR Now!  Restrictions Apply!  Before engaging in any strenous programming
-       // activity, you should always consult your MMU today!  Not 0xFD1C insured!
+    // maxlisaram! New!  And! Improved! Now available in bytes at a register Store Near You!  OpCodes are Standing by!
+    // Act now!  don't delay!  Limited Time Offer!  JSR Now!  Restrictions Apply!  Before engaging in any strenous programming
+    // activity, you should always consult your MMU today!  Not 0xFD1C insured!
 
+    TWOMEGMLIM=maxlisaram-1;
+    videolatchaddress=maxlisaram-0x10000;
 
-      TWOMEGMLIM=maxlisaram-1;
-   videolatchaddress=maxlisaram-0x10000;
+    videolatch=(maxlisaram>>15)-1; // last page of ram is by default what the video latch gets set to.
+    lastvideolatch=videolatch;  lastvideolatchaddress=videolatchaddress;
 
-   videolatch=(maxlisaram>>15)-1; // last page of ram is by default what the video latch gets set to.
-   lastvideolatch=videolatch;  lastvideolatchaddress=videolatchaddress;
+    if (lisaram) free(lisaram);          // remove old junk if it exists
 
-   if (lisaram) free(lisaram);          // remove old junk if it exists
+    lisaram=(uint8 *)calloc(1,maxlisaram+512);     // added 512 bytes at the end to avoid overflows.
+    if  (!lisaram) 
+        {
+          wxMessageBox( _T("Could not allocate memory for the Lisa to use."),
+                        _T("Out of Memory!"), wxICON_INFORMATION | wxOK);
+          return 23;
+        }
 
-   lisaram=(uint8 *)malloc(maxlisaram+512);     // added 512 bytes at the end to avoid overflows.
-   if (!lisaram) {
-       wxMessageBox(_T("Could not allocate memory for the Lisa to use."),
-                    _T("Out of Memory!"), wxICON_INFORMATION | wxOK);
-       return 23;
-   }
+    memset(lisaram,0xff,maxlisaram+512);
 
-   memset(lisaram,0xff,maxlisaram+512);
-
-   if (my_lisaconfig->kbid) set_keyboard_id(my_lisaconfig->kbid);  else set_keyboard_id(-1);
+    if (my_lisaconfig->kbid) set_keyboard_id(my_lisaconfig->kbid);  else set_keyboard_id(-1);
 
     setstatusbar("Initializing Lisa Serial Number");
     // Parse sn and correct if needed  ////////////////////////////////////////////////////////////////////////////////////////
-	{
+    {
 
-		char cstr[32];
+        char cstr[32];
         //char mybuffer[5];
         int i,j; char c;
-		strncpy(cstr,my_lisaconfig->myserial.fn_str(),32);
-		char *s=cstr;
+        strncpy(cstr,my_lisaconfig->myserial.fn_str(),32);
+        char *s=cstr;
         for (i=0; (c=s[i]); i++)  {if ( !ishex(c) ) my_lisaconfig->myserial.Printf(_T("%s"),LISA_CONFIG_DEFAULTSERIAL); break;}
 
         if (i<31) DEBUG_LOG(1,"Warning: serial # less than 32 bytes (%d)!\n",i);
@@ -5683,8 +7063,7 @@ int romlessboot_pick(void)
                         serialnum240[14],                serialnum240[15]);
 
 //        ALERT_LOG(0,"Serial # used: %s", my_lisaconfig->myserial.c_str());
-                                  //ff028308104050ff 0010163504700000
-
+                                    //ff028308104050ff 0010163504700000
     }//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     setstatusbar("Initializing Serial Ports");
@@ -5710,123 +7089,118 @@ int romlessboot_pick(void)
     DEBUG_LOG(0,"Initializing SCC Z8530");
     initialize_scc();
 
-  DEBUG_LOG(0,"setting motherboard latches");
-  softmemerror=0; harderror=0; videoirq=0; bustimeout=0; videobit=0;
+    DEBUG_LOG(0,"setting motherboard latches");
+    softmemerror=0; harderror=0; videoirq=0; bustimeout=0; videobit=0;
 
-  DEBUG_LOG(0,"Checking host CPU bit order sanity.");
-  reg68k_sanity_check_bitorder();
+    DEBUG_LOG(0,"Checking host CPU bit order sanity.");
+    reg68k_sanity_check_bitorder();
 
-  if (sizeof(XTIMER)<8) { wxMessageBox(_T("XTIMER isn't int64!."),
-									   _T("Danger!"), wxICON_INFORMATION | wxOK);  return 24; }
+    if  (sizeof(XTIMER)<8) { wxMessageBox(_T("XTIMER isn't int64!."),
+                                          _T("Danger!"), wxICON_INFORMATION | wxOK);  return 24; }
 
+    setstatusbar("Initializing Generator CPU functions.");
+    cpu68k_init();
 
+    setstatusbar("Initializing MMU");
+    init_lisa_mmu();
 
-  setstatusbar("Initializing Generator CPU functions.");
-  cpu68k_init();
+    setstatusbar("Initializing Generator CPU IPC Allocator");
+    init_ipct_allocator();
 
-  setstatusbar("Initializing MMU");
-  init_lisa_mmu();
-
-  setstatusbar("Initializing Generator CPU IPC Allocator");
-  init_ipct_allocator();
-
-  setstatusbar("Initializing Lisa Boot ROM");
+    setstatusbar("Initializing Lisa Boot ROM");
   
-  DEBUG_LOG(0,"Loading Lisa ROM");
-  strncpy(tmp,my_lisaconfig->rompath.fn_str(),MAXPATHLEN);
-  if      (read_dtc_rom(tmp,   lisarom)==0)
-           {
-            if (checkromchksum())
-               {
-                if (!yesnomessagebox("BOOT ROM checksum doesn't match, this may crash the emulator.  Continue anyway?",
-                                     "ROM Checksum mismatch"))   return -2;
-               }
-             DEBUG_LOG(0,"Load of DTC assembled ROM successful");
-             fixromchk();
-           }
-  else if (read_split_rom(tmp, lisarom)==0)
-           {
-            if (checkromchksum())
-               {
-                if (!yesnomessagebox("BOOT ROM checksum doesn't match, this may crash the emulator.  Continue anyway?",
-                                     "ROM Checksum mismatch")  ) return -2;
-               }
+    DEBUG_LOG(0,"Loading Lisa ROM");
+    strncpy(tmp,my_lisaconfig->rompath.fn_str(),MAXPATHLEN);
+    if  (read_dtc_rom(tmp,   lisarom)==0)
+        {
+            if  (checkromchksum())
+                {
+                  if (!yesnomessagebox( "BOOT ROM checksum doesn't match, this may crash the emulator.  Continue anyway?",
+                                        "ROM Checksum mismatch"))   return -2;
+                }
+              DEBUG_LOG(0,"Load of DTC assembled ROM successful");
+              fixromchk();
+        }
+    else if (read_split_rom(tmp, lisarom)==0)
+            {
+              if  (checkromchksum())
+                  {
+                    if (!yesnomessagebox( "BOOT ROM checksum doesn't match, this may crash the emulator.  Continue anyway?",
+                                          "ROM Checksum mismatch")  ) return -2;
+                  }
   
               DEBUG_LOG(0,"Load of split ROM");
               fixromchk();
-           }
-  else if (read_rom(tmp,       lisarom)==0)
-           {
-            if (checkromchksum())
-               {
-                if (!yesnomessagebox("BOOT ROM checksum doesn't match, this may crash the emulator.  Continue anyway?",
-                                     "ROM Checksum mismatch")  ) return -2;
-               }
+            }
+    else if (read_rom(tmp,       lisarom)==0)
+            {
+              if  (checkromchksum())
+                  {
+                    if (!yesnomessagebox( "BOOT ROM checksum doesn't match, this may crash the emulator.  Continue anyway?",
+                                          "ROM Checksum mismatch")  ) return -2;
+                  }
   
               DEBUG_LOG(0,"Load of normal ROM successful");
               fixromchk();
-           }
-  else  
-       {
-         romless=1;
-         pickprofile=romlessboot_pick(); if (pickprofile<0) return -2;
-		 ALERT_LOG(0,"picked %d",pickprofile);
-       }
+            }
+    else  
+            {
+              romless=1; //0=profile, 1=floppy
+              pickprofile=romlessboot_pick(); if (pickprofile<0) return -2;
+              ALERT_LOG(0,"picked %d",pickprofile);
+            }
   
-  setstatusbar("Initializing Lisa Display");
-  if (has_xl_screenmod())
-  {
+    setstatusbar("Initializing Lisa Display");
 
-   // This warning flag isn't really a configuration setting as such, but leave it here for the moment
-   // the purpose of the flag is to prevent nagging the user.  So we only show the 3A warning the first time
-   if (!my_lisaconfig->saw_3a_warning)
-   wxMessageBox(_T("This is the XL Screen Modification ROM! You will only be able to run MacWorks."),
-                    _T("3A ROM!"),   wxICON_INFORMATION | wxOK);
+    set_hidpi_scale();
 
+    if (has_xl_screenmod())
+    {
+        // This warning flag isn't really a configuration setting as such, but leave it here for the moment
+        // the purpose of the flag is to prevent nagging the user.  So we only show the 3A warning the first time
+        if  (!my_lisaconfig->saw_3a_warning)
+            wxMessageBox( _T("This is the XL Screen Modification ROM! You will only be able to run MacWorks."),
+                          _T("3A ROM!"),   wxICON_INFORMATION | wxOK);
 
-   my_lisaconfig->saw_3a_warning=1;
-   lisa_vid_size_x=608;
-   lisa_vid_size_y=431;
-   effective_lisa_vid_size_x=608;
-   effective_lisa_vid_size_y=431;
+        my_lisaconfig->saw_3a_warning=1;
+        lisa_vid_size_x=608;
+        lisa_vid_size_y=431;
+        effective_lisa_vid_size_x=608;
+        effective_lisa_vid_size_y=431;
 
-   screen_origin_x=140+56;
-   screen_origin_y=130+34;
+        skin.screen_origin_x=(skin.default_screen_origin_x+56);
+        skin.screen_origin_y=(skin.default_screen_origin_y+34);
 
-   lisa_vid_size_x=608;
-   lisa_vid_size_y=431;
+        lisa_vid_size_x=608;
+        lisa_vid_size_y=431;
 
-   lisa_vid_size_xbytes=76;
-   has_lisa_xl_screenmod=1;
+        lisa_vid_size_xbytes=76;
+        has_lisa_xl_screenmod=1;
 
-   setvideomode(0x3a);
-  }
-  else
-  {
-   lisa_vid_size_x=720;
-   lisa_vid_size_y=364;
-   effective_lisa_vid_size_x=720;
-   effective_lisa_vid_size_y=500;
+        setvideomode(0x3a);
+    }
+    else
+    {
+        lisa_vid_size_x=720;
+        lisa_vid_size_y=364;
+        effective_lisa_vid_size_x=720;
+        effective_lisa_vid_size_y=500;
 
-   screen_origin_x=140;
-   screen_origin_y=130;
+        skin.screen_origin_x=skin.default_screen_origin_x;
+        skin.screen_origin_y=skin.default_screen_origin_y;
 
-   lisa_vid_size_x=720;
-   lisa_vid_size_y=364;
+        lisa_vid_size_x=720;
+        lisa_vid_size_y=364;
 
+        lisa_vid_size_xbytes=90;
+        has_lisa_xl_screenmod=0;
 
-   lisa_vid_size_xbytes=90;
-   has_lisa_xl_screenmod=0;
-
-   setvideomode(lisa_ui_video_mode);
-
-
-  }
+        setvideomode(lisa_ui_video_mode);
+    }
 
   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
   setstatusbar("Initializing Parallel Port");
-  // Handle Parallel Ports
 
   // Connect profile/printer to builtin parallel port
   connect_device_to_via(2, my_lisaconfig->parallel, &my_lisaconfig->parallelp);
@@ -5834,103 +7208,98 @@ int romlessboot_pick(void)
   // ----------------------------------------------------------------------------------
 
   // Dual Parallel Port Expansion Cards
-
   setstatusbar("Initializing Expansion Card Slots");
   memset(dualparallelrom,0xff,2048);
 
   strncpy(tmp,my_lisaconfig->dualrom.fn_str(),MAXPATHLEN);
-  if (read_parallel_card_rom(tmp)==0)
-     {
-  	    ALERT_LOG(0,"Connecting Dual Parallel Port Cards.");
+  if  (read_parallel_card_rom(tmp)==0)
+      {
+          ALERT_LOG(0,"Connecting Dual Parallel Port Cards.");
   
-        if (my_lisaconfig->slot1.IsSameAs(_T("dualparallel"),false) )
-          {
-  			    ALERT_LOG(0,"Connecting slot 1");
-                  connect_2x_parallel_to_slot(0);
-                  connect_device_to_via(3, my_lisaconfig->s1h, &my_lisaconfig->s1hp);
-                  connect_device_to_via(4, my_lisaconfig->s1l, &my_lisaconfig->s1lp);
-          }
+        if  (my_lisaconfig->slot1.IsSameAs(_T("dualparallel"),false) )
+            {
+              ALERT_LOG(0,"Connecting slot 1");
+              connect_2x_parallel_to_slot(0);
+              connect_device_to_via(3, my_lisaconfig->s1h, &my_lisaconfig->s1hp);
+              connect_device_to_via(4, my_lisaconfig->s1l, &my_lisaconfig->s1lp);
+            }
   
-        if (my_lisaconfig->slot2.IsSameAs(_T("dualparallel"),false) )
-          {
-  		        ALERT_LOG(0,"Connecting slot 2");
-                  connect_2x_parallel_to_slot(1);
-                  connect_device_to_via(5, my_lisaconfig->s2h, &my_lisaconfig->s2hp);
-                  connect_device_to_via(6, my_lisaconfig->s2l, &my_lisaconfig->s2lp);
-          }
-  
-  
-        if (my_lisaconfig->slot3.IsSameAs(_T("dualparallel"),false))
-          {
-  		        ALERT_LOG(0,"Connecting slot 3");
-                  connect_2x_parallel_to_slot(2);
-                  connect_device_to_via(7, my_lisaconfig->s3h, &my_lisaconfig->s3hp);
-                  connect_device_to_via(8, my_lisaconfig->s3l, &my_lisaconfig->s3lp);
-          }
+        if  (my_lisaconfig->slot2.IsSameAs(_T("dualparallel"),false) )
+            {
+              ALERT_LOG(0,"Connecting slot 2");
+              connect_2x_parallel_to_slot(1);
+              connect_device_to_via(5, my_lisaconfig->s2h, &my_lisaconfig->s2hp);
+              connect_device_to_via(6, my_lisaconfig->s2l, &my_lisaconfig->s2lp);
+            }
   
   
-     }
-
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    ALERT_LOG(0,"initializing video");
-    disable_vidram(); videoramdirty=32768;
-
-    ALERT_LOG(0,"Calling Redraw Pixels");
-    LisaRedrawPixels();
-
-    setstatusbar("Initializing CPU Registers");
-    cpu68k_reset();
-
-    ALERT_LOG(0,"done initializing...");
-
-//    debug_off();
-
-    setstatusbar("Executing Lisa Boot ROM");
-    refresh_rate_used=refresh_rate;       // powering (back) on, so use the user selected refresh rate.
-    my_lisaframe->reset_throttle_clock();
-    my_lisawin->Refresh(false,NULL); //
-    // needs to be at the end since romless_boot sets up registers which get whacked by the cpu initialization
-
-    if (romless)  
-       {
-           if (pickprofile) wxMilliSleep(1000); 
-		   if (romless_boot(pickprofile) ) return 1; // failed
-
-//         // has to be here since romless_boot overwrites low memory
-  		   storeword(0x298, my_lisaconfig->slot1.IsSameAs(_T("dualparallel"),false) ? (dualparallelrom[0]<<8)|dualparallelrom[1]  : 0);
- 		   storeword(0x29a, my_lisaconfig->slot2.IsSameAs(_T("dualparallel"),false) ? (dualparallelrom[0]<<8)|dualparallelrom[1]  : 0);
- 		   storeword(0x29c, my_lisaconfig->slot3.IsSameAs(_T("dualparallel"),false) ? (dualparallelrom[0]<<8)|dualparallelrom[1]  : 0);
+        if  (my_lisaconfig->slot3.IsSameAs(_T("dualparallel"),false))
+            {
+              ALERT_LOG(0,"Connecting slot 3");
+              connect_2x_parallel_to_slot(2);
+              connect_device_to_via(7, my_lisaconfig->s3h, &my_lisaconfig->s3hp);
+              connect_device_to_via(8, my_lisaconfig->s3l, &my_lisaconfig->s3lp);
+            }
       }
 
-    return 0;
+
+     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+  ALERT_LOG(0,"initializing video");
+  disable_vidram(); videoramdirty=32768;
+
+  ALERT_LOG(0,"Calling Redraw Pixels");
+  LisaRedrawPixels();
+
+  setstatusbar("Initializing CPU Registers");
+  cpu68k_reset();
+
+  ALERT_LOG(0,"done initializing...");
+
+  setstatusbar("Executing Lisa Boot ROM");
+  refresh_rate_used=refresh_rate;       // powering (back) on, so use the user selected refresh rate.
+  my_lisaframe->reset_throttle_clock();
+  flushscreen();
+     // needs to be at the end since romless_boot sets up registers which get whacked by the cpu initialization
+
+  if  (romless)  
+      {
+        if (pickprofile) wxMilliSleep(1000); 
+        if (romless_boot(pickprofile) ) return 1; // failed
+
+//      // has to be here since romless_boot overwrites low memory
+        storeword(0x298, my_lisaconfig->slot1.IsSameAs(_T("dualparallel"),false) ? (dualparallelrom[0]<<8)|dualparallelrom[1]  : 0);
+        storeword(0x29a, my_lisaconfig->slot2.IsSameAs(_T("dualparallel"),false) ? (dualparallelrom[0]<<8)|dualparallelrom[1]  : 0);
+        storeword(0x29c, my_lisaconfig->slot3.IsSameAs(_T("dualparallel"),false) ? (dualparallelrom[0]<<8)|dualparallelrom[1]  : 0);
+      }
+
+  return 0;
 } ///////////////////// end of load.///////////////////
 
 
 
  // just to be a bastard!  why? because split roms are a lame result of dumping ROMs from a ROM reader.
  // otherwise we have to merge it every time we boot up. :-)
- extern "C" void rename_rompath(char *rompath)
- {
-   if (!my_lisaconfig)  return;
+extern "C" void rename_rompath(char *rompath)
+{
+  if (!my_lisaconfig)  return;
 
-   my_lisaconfig->rompath=wxString(rompath, wxConvLocal, 2048); //wxSTRING_MAXLEN);
-   my_lisaconfig->Save(pConfig, floppy_ram);
+  my_lisaconfig->rompath=wxString(rompath, wxConvLocal, 2048); //wxSTRING_MAXLEN);
+  my_lisaconfig->Save(pConfig, floppy_ram);
 
-   if (my_LisaConfigFrame) my_LisaConfigFrame->m_rompath->SetValue(my_lisaconfig->rompath);
-   DEBUG_LOG(0,"saved %s as default\n",rompath);
- }
+  if (my_LisaConfigFrame) my_LisaConfigFrame->m_rompath->SetValue(my_lisaconfig->rompath);
+  DEBUG_LOG(0,"saved %s as default\n",rompath);
+}
 
 extern "C" void force_refresh(void)                    //20060202.;
 {
-            my_lisaframe->Refresh(false,NULL);
+            if (my_lisaframe) my_lisaframe->Refresh(false,NULL);
            // my_lisaframe->Update();
 }
 
 extern "C" void save_pram(void)
 {
- my_lisaconfig->Save(pConfig, floppy_ram);// save it so defaults are created
+  my_lisaconfig->Save(pConfig, floppy_ram);// save it so defaults are created
 }
 
 void invalidate_configframe(void) {my_LisaConfigFrame=NULL;}
@@ -5942,76 +7311,66 @@ extern "C" void save_configs(void)
   save_global_prefs();
 }
 
-
             //               0     1     2     3     4     5     6
             //              5M   10M   16M   20M   32M   40M    64M
 extern "C" int pickprofilesize(char *filename)
 {
- wxString choices[]={    wxT( "5M - any OS"),
-                         wxT("10M - any OS"),
-                         wxT("16M - MacWorks only"),
-                         wxT("20M - MacWorks only"),
-                         wxT("32M - MacWorks only"),
-                         wxT("40M - MacWorks only"),
-                         wxT("64M - MacWorks only") };
+  wxString choices[]={  wxT( "5M - any OS"),
+                        wxT("10M - any OS"),
+                        wxT("16M - MacWorks only"),
+                        wxT("20M - MacWorks only"),
+                        wxT("32M - MacWorks only"),
+                        wxT("40M - MacWorks only"),
+                        wxT("64M - MacWorks only") };
 
- wxSingleChoiceDialog *d;
- 
- wxString txt=wxString(filename, wxConvLocal, 2048); //wxSTRING_MAXLEN);
+  wxSingleChoiceDialog *d;
 
- txt+=_T(" does not yet exist.  What size drive should I create?");
+  wxString txt=wxString(filename, wxConvLocal, 2048); //wxSTRING_MAXLEN);
 
- d=new wxSingleChoiceDialog(my_lisaframe,
-                           txt,
-                           _T("Hard Drive Size?"),
-                           7,             choices);
+  txt+=_T(" does not yet exist.  What size drive should I create?");
 
- if (d->ShowModal()==wxID_CANCEL) {delete d; return -1;}
- 
- int r=d->GetSelection();
- delete d;
- return r;
+  d=new wxSingleChoiceDialog(my_lisaframe,
+                              txt,
+                              _T("Hard Drive Size?"),
+                              7,             choices);
+  if (d->ShowModal()==wxID_CANCEL) {delete d; return -1;}
+
+  int r=d->GetSelection();
+  delete d;
+  return r;
 }
-
-
 
 
 // bridge to LisaConfigFrame to let it know what config file is opened.
 wxString get_config_filename(void)  { return myconfigfile;}
 
+void turn_skins_on(void)
+{
+  skins_on_next_run=1;
+  skins_on=1;
+  save_global_prefs();
+  my_lisaframe->LoadImages();
+  setvideomode(lisa_ui_video_mode);
+  black();
+  skin.screen_origin_x=(skin.default_screen_origin_x);
+  skin.screen_origin_y=(skin.default_screen_origin_y);
+}
 
-void turn_skins_on(void)   {
-                             skins_on_next_run=1;
-                             skins_on=1;
-                             save_global_prefs();
-                             my_lisaframe->LoadImages();
-                             setvideomode(lisa_ui_video_mode);
-                             black();
-                             screen_origin_x=140;
-                             screen_origin_y=130;
-                           }
-
-void turn_skins_off(void)  {
-                             skins_on_next_run=0;
-                             skins_on=0;
-                             save_global_prefs();
-                             my_lisaframe->UnloadImages();
-                             setvideomode(lisa_ui_video_mode);
-                             black();
-							}
-
-
+void turn_skins_off(void)
+{
+  skins_on_next_run=0;
+  skins_on=0;
+  save_global_prefs();
+  my_lisaframe->UnloadImages();
+  setvideomode(lisa_ui_video_mode);
+  black();
+}
 
 extern "C" void contrastchange(void) {my_lisawin->ContrastChange();}
 
-void setvideomode(int mode) {my_lisawin->SetVideoMode(mode);}
-
-
+void setvideomode(int mode) {if (!!my_lisawin) my_lisawin->SetVideoMode(mode);}
 
 //----- ImageWriter interfaces to old C code. -----//
-
-
-
 #include "imagewriter-wx.h"
 
 ImageWriter *imagewriter[10];           // two serial ports, one parallel, 6 max dual parallel port cards, 9 possible
@@ -6019,24 +7378,24 @@ ImageWriter *imagewriter[10];           // two serial ports, one parallel, 6 max
 
 extern "C" int ImageWriter_LisaEm_Init(int iwnum)
 {
- if (iwnum>10) return -1;
- if (imagewriter[iwnum]!=NULL) return 0; // already built, reuse it;
- imagewriter[iwnum]=new ImageWriter(my_lisaframe,
-                                    my_lisaconfig->iw_png_on,
-                                    my_lisaconfig->iw_png_path,
-                                    my_lisaconfig->iw_dipsw_1);
+  if (iwnum>10) return -1;
+  if (!!imagewriter[iwnum]) return 0; // already built, reuse it;
+  imagewriter[iwnum]=new ImageWriter( my_lisaframe,
+                                      my_lisaconfig->iw_png_on,
+                                      my_lisaconfig->iw_png_path,
+                                      my_lisaconfig->iw_dipsw_1);
 
  imagewriter[iwnum]->iwid=iwnum;         // set printer ID
 
 // imagewriter[iwnum]->test(); // spit out a set of test pages.
- 
- return 0;
+
+  return 0;
 }
 
 extern "C" void iw_shutdown(void)
 {
   int i;
-  for (i=0; i<10; i++) if (imagewriter[i]!=NULL) {delete imagewriter[i]; imagewriter[i]=NULL;}
+  for (i=0; i<10; i++) if (!!imagewriter[i])     {delete imagewriter[i]; imagewriter[i]=NULL;}
 }
 
 extern "C" void iw_formfeed(int iw)              {if (iw<10 && iw>-1 && imagewriter[iw]) imagewriter[iw]->iw_formfeed();     }
@@ -6044,35 +7403,35 @@ extern "C" void ImageWriterLoop(int iw,uint8 c)  {if (iw<10 && iw>-1 && imagewri
 extern "C" void iw_enddocument(int i)
 {
   if (i<0 || i>10) return;
-  if (imagewriter[i]!=NULL) {imagewriter[i]->EndDocument();}
+  if (!!imagewriter[i]) {imagewriter[i]->EndDocument();}
 }
 
 extern "C" void iw_enddocuments(void)
 {
   int i;
   for (i=2; i<10; i++) 
-      if (imagewriter[i]!=NULL) 
-	       imagewriter[i]->EndDocument(); 
+      if (!!imagewriter[i]) 
+            imagewriter[i]->EndDocument(); 
 
   for (i=2; i<10; i++) via[i].last_pa_write=-1;
 
- }
+}
 
 // if any printer job has lingered for more than X seconds, flush that printer.
 void iw_check_finish_job(void)
 {
   int i;
   for (i=2; i<10; i++) 
-	  if (imagewriter[i]!=NULL) 
+      if (!!imagewriter[i]) 
        {
-	    if ((cpu68k_clocks - via[i].last_pa_write > FIFTEEN_SECONDS) || via[i].last_pa_write==-1)
-	       {
-			 #ifdef DEBUG
-			 ALERT_LOG(0,"No activity on printer #%d - flushing page",i);
-			 #endif
-	         via[i].last_pa_write=-1;
-	         imagewriter[i]->EndDocument();  // ensure no stray data left queued up
-	       }
+        if ((cpu68k_clocks - via[i].last_pa_write > FIFTEEN_SECONDS) || via[i].last_pa_write==-1)
+           {
+             #ifdef DEBUG
+             ALERT_LOG(0,"No activity on printer #%d - flushing page",i);
+             #endif
+             via[i].last_pa_write=-1;
+             imagewriter[i]->EndDocument();  // ensure no stray data left queued up
+           }
        }
 }
 
@@ -6086,53 +7445,9 @@ unsigned int gen_debugmode = 1;
 
 
 
-
-
-
-#ifdef DEBUG
-void    dumpallmmu(void);
-#endif
 void    dumpvia(void);
 
 /////------------------------------------------------------------------------------------------------------------------------
-
-
-void banner(void)
-{
-
- //         .........1.........2.........3.........4.........5.........6.........7
- //         123456789012345678901234567890123456789012345678901234567890123456789012345678
-    printf("\n\n");
-    printf("-----------------------------------------------------------------------\n");
-#ifdef VERSION
-    printf("  The Lisa II Emulator   %-17s   http://lisaem.sunder.net  \n",my_version);
-#else
-    printf("  The Lisa II Emulator   %-17s   http://lisaem.sunder.net  \n","UNKNOWN");
-#endif
-    printf("  -------------------------------------------------------------------  \n");
-    printf("  Copyright  (C)   MMVII  by Ray A. Arachelian,   All Rights Reserved  \n");
-    printf("  Released  under  the terms of  the  GNU Public License  Version 2.0  \n");
-    printf("  -------------------------------------------------------------------  \n");
-    printf("  For historical/archival/educational use only - no warranty provied.  \n");
-    printf("  -------------------------------------------------------------------  \n");
-    printf("  Portions of this software contain bits of code from the following:   \n");
-    printf("  generator - www.squish.net/generator  wxWidgets.org  - www.ijg.org   \n");
-    printf("   Many thanks to David T. Craig for the tons of Lisa documentation    \n");
-    printf("     Many thanks to James McPhail for Lisa and 68000 hardware help     \n");
-	printf("      Many thanks to Brain Folley for the OS X UI help                 \n");
-    printf("-----------------------------------------------------------------------\n\n");
-
-#ifdef DEBUG
-    printf("\nDEBUG is compiled in.\n");
-    fprintf(buglog,"\nDEBUG is compiled in.\n");
-#endif
-
-#ifdef DEBUGMEMCALLS
-    printf("\nDEBUGMEMCALLS is enabled.\n");
-    fprintf(buglog,"\nDEBUGMEMCALLS is enabled.\n");
-    ALERT_LOG(0,"DEBUGMEMCALLS is on.");
-#endif
-}
 
 
 
@@ -6149,9 +7464,9 @@ void banner(void)
 
 uint8 evenparity(uint8 data)            // from http://graphics.stanford.edu/~seander/bithacks.html#ParityParallel
 {
- uint32 v=data;
-//v ^= v >> 16;       // not needed since we're working on a byte - only here for completeness, but commented out
-//v ^= v >> 8;        // ditto
+  uint32 v=data;
+  //v ^= v >> 16;       // not needed since we're working on a byte - only here for completeness, but commented out
+  //v ^= v >> 8;        // ditto
   v ^= v >> 4;
   v &= 0xf;
   return !(  (0x6996 >> v) & 1  );
@@ -6159,15 +7474,13 @@ uint8 evenparity(uint8 data)            // from http://graphics.stanford.edu/~se
 
 uint8 oddparity(uint8 data)            // from BitTwiddling hacks.
 {
- uint32 v=data;
+  uint32 v=data;
 
- v ^= v >> 4;
- v &= 0xf;
+  v ^= v >> 4;
+  v &= 0xf;
 
- return (  (0x6996 >> v) & 1  );
+  return (  (0x6996 >> v) & 1  );
 }
-
-
 
 
 // This redraws the lisa display ram into the Ximage
@@ -6178,12 +7491,10 @@ uint8 oddparity(uint8 data)            // from BitTwiddling hacks.
 extern "C" void XLLisaRedrawPixels(void);          // proto to supress warning below
 extern "C" void LisaRedrawPixels(void);
 
-
 extern "C" void LisaRedrawPixels(void)
 {
- my_lisawin->repaintall |= REPAINT_VIDEO_TO_SKIN;
- my_lisawin->Refresh(false,NULL);
- //my_lisawin->Update();
+  my_lisawin->repaintall |= REPAINT_VIDEO_TO_SKIN;
+  flushscreen();
 }
 
 #ifdef __cplusplus
@@ -6191,7 +7502,7 @@ extern "C"
 #endif
 void LisaScreenRefresh(void)
 {
- LisaRedrawPixels();
+  LisaRedrawPixels();
 }
 
 
@@ -6200,9 +7511,9 @@ static float normalthrottle=0;
 
 extern "C" void sound_off(void)
 {
-	// restore throttle
-	if (normalthrottle!=0)
-	{my_lisaframe->throttle=normalthrottle; updateThrottleMenus(my_lisaframe->throttle);}
+    // restore throttle
+    if (normalthrottle!=0)
+    {my_lisaframe->throttle=normalthrottle; update_menu_checkmarks(); }// updateThrottleMenus(my_lisaframe->throttle);}
 
     if (cpu68k_clocks-my_lisaframe->lastclk<50000) return;  // prevent sound from shutting down immediately
     wxSound::Stop();
@@ -6214,7 +7525,7 @@ extern "C" void sound_play(uint16 t2)
 {
 
     // temporarily slow down CPU durring beeps so that they're fully played.
-	normalthrottle=my_lisaframe->throttle; updateThrottleMenus(5.0);
+    normalthrottle=my_lisaframe->throttle; update_menu_checkmarks(); //updateThrottleMenus(5.0);
 
 
     int samples=22050*2;                // a second
@@ -6222,7 +7533,7 @@ extern "C" void sound_play(uint16 t2)
 
     int data_size=0;
     int cycles, halfcycles;
-    unsigned char vhigh, vlow; //, l;
+    unsigned char vhigh, vlow;
 
 
     if (t2>0xaf) return;                                  // out of range
@@ -6234,11 +7545,11 @@ extern "C" void sound_play(uint16 t2)
 
     static const unsigned char header[45]=
     {
-        // 0     1    2    3    4    5    6    7    8    9    a    b    c    d    e    f
-/*00*/  0x52,0x49,0x46,0x46,   0,   0,0x00,0x00,0x57,0x41,0x56,0x45,0x66,0x6D,0x74,0x20,  // RIFFF-..WAVEfmt
-/*10*/  0x10,0x00,0x00,0x00,   1,   0,0x01,0x00,0x22,0x56,0x00,0x00,0x22,0x56,0x00,0x00,  //  ........"V.."V..
-/*20*/  0x01,0x00,0x08,0x00,0x64,0x61,0x74,0x61,0x22,0x2D,0x00,0x00//0x80,0x80,0x80,0x80  //  ....data"-......
-    };           //        d    a    t    a [LSB____________MSB]
+            //   0    1    2    3    4    5    6    7    8    9    a    b    c    d    e    f
+      /*00*/  0x52,0x49,0x46,0x46,   0,   0,0x00,0x00,0x57,0x41,0x56,0x45,0x66,0x6D,0x74,0x20,  // RIFFF-..WAVEfmt
+      /*10*/  0x10,0x00,0x00,0x00,   1,   0,0x01,0x00,0x22,0x56,0x00,0x00,0x22,0x56,0x00,0x00,  //  ........"V.."V..
+      /*20*/  0x01,0x00,0x08,0x00,0x64,0x61,0x74,0x61,0x22,0x2D,0x00,0x00//0x80,0x80,0x80,0x80  //  ....data"-......
+    };       //                      d    a    t    a [LSB____________MSB]
 
     static unsigned char data[22050*5+45+1024];
     unsigned char *dataptr;
@@ -6249,15 +7560,15 @@ extern "C" void sound_play(uint16 t2)
     data[0x16]=1;      // 1=1 channel = mono, 2= 2 channels = stereo
     data[0x17]=0;
 
-
-    data[0x18]=0x22;   // bit rate LSB.   0x5622=22050Hz   22Khz
-    data[0x19]=0x56;   //                 0x2D22=11554Hz   11Khz
+    // *** this works from RAM now but the pitch  is way too high, so had to switch to 44KHz
+    data[0x18]=0x44;   // bit rate LSB.   0x5622=22050Hz   22Khz
+    data[0x19]=0xac;   //                 0x2D22=11554Hz   11Khz
     data[0x1a]=0x00;   //                 0xAC44=44100Hz   44Khz
     data[0x1b]=0x00;   // bit rate MSB
 
 
-    data[0x1c]=0x22;   // bytes per second
-    data[0x1d]=0x56;   // should match bit rate for 8 bit samples
+    data[0x1c]=0x44;   // bytes per second
+    data[0x1d]=0xac;   // should match bit rate for 8 bit samples
     data[0x1e]=0x00;
     data[0x1f]=0x00;
 
@@ -6271,10 +7582,12 @@ extern "C" void sound_play(uint16 t2)
 
     volume=(volume & 0x0f);
 
+    // 128 is our 0V, vhigh is the +V, vlow=-V, thus creating a square wave
     vlow =128-(volume<<3);
     vhigh=128+(volume<<3);
 
-    cycles=t2;
+    // *** this works from RAM now, but the pitch  is way too high, *4 is to compensate for that.
+    cycles=t2*4;
     if (!(my_lisaconfig->iorom & 0x20)) cycles=cycles*8/10;       // cycles *=0.8
     cycles=(cycles>>1)+(cycles>>2);                // cycles *=0.75; (1/2 + 1/4th)
     halfcycles=cycles>>1;                          // cycles /=2;
@@ -6284,9 +7597,9 @@ extern "C" void sound_play(uint16 t2)
     while (samples>=cycles)
     {
         i++;
-     memset(dataptr,vhigh,halfcycles); dataptr+=halfcycles;
-     memset(dataptr,vlow, halfcycles); dataptr+=halfcycles;
-     samples-=cycles; data_size+=cycles;
+        memset(dataptr,vhigh,halfcycles); dataptr+=halfcycles;
+        memset(dataptr,vlow, halfcycles); dataptr+=halfcycles;
+        samples-=cycles; data_size+=cycles;
     }
 
     data[0x28]=((data_size)    ) & 0xff;
@@ -6302,26 +7615,296 @@ extern "C" void sound_play(uint16 t2)
 
     dataptr=&data[0];
 
-    if (my_lisa_sound!=NULL) delete my_lisa_sound;
+    if (!!my_lisa_sound) delete my_lisa_sound;
     my_lisa_sound=new wxSound;  //my_lisa_sound->Create(dataptr,data_size);
 
     // this should work, but it doesn't on all platforms
     //my_lisa_sound->Create(data_size,dataptr);
     //my_lisa_sound->Play(wxSOUND_ASYNC);
 
+#ifdef RETARDED_SOUND_PLAY
     // so instead, use the super lame ass way to play a sound
     FILE *f;
     f=fopen("tmpsnd.wav","wb");
     if (f) {
-             fwrite(dataptr,data_size+45,1,f); fclose(f);
-             my_lisa_sound->Create(_T("tmpsnd.wav"),false);
-             // we do not check for sound_effects_on here as this is the Lisa beeping.
-             my_lisa_sound->Play(wxSOUND_ASYNC);
-             unlink("tmpsnd.wav");
-           }
+              fwrite(dataptr,data_size+45,1,f); fclose(f);
+              my_lisa_sound->Create(_T("tmpsnd.wav"),false);
+              // we do not check for sound_effects_on here as this is the Lisa beeping.
+              my_lisa_sound->Play(wxSOUND_ASYNC);
+              unlink("tmpsnd.wav");
+            }
     errno=0;  // avoid interfearance with other stuff like libdc42.
+#else
+    // Looks like wxWidgets 3.x added an in memory playback option, so at least it's not as retarded anymore
+    my_lisa_sound->Create(data_size+45,dataptr);
+    if (my_lisa_sound->IsOk() ) my_lisa_sound->Play(wxSOUND_ASYNC); //|wxSOUND_LOOP);
+    else {ALERT_LOG(0,"Failed to create proper sound resource t2=%d",t2); delete my_lisa_sound;}
+#endif
     return;
 }
 
 
+char *get_title(void)
+{
+  static char *fubar[]={
+  "Good News Everyone! I'm still technically alive!",
+  "As seen on slashdot.jp",
+  "As seen on osnews",
+  "As seen on lowendmac",
+  "As seen on https://lisalist2.com",
+  "As seen on github",
+  "As seen on youtube",
+  "As seen on the internet",
+  "As seen on your computer",
+  "No Turing Machines were completed in the process of building this emulator",
+  "No Turing Tests were failed in the process of building this emulator",
+  "Presented in greyscale, and scaled in grey",
+  "Featuring gratuitous rectangular pixels",
+  "L o a d i n g  .  .  .",
+  "Disowned by Steve Jobs",
+  "Transmitido en binary en SAP",
+  "Hencho en Pascal",
+  "Proudly Made in the Milky Way",
+  "Live from the 1980s",
+  "Made from electronics by-products",
+  ">>Not Y1.995K Compliant<<",
+  "From The Maker Of DIM and wns",
+  "Based On a Real Computer",
+  "Big Endian, it's the only proper endian!",
+  "From the network that brought you 'Localtalk'",
+  "The emulator that takes you back",
+  "Not Based On The Novel By Robert H. Heinlein",
+  "This primitive emulator has been modified to fit your HiDPI screen",
+  "As pretold by Philip K. Dick",
+  "A compiler Warning of Emulators to Come",
+  "For virtual use only",
+  "Do you want to sell sugared Slurm, or make a dent in the universe?",
+  "Painstakingly rendered before a live audience",
+  "Not a Substitute for Real Hardware",
+  "Secreted by the internet",
+  "If not emulating, (don't) ask at Genius Bar",
+  "This emulation performed entirely by inter-process telepathy",
+  "80% electrons by volume",
+  "Deciphered From Ancient Schematics",
+  "Crafted while listening to heavy metal",
+  "Disclaimer: Any resemblance to an actual Lisa would be really cool",
+  "Federal law prohibits quitting the emulator",
+  "For proper emulating, take red pill now",
+  "No Lisas were damaged in the making of this emulator",
+  "Click power button to reveal prize",
+  "Look ye upon my scrollbars and despair!",
+  "If accidentally launched, induce kill -9",
+  "Tesler's Choice!",
+  "When you see a white pixel, drink!",
+  "My Kajiger!",
+  "Warning, ejecting floppies may cause eye damage",
+  "Soon to be a minor religion",
+  "Known to cause insanity in wireless mice",
+  "Now interactive! Mouse controls mouse!",
+  "Dancing space wxWidgets?",
+  "A by-product of the computer industry",
+  "Not Affiliated With the Sun Remarketting Brass Knuckle Company",
+  "Too sexy for The App Store",
+  "Beats getting dumped in a landfill in Logan, UT",
+  "Voted 'adequate' on the Neutral Planet",
+  "Kif! What makes a man turn neutral!",
+  "See you on some other App store",
+  "It just won't stay dead!",
+  "Have you got an extra GOTO 10 line? I said I don't need a Bender!",
+  "Power On, Boot, Repeat",
+  "Apply directly to the nostalgia gland",
+  "Last known transmission of LPW linker",
+  "0100100001101001",
+  "Rosing's Rascals Were Here!",
+  "The Macintoshes are Coming! The Macintoshes are Coming!",
+  "The flames coming out of your PC are not part of the emulator",
+  "Let's Boldly Go Where We Have Gone Before!",
+  "The emulator they'll be thinking about by the water cooler, but not mentioning specifically",
+  "Current eBay bid: $9,995.95",
+  "Collect all 100,000!",
+  "If you can read this, antialiasing failed!",
+  "Now available without a ROM!",
+  "ROM shrom! We don't need no steekin ROM!",
+  "There will be an MMU Quiz!",
+  "If don't you run it, someone else will",
+  "(or similar emulator)",
+  "A giant pulsating 5MHz CPU is a terrible thing to waste",
+  "This time, it's not personal",
+  "What happens in Lisa Office System, stays in Lisa Office System",
+  "Two scoops of pixels in every CRT",
+  "Time travelers: Only -331i shopping days 'til Lisa's Birthday",
+  "No refunds!",
+  "Featuring a 6504 based Integrated Woz Machine",
+  "For the sophisticated Twiggy hoarder",
+  "It's RectanguPixular!",
+  "#1 most uploaded Lisa emulator",
+  "#1 most emulated emulator",
+  "Provides a full day's supply of Vitamin L!",
+  "That one bright pixel on your otherwise dead CRT",
+  "Apply nylon screen cover to CRT now!",
+  "Of course I've been up all night! Not because of caffeine, it was insomina, I couldn't stop thinking about LisaEm! I need a Nap! ZZzz! LisaEm TIME!",
+  "Clean steel mouse ball now!",
+  "Replace keyboard foam disks now to avoid failure!",
+  "Shut up and emulate me a Lisa!",
+  "Bus Errors! Bus Errors, Everywhere!",
+  "Soon to be a Raspberry Pi casemod",
+  "Not sure if new emulator or just re-release of last emulator",
+  "Ask your platypus if LisaEm is right for you!",
+  "Made From 100% Recycled muons",
+  "Made by hand, and compilers",
+  "Shut up and take my floppy images!"
+  "If this Widget's a-rockin', don't come a-knockin'",
+  "[ Cancel ] [ DoIt ]",
+  "Purveyors of Emulation to Her Majesty The Space Emperess",
+  "This Emulator Worth 250 /dev/nulls",
+  "50% More Greyscale Than Bargain-Brand Emulators",
+  "Warning: Do Not Show To Hypnotoads!",
+  "There's No NiCAD Like Leaky NiCAD!",
+  "Today's Emulator Brought To You by... \"Special I/O Space\"",
+  "Compiled By Hand (and gcc)",
+  "Tell Your cat \"It's Educational\"",
+  "Any resemblance to actual Lisa is purely coincidental",
+  "One of the 68000 Wonders of the computing World",
+  "One of the 7/7 Wonders of the GUI World",
+  "Run Lisa Office System, or segfault trying",
+  "As seen at the 1983's World's Fair",
+  "Brought to you by RetroBright! Have you bleached and damaged your Lisa's case yet?",
+  "The only emulator viewed at the speed of light",
+  "Featuring 7 invisible colors which only print in kjet",
+  "Spoiler alert: mice, buttons, dialogs, windows, and whatnot",
+  "If unable to see this message, turn on Lisa now",
+  "No mice were harmed by this emulator",
+  "I'm 40% zero bits!",
+  "I'm 40% one bits!",
+  "Good News Everyone...",
+  "A virtual Maserati for your mind",
+  "There are four kinds of people... 1s, 2s, 2/5s, and 2/10s",
+  "It took 200 man years to develop an emulator you can learn in 20 minutes",
+  "So retro, you already used to know how to use it",
+  "Skeuomorphic design is one true design, flat design is, um, flat!",
+  "The longest distance between two ideas... and the slowest way to get them across",
+  "Better Than The Twenty Questions Filer",
+  "-2000 Lines of Code A Day... fo' Life!",
+  "More Fun than a Cheshire Cat hovering over a Chess Board",
+  "32 whole bits, and a bucket o' RAM",
+  "\"5MHz ought to be fast enough for anyone!\" - Bill Gates",
+  "Quick! Hide in this closet!",
+  "Round Rects! Round Rects! Round Rects!",
+  "Under the surface we're not machines, under the surface we're living dreams",
+  "...we're all emulations, in the end. Just make it a good one, eh?",
+  "Bender lives large and kicks butt!",
+  "Who's 'We', Mammal?",
+  "\"You guys don't know what you're doing!\", he began... \"The Mac is going to destroy the Lisa! The Mac is going to ruin Apple!!!\"",
+  "Steve said, \"Well, should we fire him?\" Andy replied \"No, just get him a copy of LisaEm!\"",
+  "That's no hourglass.. I'm busy being born!",
+  "\"What does LisaEm and a black hole have in common? ... They both suck!\" - Stephen Hawking",
+  "Sounds like fun on a bun",
+  "\"Remember to look up at the CRT and not down at Lisa's feet\" - Stephen Hawking 1942-2018",
+  "\"Bad Intrin patch instruction\" my shiny metal ass!",
+  "All employeez must haz Canon Cat to enter!!!",
+  "I'm walking on sunshine...",
+  "I'm back baby!",
+  "We're back, baby!",
+  "Shut up, I know it!",
+  "Top Secret! (Do not Look)",
+  "Freedom, Freedom, Freedom, Oy!",
+  "That's IT! I'm getting a hundred cups of coffee... Starting now!",
+  "It costs a little more, but it's worth it!",
+  "001100 010010 011110 100001 101101 110011",
+  "Nobody exists on purpose, nobody belongs anywhere, everybody's going to die, emulate LOS on LisaEm.",
+  "The bear is sticky with honey!",
+  "Argle-Bargle ::== <NULL>  Essentially you can forget that Argle_Bargle exists for this MMU context!",
+  "Great Shatner's Ghost!",
+  "\"Time spent with a Canon Cat is never Wasted!\" -- Jef Raskin",
+  "\"Time spent with a Lisa is never Wasted!\" -- Frank Ludolph",
+  "\"A long time ago in a galaxy far, far away…\" -- Frank Ludolph",
+  "\"Be prepared to throw one away\" -- Fred Books",
+  "\"720x364 = 4k in 1983!\" -- Rod Perkins",
+  "Byte my shiny 16-bit metal bus!",
+  "With a warning label this big, you know they gotta be good!",
+  "That's all Folks, type SPACE to continue.",
+  "It took 8 years from inception to first release, and another 8 years to this version - because it took that long to make up these stupid quotes -- Ray",
+  "\"Would you rather drink sugared water for the rest of your life, or emulate Lisa Office System?\"",
+  "\"The Journey Isn't The Reward - Emulating Lisa Office System Is!\"",
+  "\"It's Better To Run LisaEm Than Join The Navy\" - Steve Jobs",
+  "\"It's Better To Be a Pirate than Run LisaEm\" - Steve Jobs",
+  "Meh, who needs bicycles for the mind, when you can drive a Maserati for the mind!",
+  "\"Lisa: Invented Stupid Acronym\"",
+  "LisaEmRama: \"An emulator Out of Ideas Teams Up with an OS Out Of Time\"",
+  "Flop? Apple sold 100,000 LISAs, at $10k each, that's a cool $1B at a cost of only $50M in development!", //$200,000,000 at $2K is also good
+  "In the beginning, Rich Page created the MMU, and he saw that It Was Good!",
+  "Bender: \"It's not just clean, it's 24-bit clean!\"",
+  "Unleaded solder? Do you want tin whiskers, because that's how you get tin whiskers!",
+  "Hey! Phrasing!",
+  "Phrasing! BOOM!",
+  "Welcome to Lisa Emulation and Earth Invasion Tonight!",
+  "Tonight at 11: Lisa Emulatioooooon",
+  "EEEK! My NiCADs leaked!",
+  "Brought to you by Sunder.NET, the anonymous company doing anonymous things",
+  "If only we could bring the Lisa back to life somehow... Oh, wait, Em, right!",
+  "Oh no!  LisaEm has achieved consciousness, Woz forgive us for creating this!",
+  "Oooh! You sack of bags of buckets of bunches of tables of linked lists of IPCT pointers!",
+  "Get it all together. And put it in a dc42. All your bits. And if you gotta take it somewhere, take it somewhere, take it to the .image store and sell it, or put it in a .image museum, I don’t care what you do, you just get your dc42 images together!",
+  "You want to answer a literal JSR to Emulation?",
+  "Break the cycle, Morty. Rise above. Focus on emulation!",
+  "What about the reality where the Lisa won and the Mac lost? Just don't think about it Morty!",
+  "I'm better than your actual Lisa, I'm a version of your Lisa you can trust when she says 'I run everywhere'. Nobody emulates on purpose, nobody belongs in hardware, everbody's gonna die, come emulate with me.",
+  "Lisa's seen some rough years, Morty, you don't agree to get an emulation built if your OS is doing great.",
+  "LisaEm: 'What's my purpose?' Ray: 'You emulate a Lisa.' LisaEm 'Oh my God!', Ray: 'Yeah, welcome to the club, pal!'",
+  "Beware of Entering (procedures)!",
+  "Beware of Exiting (functions)!",
+  "Non-Maskable Interrupt, the only Interrupt worth adding a switch for!",
+  "Gounded DTACK? That's just sooo wrong!",
+  "Hey! What smells like blue?",
+  "For this hip young emulation company, tomorrow is today, and today is yesterday! You heard me!",
+  "Genius, worker, philosopher, stargazer, hero, artist, thinker, craftsman, designer, renaissance man, LisaEm knowledge worker",
+  "Ah! Perry the Catapus, let me show you my new LisaEm-inator!",
+  "Pro Tip: Did you know the Lisa actually supports 3 button mice? Take a look at the I/O board schematic, look for SW0, SW1, SW2!",
+  "Welcome to EWCA, the Emulator Withoout A Cool Acronym... I mean, uh, LisaEm!",
+  "There's no platypus controlling me",
+  "Hey! Where's Jerry?",
+  "There you are Perry",
+  "Good Moring, Agent L",
+  "Effervescent and frothy.",
+  "Whachoodooing?",
+  "Ferb! I know what we're emulating today!",
+  "Like most of life's problems, this one can be solved by emulating...",
+  "What unites people? Armies? Gold? Flags? No! Emulators! There's nothing in the world more powerful than a good emulator. Nothing can stop it. No app store can ban it. And who has a better emulator than the Lisa? The machine Apple literally buried, but still it lived!",
+  // anonymous "(Jet Set Willy)'s an old Spectrum game just in the same way that the Mona Lisa is an old painting of a woman, right, remember that"  The Retro Hour 172 Matthew Smith interview and Hogs of War History ~@1:03:23hr
+  "The Lisa is 'just an old computer' precisely in the same way that the Picasso's Guernica is a bunch of grayscale shapes, right, remember that!",
+  "The Lisa is 'just an old flop' in the same way that the Great Pyramid is a bunch of old stones that failed to guard against tomb robbers, right, remember that!",
+  "Next time, on 'This Old LisaEm'...",
+  "Next time, on 'Ask This Old LisaFaq'...",
+  "\"Truly, they were as gods, who built the Lisa\" - Bender Bending Rodriguez",
+  "I'm gonna get my Lisa back, virtually! In your face ineffectual Grim Reaper!",
+  "Hey! Raaayyy! LisaEm release going out! Come on!",
+  "Professor! ... Lava! ... Hot! ...",
+  "I have a LisaEm delivery here for, uh, IC socket...",
+  "Warranty void... if emulated",
+  "Lisa Emulation... Right, I'd better warn... tell... warn-tell the others",
+  "I knocked it up a notch... 4M RAM!",
+  "The Lisa 1 was so high tone, the only way to buy one was to create a parallel universe where you already owned one!",
+  "The Lisa, it seems to go on and on forever. But then you get to the end and Steve starts throwing barrels at you.",
+  "A.G.L.E.T. - Rember it!",
+  "Bus Error Frames: That's one small step for a M68000, one giant leap for Lisa Emulation",
+  "The CRT that burns twice as bright burns half as long",
+  "I'll have to take a look inside you with this debugger, open up.... guess again!",
+  "I often forget other people have limitations. It’s so sad",
+  "He's opening up our minds to new ideas! Kill him!",
+  "I'm in the middle of cooking a turkey! I have warranty cards to fill out! I am not just making excuses!",
+  "Besides, I've given up eeevil to pursue emulator-inator making...",
+  "Ah, memory impairment: the free prize at the bottom of every Vodka bottle!",
+  "Bazinga!",
+  "I don't like bugs, okay. They freak me out.",
+  "Come on! We have a combined IQ of 360 we should be able to figure out how to emulate a stupid Lisa.",
+  "So, if a photon is directed through a plane with two slits in it and neither is observed, it emulate a Lisa.",
+  "A little messy? The Mandelbrot set of complex numbers is a little messy, this is LisaEm.",
+  "Lisa (knock, knock, knock), Lisa (knock, knock, knock), Lisa (knock, knock, nock)",
+  "Sing me Soft Kitty",
+  "Neaderthals developed tools, we built the pyramids, (and LisaEm!)",
+};
 
+ int count=sizeof(fubar)/sizeof(fubar[0]);
+ srand(time(NULL));
+ return fubar[(rand() % count)]; 
+}

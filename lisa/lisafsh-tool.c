@@ -246,7 +246,7 @@ uint32 tagpair(DC42ImageType *F,int mysect, int offset)
 int tagcmp(const void *p1, const void *p2)
 {uint32 fileid1, fileid2,  abs1, abs2, next1, next2, prev1, prev2;
 
-	 // turn voids into sort tag types
+     // turn voids into sort tag types
      int i = ( *(int *)p2 );
      int j = ( *(int *)p1 );
 
@@ -345,7 +345,7 @@ void get_allocation_bitmap(DC42ImageType *F)
  uint16 thistagfileid;
  char *sec;
 
- if (!allocated) allocated=malloc(F->numblocks*sizeof(int));
+ if (!allocated) allocated=calloc(F->numblocks,sizeof(int));
 
  // reserve all sectors initially as used. the code below will free them
  for (i=0; i<F->numblocks; i++) allocated[i]=9;
@@ -528,7 +528,7 @@ void sorttags(DC42ImageType *F)
 {
  int i;
 
- if (!sorttag) sorttag=malloc(F->numblocks*sizeof(int));
+ if (!sorttag) sorttag=calloc(F->numblocks,sizeof(int));
 
  for (i=0; i<F->numblocks; i++) sorttag[i]=i;  // initial index of tags is a 1:1 mapping
  qsort((void *)sorttag, (size_t) F->numblocks, sizeof (int), tagcmp); // sort'em
@@ -646,7 +646,7 @@ void extract_files(DC42ImageType *F)
   int err;
 
   // create a directory with the same name as the image in the current directory and enter it ////////
-   snprintf(newfile,FILENAME_MAX,F->fname);
+  snprintf(newfile,FILENAME_MAX,"%s",F->fname);
 
   // whack off any extensions           // Butthead: "Huh huh, huh huh, he said 'Whack!'"
                                         // Beavis:   "Yeah, Yeah! Then he said 'Extensions'"
@@ -662,8 +662,6 @@ void extract_files(DC42ImageType *F)
   sub=strstr(newfile,".IMG");   if (sub) *sub=0;
   sub=strstr(newfile,".dmg");   if (sub) *sub=0;
   sub=strstr(newfile,".DMG");   if (sub) *sub=0;
-
-
 
   // add a .d to the file name, then create and enter the directory
   snprintf(newdir,1023,"%s.d",newfile);
@@ -726,12 +724,12 @@ void extract_files(DC42ImageType *F)
           snprintf(newfilex,1024,"%s.txt",newfile);
           fx=fopen(newfilex,"wt");
           if (!fx)                  {fprintf(stderr,"Couldn't create file %s\n",newfilex);
-                                     perror("\n"); chdir(".."); return;}
+                                     perror("\n"); int i=chdir(".."); i=i; return;}
 
           snprintf(newfileb,1024,"%s.bin",newfile);
           fb=fopen(newfileb,"wb");
           if (!fb)                  {fprintf(stderr,"Couldn't create file %s\n",newfileb);
-                                     perror("\n"); chdir(".."); return;}
+                                     perror("\n"); int i=chdir(".."); i=i; return;}
 
           //printf("File:%s starts at sector %d %s metadata\n",newfile, sect, chop0xf0 ? "has":"has no ");
 
@@ -742,12 +740,12 @@ void extract_files(DC42ImageType *F)
               snprintf(newfilemb,1024,"%s.meta.bin",newfile);
               fh=fopen(newfilemb,"wb");
               if (!fh)                  {fprintf(stderr,"Couldn't create file %s\n",newfilemb);
-                                         perror("\n"); chdir(".."); return;}
+                                         perror("\n"); int i=chdir(".."); i=i; return;}
               //sec=&(sectors[sect*sectorsize]);
               //sec=(char *)dc42_read_sector_data(F,sect);
               fwrite(sec,0xf0,1,fh); fclose(fh); fh=NULL;
               if (errno) {fprintf(stderr,"An error occured on file %s",newfile); perror("");
-                         fclose(fb); fclose(fx); chdir(".."); return;}
+                         fclose(fb); fclose(fx); int i=chdir(".."); i=i; return;}
 
               //write remainder of sector to the binary file
               //sec=&(sectors[sect*sectorsize+0xf0]);
@@ -755,16 +753,15 @@ void extract_files(DC42ImageType *F)
               //fwrite(sec,(F->datasize-0xf0),1,fb);     // bug found by Rebecca Bettencourt
               fwrite(sec+0xf0,(F->datasize-0xf0),1,fb);  // bug found by Rebecca Bettencourt
               if (errno) {fprintf(stderr,"An error occured on file %s",newfileb); perror("");
-                         fclose(fb); fclose(fx); chdir(".."); return;}
-
+                         fclose(fb); fclose(fx); int i=chdir(".."); i=i; return;}
 
               snprintf(newfilemh,1024,"%s.meta.txt",newfile);
               fh=fopen(newfilemh,"wb");
               if (!fh)                  {fprintf(stderr,"Couldn't create file %s\n",newfilemh);
-                                         fclose(fb); fclose(fx); perror("\n"); chdir(".."); return;}
+                                         fclose(fb); fclose(fx); perror("\n"); int i=chdir(".."); i=i; return;}
               printsector(fh,F,sect,0xf0); fclose(fh); fh=NULL;
               if (errno) {fprintf(stderr,"An error occured on file %s",newfileb); perror("");
-                         fclose(fb); fclose(fx); chdir(".."); return;}
+                         fclose(fb); fclose(fx); int i=chdir(".."); i=i; return;}
 
               // dump the data to the hex file, but add a banner warning about metadata.
               fprintf(fx,"\n\n[Metadata from bytes 0x0000-0x00ef]\n");
@@ -784,11 +781,11 @@ void extract_files(DC42ImageType *F)
         printsector(fx,F,sect,F->datasize);
 
         if (errno) {fprintf(stderr,"An error occured on file %s.txt",newfile); perror("");
-                   fclose(fb); fclose(fx); chdir(".."); return;}
+                   fclose(fb); fclose(fx); int i=chdir(".."); i=i; return;}
 
         fwrite(sec,F->datasize,1,fb);
         if (errno) {fprintf(stderr,"An error occured on file %s.bin",newfile); perror("");
-                   fclose(fb); fclose(fx); chdir(".."); return;}
+                   fclose(fb); fclose(fx); int i=chdir(".."); i=i; return;}
 
         oldfileid=fileid;             // set up for next round
 
@@ -798,7 +795,7 @@ void extract_files(DC42ImageType *F)
        if (fx) {fflush(fx); fclose(fx); fx=NULL;}
        if (fb) {fflush(fb); fclose(fb); fb=NULL;}
        if (fx) {fflush(fh); fclose(fh); fh=NULL;}
-       chdir("..");
+       int i=chdir(".."); i=i;
        return;
 }
 
@@ -808,7 +805,7 @@ void extract_files(DC42ImageType *F)
 void getcommand(void)
 {
 char *space, *s;
-int i;
+int i=0;
 long len,l;
 char line[8192];
 char *cur=cargsstorage;
@@ -818,7 +815,8 @@ for ( i=0; i<MAXARGS; i++) cargs[i]=NULL;
 memset(cargsstorage,0,8192);
 
 command=LASTCOMMAND;
-fgets(line,8192,stdin);
+char *ignore=fgets(line,8192,stdin);
+if  (!ignore) return;
 
 strncpy(cmd_line,line,8192);
 cmd_line[strlen(cmd_line)-1]=0;
@@ -827,8 +825,9 @@ len=strlen(line);
 if (feof(stdin)) {puts(""); exit(1);}
 if (len) line[--len]=0; else return; // knock out eol char
 if (!len) {command=-1;return;}       // shortcut for next sector.
-if (line[0]=='!')                 {if (len==1) system("sh");
-                                   else        system(&line[1]);
+if (line[0]=='!')                 {if (len==1) i=system("sh");
+                                   else        i=system(&line[1]);
+                                   i=i;
                                    command=NULL_CMD;}                                       // shell out
 if (line[0]=='?')                 {strncpy(line,"help",6);}                                 // help synonym
 if (line[0]=='+' && len==1)       {command=SECTOR_NXT; return;}                             // next sector
@@ -883,53 +882,53 @@ unsigned char dc42head[8192];
 uint32 datasize=0, tagsize=0, datachks=0, tagchks=0, mydatachks=0L, mytagchks=0L;
 uint16 diskformat=0, formatbyte=0, privflag=0;
 
-	errno=0;
-	fseek(F->fhandle, 0,0);
-	fread(dc42head,84,1,F->fhandle);
-	if (errno) {perror("Got an error."); exit(1);}
+    errno=0;
+    fseek(F->fhandle, 0,0);
+    fread(dc42head,84,1,F->fhandle);
+    if (errno) {perror("Got an error."); exit(1);}
 
-	memcpy(comment,&dc42head[1],64);
-	comment[63]=0;
-	if (dc42head[0]>63) {fprintf(stderr,"Warning pascal str length of label is %d bytes!\n",(int) (dc42head[0]));}
-	else comment[dc42head[0]]=0;
+    memcpy(comment,&dc42head[1],64);
+    comment[63]=0;
+    if (dc42head[0]>63) {fprintf(stderr,"Warning pascal str length of label is %d bytes!\n",(int) (dc42head[0]));}
+    else comment[dc42head[0]]=0;
 
-	F->sectoroffset=84;
-	datasize=(dc42head[64+0]<<24)|(dc42head[64+1]<<16)|(dc42head[64+2]<<8)|dc42head[64+3];
-	tagsize =(dc42head[68+0]<<24)|(dc42head[68+1]<<16)|(dc42head[68+2]<<8)|dc42head[68+3];
+    F->sectoroffset=84;
+    datasize=(dc42head[64+0]<<24)|(dc42head[64+1]<<16)|(dc42head[64+2]<<8)|dc42head[64+3];
+    tagsize =(dc42head[68+0]<<24)|(dc42head[68+1]<<16)|(dc42head[68+2]<<8)|dc42head[68+3];
     datachks=(dc42head[72+0]<<24)|(dc42head[72+1]<<16)|(dc42head[72+2]<<8)|dc42head[72+3];
-	tagchks =(dc42head[76+0]<<24)|(dc42head[76+1]<<16)|(dc42head[76+2]<<8)|dc42head[76+3];
+    tagchks =(dc42head[76+0]<<24)|(dc42head[76+1]<<16)|(dc42head[76+2]<<8)|dc42head[76+3];
 
     tagstart=84+datasize;
 
-	diskformat=dc42head[80];
-	formatbyte=dc42head[81];
+    diskformat=dc42head[80];
+    formatbyte=dc42head[81];
     privflag=(dc42head[82]<<8 | dc42head[83]);
 
-	printf("Header comment :\"%s\"\n",comment);
-	printf("Data Size      :%ld (0x%08x)\n",datasize,datasize);
-	printf("Tag total      :%ld (0x%08x)\n",tagsize,tagsize);
+    printf("Header comment :\"%s\"\n",comment);
+    printf("Data Size      :%ld (0x%08x)\n",datasize,datasize);
+    printf("Tag total      :%ld (0x%08x)\n",tagsize,tagsize);
     printf("Data checksum  :%ld (0x%08x)\n",datachks,datachks);
-	printf("Tag checksum   :%ld (0x%08x)\n",tagchks,tagchks);
-	printf("Disk format    :%d  ",diskformat);
+    printf("Tag checksum   :%ld (0x%08x)\n",tagchks,tagchks);
+    printf("Disk format    :%d  ",diskformat);
 
-	switch(diskformat)
-	{
-		case 0: printf("400K GCR\n"); break;
-		case 1: printf("800K GCR\n"); break;
-		case 2: printf("720K MFM\n"); break;
-		case 3: printf("1440K MFM\n"); break;
-		default: printf("unknown\n");
-	}
-	printf("Format byte    :0x%02x   ",formatbyte);
-	switch(formatbyte)
-	{
-		case 0x12: printf("400K\n"); break;
-		case 0x22: printf(">400k\n"); break;
-		case 0x24: printf("800k Apple II Disk\n"); break;
-		default: printf("unknown\n");
-	}
+    switch(diskformat)
+    {
+        case 0: printf("400K GCR\n"); break;
+        case 1: printf("800K GCR\n"); break;
+        case 2: printf("720K MFM\n"); break;
+        case 3: printf("1440K MFM\n"); break;
+        default: printf("unknown\n");
+    }
+    printf("Format byte    :0x%02x   ",formatbyte);
+    switch(formatbyte)
+    {
+        case 0x12: printf("400K\n"); break;
+        case 0x22: printf(">400k\n"); break;
+        case 0x24: printf("800k Apple II Disk\n"); break;
+        default: printf("unknown\n");
+    }
     printf("Private        :0x%04x (should be 0x100)\n",privflag);
-	printf("Data starts at :0x%04x (%ld)\n",84,84);
+    printf("Data starts at :0x%04x (%ld)\n",84,84);
     printf("Tags start at  :0x%04x (%ld)\n",tagstart,tagstart);
     sectorsize=512;
     F->numblocks=datasize/sectorsize;
@@ -938,17 +937,17 @@ uint16 diskformat=0, formatbyte=0, privflag=0;
 
     F->numblocks=datasize/sectorsize;        // turn this back into 512 bytes.
 
-	if (F->numblocks==800)
-	{
-		F->maxtrk=80; F->maxsec=13;F->maxside=0;
-		F->ftype=1;
-	}
-	if (F->numblocks==1600)
-	{
-		F->maxtrk=80; F->maxsec=13 ;F->maxside=1;
-		F->ftype=2;
-	}
-	printf("No of sectors  :0x%04x (%d)\n",F->numblocks,F->numblocks);
+    if (F->numblocks==800)
+    {
+        F->maxtrk=80; F->maxsec=13;F->maxside=0;
+        F->ftype=1;
+    }
+    if (F->numblocks==1600)
+    {
+        F->maxtrk=80; F->maxsec=13 ;F->maxside=1;
+        F->ftype=2;
+    }
+    printf("No of sectors  :0x%04x (%d)\n",F->numblocks,F->numblocks);
     printf("Sector size    :0x%04x (%d)\n",sectorsize,sectorsize);
     printf("tag size       :0x%04x (%d)\n",tagsize,tagsize);
 
@@ -956,7 +955,7 @@ uint16 diskformat=0, formatbyte=0, privflag=0;
 
     //printf("Allocating %d bytes (%d blocks * %d sectorsize)",4+F->numblocks*sectorsize,F->numblocks,sectorsize);
     (uint8 *)sectors=malloc(4+ F->numblocks * sectorsize) ; if ( !sectors) {printf("- failed!\n"); return 1;}
-	puts("");
+    puts("");
 
     //printf("Allocating %d tag bytes (%d blocks * %d tagsize)",4+F->numblocks*tagsize,F->numblocks,tagsize);
     (uint8 *)tags=        malloc(4+ F->numblocks * tagsize);     if ( !tags ) {printf(" - failed!\n"); return 1;}
@@ -969,14 +968,14 @@ uint16 diskformat=0, formatbyte=0, privflag=0;
     memset(tags,     0,( F->numblocks * tagsize   ) );
     memset(allocated,0,( F->numblocks                ) );
 
-	fflush(stdout);
-	fflush(stdout);
+    fflush(stdout);
+    fflush(stdout);
 
         // do it in one shot
-	fseek(F->fhandle,84,0);
+    fseek(F->fhandle,84,0);
     //fread((char *) sectors,sectorsize*F->numblocks,1,F->fhandle);
     fread((char *) sectors,sectorsize,F->numblocks,F->fhandle);
-	if (errno) {perror("Got an error."); exit(1);}
+    if (errno) {perror("Got an error."); exit(1);}
 
     mydatachks=dc42_get_data_checksum(F);
 
@@ -990,7 +989,7 @@ uint16 diskformat=0, formatbyte=0, privflag=0;
     printf("Header/Calc data chksum   0x%08x / 0x%08x diff:%ld\n",datachks,mydatachks,mydatachks-mydatachks);
     printf("Header/Calc tag chksum    0x%08x / 0x%08x diff:%ld\n",tagchks,mytagchks,  mydatachks-datachks  );
 
-	puts("");
+    puts("");
 
     havetags=dc42_has_tags(F);
     if (!havetags)
@@ -1000,7 +999,7 @@ uint16 diskformat=0, formatbyte=0, privflag=0;
             }
 
 
-	errno=0;
+    errno=0;
     sorttag=(int *) malloc(F->numblocks * sizeof(int) +2);
     if (!sorttag) {perror("Couldn't allocate space for sortted tag index array\n"); exit(2);}
 
@@ -1018,19 +1017,19 @@ half=(size/2) -1;
    if (size>128) {fprintf(stderr,"hexprintf given illegal size %d\n",size); exit(1);};
    memset(ascii,0,130);
    for (i=0; i<size; i++)
-	{
-	 c=x[i];
+    {
+     c=x[i];
 
      if (i==half) fprintf(out,"%02x . ",c);
      else fprintf(out,"%02x ",c);
 
-	 if (ascii_print)
+     if (ascii_print)
           {
-	    if (c>126) c &=127;
-	    if (c<31)     c |= 32;
-	    ascii[i]=c;
-	  }
-	}
+        if (c>126) c &=127;
+        if (c<31)     c |= 32;
+        ascii[i]=c;
+      }
+    }
    if (size<16) while(16-size) {fprintf(out,"   "); size++;}
    if (ascii_print) fprintf(out,"  |  %s\n",ascii);
 }
@@ -1157,7 +1156,7 @@ while (1)
            if (!havetags) {puts("I can't do that, this image doesn't have tags."); break;}
            {
             puts("\n\n      +0 +1 +2 +3 +4 +5   +6 +7 +8 +9 +a +b");
- 		    puts(  "-----------------------------------------------------------------------------");
+             puts(  "-----------------------------------------------------------------------------");
             for (sector=0; sector<F->numblocks; sector++) printtag(stdout,F,sector);
            }
            break;
@@ -1167,12 +1166,12 @@ while (1)
            puts("\n\n      +0 +1 +2 +3 +4 +5   +6 +7 +8 +9 +a +b");
            puts(    "-----------------------------------------------------------------------------");
            for (sector=0; sector<F->numblocks; sector++) printtag(stdout,F,sorttag[sector]);
-		   break;
+           break;
        case SORTDUMP_CMD:
            if (!havetags) {puts("I can't do that, this image doesn't have tags."); break;}
            if (!tagsaresorted) {sorttags(F);    tagsaresorted=1;}
            for (sector=0; sector<F->numblocks; sector++) printsector(stdout,F,sorttag[sector],F->datasize);
-		   break;
+           break;
        case EXTRACT_CMD:
            // extract all Lisa files in disk based on the tags.
            if (!havetags) {puts("I can't do that, this image doesn't have tags."); break;}
@@ -1284,10 +1283,12 @@ while (1)
              binfile=fopen(cargs[1],"rb");
 
              if (cargs[1]==NULL) {printf("Missing parameters\n"); break;}
-             if (!binfile) {printf("Could not open file: %s to load sector at offset:%d (%x)\n",cargs[1],iargs[0]); break;}
+             if (!binfile) {printf("Could not open file: %s to load sector at offset:%ld (%lx)\n",
+                                    cargs[1],(long int)iargs[0],(long int)iargs[0]); break;}
 
              fseek(binfile,offset,SEEK_SET);
-             fread(mysector,F->datasize,1,binfile);
+             int count=fread(mysector,F->datasize,1,binfile);
+             if (count!=1) {printf("Failed to read sector from file\n"); fclose(binfile);break;}
              fclose(binfile);
              i=dc42_write_sector_data(F, sector, mysector);
              printsector(stdout,F,sector,F->datasize);
@@ -1308,14 +1309,15 @@ while (1)
              if (errno) perror("Could not open file.\n");
 
              if (cargs[1]==NULL) {printf("Missing parameters\n"); break;}
-             if (!binfile) {printf("Could not open file: %s to load at offset:%d (%x)\n",cargs[1],iargs[0]); break;}
+             if (!binfile) {printf("Could not open file: %s to load at offset:%ld (%lx)\n",
+                            cargs[1],(long int)iargs[0],(long int)iargs[0]); break;}
 
              fseek(binfile,offset,SEEK_SET);
 
              while( fread(mysector,F->datasize,1,binfile) && sector<F->numblocks && !feof(binfile) && !ferror(binfile))
                   {
                     i=dc42_write_sector_data(F, sector, mysector);                  // write the data tothe sector
-                    printf("Loaded %d bytes into sector:%d from file offset:%ld\n",F->datasize,sector,offset);
+                    printf("Loaded %d bytes into sector:%d from file offset:%ld\n",(int)F->datasize,(int)sector,(long)offset);
                     sector++;                                                       // prepare next sector to load
                     offset=ftell(binfile);                                          // grab next offset addr so we can print it
                   }
@@ -1341,8 +1343,8 @@ while (1)
               while (!feof(file))
               {
 
-                fgets((char *)line,1024,file);
-
+                char *igner=fgets((char *)line,1024,file);
+                igner=igner;
                 if ( strncmp((char *)line,"TAGS: ",5)==0)
                 {int i=6,j=0;
 
@@ -1365,7 +1367,7 @@ while (1)
 
                  //printf("New sector:%08x previous sector:%08x\n",sector_number,last_sector);
 
-                 if (last_sector+1!=sector_number) printf("DANGER! unexpected sector #%d wanted %d\n",sector_number,last_sector);
+                 if (last_sector+1!=sector_number) printf("DANGER! unexpected sector #%ld wanted %ld\n",(long)sector_number,(long)last_sector);
 
                  offset=-4; last_sector=sector_number;
                 }
@@ -1422,7 +1424,8 @@ while (1)
                             }
                     }
 
-                 if (offset+4!=newoffset) printf("Sector#:%d Unexpected offset:%08x (wanted:%08x) data might be corrupted\n",newoffset,offset+4,sector_number);
+                 if (offset+4!=newoffset) printf("Sector#:%ld Unexpected offset:%08lx (wanted:%08lx) data might be corrupted\n",
+                                                           (long)newoffset,(long)(offset+4),(long)sector_number);
                  offset=newoffset;
                 }
 
@@ -1642,7 +1645,7 @@ int i=0,argoffset=0;
 
     version_banner();
     if (argc<2)
-	{
+    {
       puts("Usage: lisafsh file.dc42 to open an existing DiskCopy 4.2 image");
       puts(" or    lisafsh --new file.dc42 size to create a new image and open it.");
       puts("");
@@ -1653,8 +1656,8 @@ int i=0,argoffset=0;
       puts("");
       puts("i.e.   lisafsh --new file.dc42 400k - create a single sided new image");
       puts("i.e.   lisafsh --new profile5.dc42 5m - create a 5mb image");
-	  exit(0);
-	}
+      exit(0);
+    }
 
     //F.fhandle=fopen(argv[1],"rb");
     //F.filename=argv[1];
@@ -1756,7 +1759,7 @@ int i=0,argoffset=0;
     if (i) {fprintf(stderr,"Had trouble reading the disk image, code:%d",i);}
 
     //printf("Pointer to RAM:%p",F.RAM);
-	cli(&F);
+    cli(&F);
     dc42_close_image(&F);
 return 0;
 }

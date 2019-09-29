@@ -199,7 +199,7 @@ int fliflo_buff_create(FLIFLO_QUEUE_t *b, uint32 size)
   if ( !b)  return -2;
   if ( size<2 )  return -3;
   size++;
-  b->buffer=malloc(size);
+  b->buffer=calloc(1,size);
   if ( !b->buffer) return -1;
   //memset(b->buffer,0,size-1);
   b->start=0;

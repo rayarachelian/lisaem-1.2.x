@@ -199,81 +199,81 @@ enum
 BEGIN_EVENT_TABLE(LisaVirtualKBFrame, wxFrame)
 
     EVT_BUTTON(LISA_KEY_Ox20,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox21,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox22,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox23,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox24,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox25,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox26,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox27,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox28,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox29,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox2a,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox2b,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox2c,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox2d,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox2e,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox2f,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox40,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox41,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox42,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox43,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox44,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox45,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox46,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox48,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox49,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox4c,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox4d,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox4e,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox50,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox51,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox52,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox53,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox54,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox55,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox56,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox57,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox58,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox59,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox5a,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox5b,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox5c,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox5d,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox5e,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox5f,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox60,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox61,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox62,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox63,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox64,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox65,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox66,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox67,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox68,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox69,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox6a,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox6b,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox6c,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox6d,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox6e,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox6f,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox70,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox71,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox72,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox73,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox74,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox75,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox76,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox77,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox78,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox79,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox7a,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox7b,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox7c,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox7d,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox7e,       LisaVirtualKBFrame::OnKey)
-	EVT_BUTTON(LISA_KEY_Ox7f,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox21,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox22,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox23,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox24,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox25,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox26,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox27,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox28,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox29,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox2a,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox2b,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox2c,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox2d,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox2e,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox2f,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox40,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox41,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox42,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox43,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox44,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox45,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox46,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox48,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox49,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox4c,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox4d,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox4e,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox50,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox51,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox52,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox53,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox54,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox55,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox56,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox57,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox58,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox59,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox5a,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox5b,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox5c,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox5d,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox5e,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox5f,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox60,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox61,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox62,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox63,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox64,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox65,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox66,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox67,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox68,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox69,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox6a,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox6b,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox6c,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox6d,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox6e,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox6f,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox70,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox71,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox72,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox73,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox74,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox75,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox76,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox77,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox78,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox79,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox7a,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox7b,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox7c,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox7d,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox7e,       LisaVirtualKBFrame::OnKey)
+    EVT_BUTTON(LISA_KEY_Ox7f,       LisaVirtualKBFrame::OnKey)
 
 END_EVENT_TABLE()
 
@@ -507,25 +507,25 @@ wxString LisaVirtualKBFrame::GetWXKeyName(long int keycode)
 {
     switch ( keycode )
     {                              
-		case WXK_LEFT:             return "LEFT";             
-		case WXK_NUMPAD_LEFT:      return "NUMPAD_LEFT";    
-								   				   
+        case WXK_LEFT:             return "LEFT";             
+        case WXK_NUMPAD_LEFT:      return "NUMPAD_LEFT";    
+                                                      
                                                      
         case WXK_UP :              return "UP";      
-		case WXK_NUMPAD_UP:        return "NUMPAD_UP"        
+        case WXK_NUMPAD_UP:        return "NUMPAD_UP"        
                                                      
         case WXK_RIGHT :           return "RIGHT";             
-		case WXK_NUMPAD_RIGHT:     return "NUMPAD_RIGHT";     
+        case WXK_NUMPAD_RIGHT:     return "NUMPAD_RIGHT";     
                                                      
         case WXK_DOWN:             return "DOWN";             
-		case WXK_NUMPAD_DOWN :     return "NUMPAD_DOWN";     
+        case WXK_NUMPAD_DOWN :     return "NUMPAD_DOWN";     
                                                      
                                                      
-		case WXK_NUMPAD_INSERT:    return "NUMPAD_INSERT";    
-		case WXK_NUMPAD_DELETE:    return "NUMPAD_DELETE";
+        case WXK_NUMPAD_INSERT:    return "NUMPAD_INSERT";    
+        case WXK_NUMPAD_DELETE:    return "NUMPAD_DELETE";
                                                      
       //case WXK_NUMPAD_EQUAL:     return "NUMPAD_EQUAL";     
-		case WXK_NUMPAD_MULTIPLY:  return "NUMPAD_MULTIPLY";
+        case WXK_NUMPAD_MULTIPLY:  return "NUMPAD_MULTIPLY";
         case WXK_NUMPAD_ADD:       return "NUMPAD_ADD"; 
         case WXK_NUMPAD_SEPARATOR: return "NUMPAD_SEPARATOR"; 
         case WXK_NUMPAD_SUBTRACT:  return "NUMPAD_SUBTRACT";
@@ -614,7 +614,7 @@ wxString LisaVirtualKBFrame::GetWXKeyName(long int keycode)
         case '6':                   
         case '7':                   
         case '8':                   
-		case '9':                  
+        case '9':                  
         case '~':
         case '`':            
         case '_':
@@ -636,14 +636,14 @@ wxString LisaVirtualKBFrame::GetWXKeyName(long int keycode)
         case '>':
         case '.':            
         case '?':
-		case '/':             wxString k; wxChar c=(wxChar) keycode;
-		                             k+=c; return k;
+        case '/':             wxString k; wxChar c=(wxChar) keycode;
+                                     k+=c; return k;
 
         case WXK_SHIFT:              return "SHIFT";
-		case WXK_ALT:                return "ALT";
-		case WXK_CONTROL:            return "CONTROL";
-	}
-	return 0;
+        case WXK_ALT:                return "ALT";
+        case WXK_CONTROL:            return "CONTROL";
+    }
+    return 0;
 }
 
 NOTES: So WXK_* goes above 300.  So a small array, say 1024 can act as a lookup table for the keystrokes.

@@ -17,7 +17,7 @@ WITHUNICODE="--unicode=no"
 
 
 ########################################################################
- VERSION="1.2.6.2-RELEASE_2015.09.04"
+ VERSION="1.2.7-ALPHA_2019.09.29"
 #VERSION="1.2.6.1-RELEASE_2012.12.12"
 #VERSION="1.2.6-RELEASE_2007.12.12"
 #VERSION="1.2.5-RELEASE_2007.11.25"
@@ -29,36 +29,38 @@ WITHUNICODE="--unicode=no"
 
 for i in bin resources lisa wxui generator cpu68k
 do
- if [ ! -d ./$i ]
- then
-   echo "Please run this script from the top level directory. i.e."
-   echo
-   echo "tar xjpvf lisaem-$VERSION.tar.bz2"
-   echo "cd lisaem-$VERSION"
-   echo "./build.sh $@"
-   exit 1
- fi
+  if [[ ! -d ./$i ]]
+  then
+    echo "Please run this script from the top level directory. i.e."
+    echo
+    echo "tar xjpvf lisaem-$VERSION.tar.bz2"
+    echo "cd lisaem-$VERSION"
+    echo "./build.sh $@"
+    exit 1
+  fi
 done
 
 # sometimes $CYGWIN is not defined, shit happens, ramma ramma ding dong, deal with it.
-[ -n "`uname | grep CYGWIN`" ] && [ -z "$CYGWIN" ] && CYGWIN="`uname | grep CYGWIN`";
+[[ -n "`uname | grep CYGWIN`" ]] && [[ -z "$CYGWIN" ]] && CYGWIN="`uname | grep CYGWIN`";
 
 
-if [ -z "$CYGWIN" ];
+if [[ -z "$CYGWIN" ]];
 then
- [ "`uname`" == "CYGWIN_NT-5.0" ] && CYGWIN="`uname`"
+ [[ "`uname`" == "CYGWIN_NT-5.0" ]] && CYGWIN="`uname`"
 fi
 
 
-if [ -n "$CYGWIN" ]
+if [[ -n "$CYGWIN" ]]
 then
 
 STATIC=--static
-WITHBLITS="-DUSE_RAW_BITMAP_ACCESS"
+# renable rawbitmap if we fix stretchblits there, for now default is to keep it off.
+#WITHBLITS="-DUSE_RAW_BITMAP_ACCESS"
+WITHBLITS="-DNO_RAW_BITMAP_ACCESS"
 
- if [ -z "$WXDEV" ]
+ if [[ -z "$WXDEV" ]]
  then
-     if [ -f /proc/registry/HKEY_LOCAL_MACHINE/SOFTWARE/wx-devcpp/Install_Dir ]
+     if [[ -f /proc/registry/HKEY_LOCAL_MACHINE/SOFTWARE/wx-devcpp/Install_Dir ]]
      then
         WXWINPATH="`cat /proc/registry/HKEY_LOCAL_MACHINE/SOFTWARE/wx-devcpp/Install_Dir`"
         WXDEV=`cygpath "$WXWINPATH"`
@@ -70,26 +72,26 @@ WITHBLITS="-DUSE_RAW_BITMAP_ACCESS"
  #c is the most common path of course.
  export EXT=".exe"
 
- if [ -z "$WXDEV" ]
+ if [[ -z "$WXDEV" ]]
  then
-   [ -d "/cygdrive/z/wxDev-Cpp" ] && export WXDEV="/cygdrive/z/wxDev-Cpp"
-   [ -d "/cygdrive/c/wxDev-Cpp" ] && export WXDEV="/cygdrive/c/wxDev-Cpp"
+   [[ -d "/cygdrive/z/wxDev-Cpp" ]] && export WXDEV="/cygdrive/z/wxDev-Cpp"
+   [[ -d "/cygdrive/c/wxDev-Cpp" ]] && export WXDEV="/cygdrive/c/wxDev-Cpp"
  fi
 
  # if we still haven't found what we're looking for, look everywhere else
- if [ -z "$WXDEV" ]
+ if [[ -z "$WXDEV" ]]
  then
   for i in c d e f g h i j k l m n o p q r s t u v w x y z;
   do
-   if [ -z "$WXDEV" ]; then
-      [ -d "/cygdrive/${i}/wxDev-Cpp"               ] && export WXDEV="/cygdrive/${i}/wxDev-Cpp"
-      [ -d "/cygdrive/${i}/Program Files/wxDev-Cpp" ] && export WXDEV="/cygdrive/${i}/Program Files/wxDev-Cpp"
-      [ -d "/cygdrive/${i}/Program Files/Dev-Cpp"   ] && export WXDEV="/cygdrive/${i}/Program Files/Dev-Cpp"
+   if [[ -z "$WXDEV" ]]; then
+      [[ -d "/cygdrive/${i}/wxDev-Cpp"               ]] && export WXDEV="/cygdrive/${i}/wxDev-Cpp"
+      [[ -d "/cygdrive/${i}/Program Files/wxDev-Cpp" ]] && export WXDEV="/cygdrive/${i}/Program Files/wxDev-Cpp"
+      [[ -d "/cygdrive/${i}/Program Files/Dev-Cpp"   ]] && export WXDEV="/cygdrive/${i}/Program Files/Dev-Cpp"
    fi
   done
  fi
 
- if [ -z "$WXDEV" ]
+ if [[ -z "$WXDEV" ]]
  then
   echo "Could not find the wxDev C++ 6.10 Environment.  Please download and install it"
   echo "from http://wxdsgn.sourceforge.net/  and install it to C:\\wxDev-Cpp"
@@ -97,33 +99,34 @@ WITHBLITS="-DUSE_RAW_BITMAP_ACCESS"
   exit 1
  fi
 
- ARCHITECTURE=i586
+ ARCHITECTURE=x86-64
+ #ARCHITECTURE=i586
  #ARCHITECTURE=pentium
  #ARCHITECTURE=pentium4
  #ARCHITECTURE=opteron
 
  FAILED=0
- [ -z "`/bin/grep -i 'IniVersion=6.10' ${WXDEV}/devcpp.pallete`" ]
- [ -f "${WXDEV}/devcpp.exe" ] || FAILED=1
+ [[ -z "`/bin/grep -i 'IniVersion=6.10' ${WXDEV}/devcpp.pallete`" ]]
+ [[ -f "${WXDEV}/devcpp.exe" ]] || FAILED=1
 
-  if [ $FAILED -eq 0 ]
+  if [[ $FAILED -eq 0 ]]
   then
 
    export MINGW="${WXDEV}/lib/gcc/mingw32/3.4.2"
    export MINGCPP="${WXDEV}/include/c++/3.4.2"
    export PATH=${WXDEV}/bin:${MINGW}/libexec:${MINGW}/bin/:${PATH}
    export CXXINC="-I ${MINGW}/include  -I ${MINGCPP}/backward  -I ${MINGCPP}/mingw32  -I ${MINGCPP}  -I ${WXDEV}/include  -I ${WXDEV}/  -I ${WXDEV}/include/common/wx/msw  -I ${WXDEV}/include/common/wx/generic  -I ${WXDEV}/include/common/wx/fl  -I ${WXDEV}/include/common/wx/gizmos  -I ${WXDEV}/include/common/wx/html  -I ${WXDEV}/include/common/wx/mmedia  -I ${WXDEV}/include/common/wx/net  -I ${WXDEV}/include/common/wx/ogl  -I ${WXDEV}/include/common/wx/plot  -I ${WXDEV}/include/common/wx/protocol  -I ${WXDEV}/include/common/wx/stc  -I ${WXDEV}/include/common/wx/svg  -I ${WXDEV}/include/common/wx/xml  -I ${WXDEV}/include/common/wx/xrc  -I ${WXDEV}/include/common/wx  -I ${WXDEV}/include/common"
-   export CXXDEFS="  -D__WXMSW__ -D__GNUWIN32__ -D__WIN95__ -fno-rtti -fno-exceptions -fno-pcc-struct-return -fstrict-aliasing $WARNINGS -D__WXMSW__ -D__GNUWIN32__ -D__WIN95__   -fexpensive-optimizations -O3"
+   export CXXDEFS="  -D__WXMSW__ -D__GNUWIN32__ -D__WIN95__ -fno-rtti -fno-exceptions -fno-pcc-struct-return -fstrict-aliasing $WARNINGS -D__WXMSW__ -D__GNUWIN32__ -D__WIN95__   -fexpensive-optimizations -O2"
    export LIBS="-L `cygpath -wp ${WXDEV}/Lib` -L `cygpath -wp ${WXDEV}/Lib/gcc/mingw32/3.4.2/`  -mwindows -lwxmsw28 -lwxmsw28_gl -lwxtiff -lwxjpeg -lwxpng -lwxzlib -lwxregex -lwxexpat -lkernel32 -luser32 -lgdi32 -lcomdlg32 -lwinspool -lwinmm -lshell32 -lcomctl32 -lole32 -loleaut32 -luuid  -ladvapi32 -lwsock32 -lopengl32"
    export INCS="-I. -I..\\wxui -I ..\\cpu68k -I ..\include -I `cygpath -wp $WXDEV/Include` -I `cygpath -wp $WXDEV/include/common`"
-   export OPTS="-D__WXMSW__ -O3 -ffast-math -fomit-frame-pointer -march=$ARCHITECTURE -malign-double -falign-loops=5 -falign-jumps=5 -falign-functions=5 -I ..\cpu68k -I ..\\include -I . -I.. -I `cygpath -wp $WXDEV/include` -I `cygpath -wp $MING/include` -I `cygpath -wp $WXDEV/Include` -I `cygpath -wp $WXDEV/include/common`"
+   export OPTS="-D__WXMSW__ -O2 -ffast-math -fomit-frame-pointer -march=$ARCHITECTURE -malign-double -falign-loops=5 -falign-jumps=5 -falign-functions=5 -I ..\cpu68k -I ..\\include -I . -I.. -I `cygpath -wp $WXDEV/include` -I `cygpath -wp $MING/include` -I `cygpath -wp $WXDEV/Include` -I `cygpath -wp $WXDEV/include/common`"
 
    export RCINCS="--include-dir=`cygpath -wp ${WXDEV}/include/common` "
    export DEFINES="-D__WXMSW__ -D__GNUWIN32__ -D__WIN95__ -D __WIN32__"
    export CXXINCS="-I. -I ..\include -I ..\cpu68k -I ..\\wxui -I `cygpath -wp ${MINGW}/include`  -I `cygpath -wp ${MINGCPP}/backward`  -I `cygpath -wp ${MINGCPP}/mingw32`  -I `cygpath -wp ${MINGCPP}`  -I `cygpath -wp ${WXDEV}/include`  -I `cygpath -wp ${WXDEV}/`  -I `cygpath -wp ${WXDEV}/include/common/wx/msw`  -I `cygpath -wp ${WXDEV}/include/common/wx/generic`  -I `cygpath -wp ${WXDEV}/include/common/wx/fl`  -I `cygpath -wp ${WXDEV}/include/common/wx/gizmos`  -I `cygpath -wp ${WXDEV}/include/common/wx/html`  -I `cygpath -wp ${WXDEV}/include/common/wx/mmedia`  -I `cygpath -wp ${WXDEV}/include/common/wx/net`  -I `cygpath -wp ${WXDEV}/include/common/wx/ogl`  -I `cygpath -wp ${WXDEV}/include/common/wx/plot`  -I `cygpath -wp ${WXDEV}/include/common/wx/protocol`  -I `cygpath -wp ${WXDEV}/include/common/wx/stc`  -I `cygpath -wp ${WXDEV}/include/common/wx/svg`  -I `cygpath -wp ${WXDEV}/include/common/wx/xml`  -I `cygpath -wp ${WXDEV}/include/common/wx/xrc`  -I `cygpath -wp ${WXDEV}/include/common/wx`  -I `cygpath -wp ${WXDEV}/include/common`"
    export CXXFLAGS="${CXXINCS} ${DEFINES}"
    export CXXFLAGS="-Wno-write-strings ${CXXINCS} ${DEFINES}"  #2015.08.30 allow GCC 4.6.3 to ignore constant violation
-   export CFLAGS="${INCS} ${DEFINES} -fno-exceptions -fno-pcc-struct-return -fstrict-aliasing $WARNINGS -Wno-format -Wno-unused -D__WXMSW__ -D__GNUWIN32__ -D__WIN95__   -fexpensive-optimizations -O3"
+   export CFLAGS="${INCS} ${DEFINES} -fno-exceptions -fno-pcc-struct-return -fstrict-aliasing $WARNINGS -Wno-return-type -Wno-format -Wno-unused -D__WXMSW__ -D__GNUWIN32__ -D__WIN95__   -fexpensive-optimizations -O2"
    export GPROF=gprof.exe
    export RM="rm -f"
    export LINK=g++.exe
@@ -133,12 +136,12 @@ WITHBLITS="-DUSE_RAW_BITMAP_ACCESS"
    #export CFLAGS=$OPTS
    LINKOPTS="-static $LIBS"
 
-   if [ -z "`gcc.exe --version | grep -i ming`" ]
+   if [[ -z "`gcc.exe --version | grep -i ming`" ]]
    then
      echo The gcc.exe compiler does not seem to be the mingw version.
      exit 1
    fi
-   if [ -z "`g++.exe --version | grep -i ming`" ]
+   if [[ -z "`g++.exe --version | grep -i ming`" ]]
    then
      echo The g++.exe compiler does not seem to be the mingw version.
      exit 1
@@ -158,11 +161,12 @@ else
 
 WXVER=0
 case "`wx-config --version`" in
-  3*)
-        echo WARNING: wxWidgets versions higher than 2.8 have not been tested.
+  4*)
+        echo WARNING: wxWidgets versions higher than 3.x have not been tested.
         echo It might work if they are compiled with backwards compatibility.
-        ;;
+             ;;
   2.9*|2.8*) ;;
+  3.*)       ;;
   *)    echo Could not find wxWidgets 2.8.0 or higher.
         echo Please install it and ensure that wx-config is in the path
         exit 1
@@ -172,13 +176,13 @@ esac
 
 fi
 #$CYGWIN is pre-set.  Cache $DARWIN so we don't have to call uname over and over.
-[ "`uname`" == "Darwin" ] && DARWIN="Darwin"
+[[ "`uname`" == "Darwin" ]] && DARWIN="Darwin"
 
 
 # not needed on OS X
-if [ -z "$DARWIN" ]
+if [[ -z "$DARWIN" ]]
 then
-  if [ -z "`which pngtopnm`" ]
+  if [[ -z "`which pngtopnm`" ]]
   then
     echo Could not find pngtopnm which is part of the netpbm package.
     echo this program is required.  Please install the netpbm package,
@@ -187,29 +191,31 @@ then
   fi
 else
   # On OS X, we want to use rawbits
-  WITHBLITS="-DUSE_RAW_BITMAP_ACCESS"
+  #enable after fixing stretchblits
+#  WITHBLITS="-DUSE_RAW_BITMAP_ACCESS"
+WITHBLITS="-DNO_RAW_BITMAP_ACCESS"
 fi
 
 # change default to unicode if we find a unicode enabled build - user can update this explicitly.
 # purpose of this is to avoid errors on systems that have only unicode.
-if [ -z "$CYGWIN" ]
+if [[ -z "$CYGWIN" ]]
 then
   WXREL="`wx-config --release`"
-  if [ -n "`wx-config --list | grep $WXREL | grep unicode`" ]
+  if [[ -n "`wx-config --list | grep $WXREL | grep unicode`" ]]
   then
     WITHUNICODE="--unicode=yes"
   fi
 fi
 
 
-if [ -z "$PREFIX" ]
+if [[ -z "$PREFIX" ]]
 then
-  if [ -n "$DARWIN" ];
+  if [[ -n "$DARWIN" ]];
   then
     PREFIX="/Applications"
     PREFIXLIB="/Library"
   else
-      if [ -n "$CYGWIN" ]
+      if [[ -n "$CYGWIN" ]]
       then
          PREFIX="/cygdrive/c/Program Files/Sunder.NET/LisaEm"
          PREFIXLIB="/cygdrive/c/Program Files/Sunder.NET/LisaEm"
@@ -236,9 +242,9 @@ fi
 
 function NEEDED()
 {
- if [ -f $2 ]
+ if [[ -f $2 ]]
  then
-   [ "`ls -tr $2 $1 2>/dev/null| tail -1`" == "$1" ] && return 0
+   [[ "`ls -tr $2 $1 2>/dev/null| tail -1`" == "$1" ]] && return 0
    return 1
  fi
  return 0
@@ -259,10 +265,10 @@ echo '----------------------------------------------------------------'
 ERROR=""
 for i in lisa wxui include generator cpu68k
 do
- [ -d "$i" ] || ERROR="$ERROR $i"
+ [[ -d "$i" ]] || ERROR="$ERROR $i"
 done
 
-if [ -n "$ERROR" ]
+if [[ -n "$ERROR" ]]
 then
  echo I could not find one or more of my directories:
  echo $ERROR
@@ -274,10 +280,10 @@ fi
 
 
 # Parse command line options if any, overriding defaults.
+RUN=${RUN:-"run "}
 
 for i in $@
 do
-
  case "$i" in
   clean)
             echo Removing binaries
@@ -289,29 +295,35 @@ do
             cd ../cpu68k    && /bin/rm -f *.a *.o *.exe def68k gen68k cpu68k-?.c
             cd ../include   && /bin/rm -f built_by.h
             cd ..
+	    if [[ -d lz4/lib ]]; then
+               cd lz4/lib; make clean
+               cd ../..
+	       rm -f lisa/liblz4.so lisa/liblz4.a
+            fi
+
             echo clean done.
             #if we said clean install or clean build, then do not quit
             Z="`echo $@ | grep -i install``echo $@ | grep -i build`"
-            [ -z "$Z" ] && exit 0
+            [[ -z "$Z" ]] && exit 0
 
   ;;
  build*)    echo ;;    #default - nothing to do here, this is the default.
- install)   
-            [ -z "$CYGWIN" ] && [ "`whoami`" != "root" ] && echo "Need to be root to install. try sudo ./build.sh $@" && exit 1
+ install)
+            [[ -z "$CYGWIN" ]] && [[ "`whoami`" != "root" ]] && echo "Need to be root to install. try sudo ./build.sh $@" && exit 1
             INSTALL=1;
             ;;
 
  uninstall)
-           if [ -n "$DARWIN" ];
+           if [[ -n "$DARWIN" ]];
            then
              echo Uninstall commands not yet implemented.
              exit 1
            fi
 
-           if [ -n "$CYGWIN" ];
+           if [[ -n "$CYGWIN" ]];
            then
-              [ -n "$PREFIX" ]    && echo Deleting $PREFIX    && rm -rf $PREFIX
-              [ -n "$PREFIXLIB" ] && echo Deleting $PREFIXLIB && rm -rf $PREFIXLIB
+              [[ -n "$PREFIX" ]]    && echo Deleting $PREFIX    && rm -rf $PREFIX
+              [[ -n "$PREFIXLIB" ]] && echo Deleting $PREFIXLIB && rm -rf $PREFIXLIB
               exit 0
            fi
 
@@ -330,14 +342,20 @@ do
     ;;
 
  --without-debug)          WITHDEBUG=""                         ;;
- --with-debug)             WITHDEBUG="$WITHDEBUG -g"            
-                           WARNINGS="-Wall"                    ;;
+
+ --with-debug*)            WITHDEBUG="$WITHDEBUG -g"
+                           RUN="$( echo $RUN ${i:13} | sed -e 's/_/ /g')"
+                           WARNINGS="-Wall"                     ;;
+
  --with-profile)           WITHDEBUG="$WITHDEBUG -p"            ;;
  --with-static)            STATIC="-static"                     ;;
  --without-static)         STATIC=""                            ;;
  --without-optimize)       WITHOPTIMIZE=""                      ;;
- --with-tracelog)          WITHTRACE="-DDEBUG -DTRACE"        
-                           WARNINGS="-Wall"                    ;;
+
+ --with-tracelog)          WITHTRACE="-DDEBUG -DTRACE"
+                           WARNINGS="-Wall"                 
+			                     WITHDEBUG="$WITHDEBUG -g"            ;;
+
  --with-unicode)           WITHUNICODE="--unicode=yes"          ;;
  --without-unicode)        WITHUNICODE="--unicode=no"           ;;
  --without-upx)            WITHOUTUPX="noupx"                   ;;
@@ -356,7 +374,7 @@ done
 
 
 
-if [ -n "$UNKNOWNOPT" ]
+if [[ -n "$UNKNOWNOPT" ]]
 then
  echo
  echo "Unknown options $UNKNOWNOPT"
@@ -371,7 +389,9 @@ Commands:
 
 Options:
 --without-debug        Disables debug and profiling
---with-debug           Enables symbol compilation
+--with-debug="opts"    Enables symbol compilation, runs gdb and app with opts
+                       use _ to separate ops as this script is a bit dumb.
+                       i.e. --with-debug="-f_-p"
 --with-tracelog        Enable tracelog (needs debug on, not on win32)
 
 --with-static          Enables a static compile
@@ -379,7 +399,7 @@ Options:
 --without-optimize     Disables optimizations
 --without-upx          Disables UPX compression (no upx on OS X)
 
---with-rawbitmap       Raw bitmap access - high video performance 
+--with-rawbitmap       Raw bitmap access - high video performance
                        (OS X only, doesn't work properly elsewhere)
 --without-rawbitmap    Disables Raw bitmap access, uses wxImage::SetRGB instead
 					   (default for non-OS X)
@@ -408,12 +428,13 @@ echo >>./include/built_by.h
 
 # allow versions of LisaEm compiled under Linux, *BSD, etc. to run as compiled
 # without being installed.  (Some versions of wxWidgets look for the lowercase name, others, upper)
+# this is somewhat related to macosx with its case insensitive file system where LisaEm and lisaem are the same.
 cd share
 ln -sf ../resources lisaem
 ln -sf ../resources LisaEm
 cd ..
 
-[ -n "${WITHDEBUG}${WITHTRACE}" ] && if [ -n "$INSTALL" ];
+[[ -n "${WITHDEBUG}${WITHTRACE}" ]] && if [[ -n "$INSTALL" ]];
 then
    echo "Warning, will not install since debug/profile/trace options are enabled"
    echo "as Install command is only for production builds."
@@ -429,8 +450,8 @@ cat <<END1 >unvars.c
 /**************************************************************************************\\
 *                             Apple Lisa 2 Emulator                                    *
 *                                                                                      *
-*              The Lisa Emulator Project  V1.0.0      REL 2007.07.07                   *
-*                  Copyright (C) 2007 Ray A. Arachelian                                *
+*              The Lisa Emulator Project  $VERSION                  *
+*                  Copyright (C) 2018 Ray A. Arachelian                                *
 *                            All Rights Reserved                                       *
 *                                                                                      *
 *                        Reset Global Variables .c file                                *
@@ -462,47 +483,47 @@ fi
 
 #if we're not on Cygwin, then setup the defaults, unless
 #they were defined already from the parent shell.
-if [ -z "$CYGWIN" ]
+if [[ -z "$CYGWIN" ]]
 then
  # many thanks to David Cecchin for finding the unicode issues fixed below.
 
  WXCONFIGFLAGS=`wx-config  --cppflags $WITHUNICODE `
- if [ -z "$WXCONFIGFLAGS" ]
+ if [[ -z "$WXCONFIGFLAGS" ]]
  then
     echo wx-config has failed, or returned an error.  Ensure that it exists in your path.
     which wx-config
     exit 3
  fi
-#2015.08.31 
+#2015.08.31
  #CFLAGS="-Wwrite-strings -I. -I../include -I../cpu68k -I../wxui $WXCONFIGFLAGS $WITHOPTIMIZE $WITHDEBUG"
  CFLAGS="-Wno-write-strings -I. -I../include -I../cpu68k -I../wxui $WXCONFIGFLAGS $WITHOPTIMIZE $WITHDEBUG"
  CXXFLAGS="-Wno-write-strings -I. -I../include -I../cpu68k -I../wxui $WXCONFIGFLAGS $WITHOPTIMIZE $WITHDEBUG"
  LINKOPTS="`wx-config $STATIC  $WITHUNICODE  --libs --linkdeps --cppflags`"
- if [ -z "$LINKOPTS" ]
+ if [[ -z "$LINKOPTS" ]]
  then
     echo wx-config has failed, or returned an error.  Ensure that it exists in your path.
     which wx-config
     exit 3
  fi
 
- [ -z "$CC" ] && CC=gcc
- [ -z "$CXX" ] && CXX=g++
- [ -z "$GPROF" ] && GPROF=gprof
+ [[ -z "$CC" ]] && CC=gcc
+ [[ -z "$CXX" ]] && CXX=g++
+ [[ -z "$GPROF" ]] && GPROF=gprof
 fi
 
 ###########################################################################
 
 # Has the configuration changed since last time? if so we may need to do a clean build.
-[ -f .last-opts ] && source .last-opts
+[[ -f .last-opts ]] && source .last-opts
 
 needclean=0
 #debug and tracelog changes affect the whole project, so need to clean it all
-if [ "$WITHTRACE" != "$LASTTRACE" ]; then needclean=1; fi;
-if [ "$WITHDEBUG" != "$LASTDEBUG" ]; then needclean=1; fi;
+if [[ "$WITHTRACE" != "$LASTTRACE" ]]; then needclean=1; fi;
+if [[ "$WITHDEBUG" != "$LASTDEBUG" ]]; then needclean=1; fi;
 # display mode changes affect only the main executable.
-if [ "$WITHBLITS" != "$LASTBLITS" ]; then rm -rf ./lisa/lisaem_wx.o ./lisa/lisaem ./lisa/lisaem.exe ./lisa/LisaEm.app; fi;
+if [[ "$WITHBLITS" != "$LASTBLITS" ]]; then rm -rf ./lisa/lisaem_wx.o ./lisa/lisaem ./lisa/lisaem.exe ./lisa/LisaEm.app; fi;
 
-if [ "$needclean" -gt 0 ]
+if [[ "$needclean" -gt 0 ]]
 then
 
 cd ./lisa
@@ -515,14 +536,17 @@ cd ../wxui
 cd ../cpu68k
 /bin/rm -f *.a *.o *.exe def68k gen68k cpu68k-?.c
 cd ..
-	
+
 fi
 
 
 # hack for Snow and above: - SIXTYFOURBITS is expected to be null here.
-if [ -n "$DARWIN" ]
+if [[ -n "$DARWIN" ]]
 then
-   if [ -n "$SIXTYFOURBITS" ]
+
+:TODO: *** also add check for x86 here vs PPC ***
+
+   if [[ -n "$SIXTYFOURBITS" ]]
    then
      echo 64 bit
      CFLAGS="$CFLAGS -arch x86_64 -m64"
@@ -551,16 +575,16 @@ echo "* Generator CPU Core OpCodes   (./cpu68k)"
 cd cpu68k
 
 DEPS=0
-[ "$DEPS" -eq 0 ] && if NEEDED def68k-iibs.h          lib68k.a; then  DEPS=1;fi
-[ "$DEPS" -eq 0 ] && if NEEDED def68k.def             lib68k.a; then  DEPS=1;fi
-[ "$DEPS" -eq 0 ] && if NEEDED gen68k.c               lib68k.a; then  DEPS=1;fi
-[ "$DEPS" -eq 0 ] && if NEEDED tab68k.c               lib68k.a; then  DEPS=1;fi
-[ "$DEPS" -eq 0 ] && if NEEDED def68k.c               lib68k.a; then  DEPS=1;fi
-[ "$DEPS" -eq 0 ] && if NEEDED ../include/vars.h      lib68k.a; then  DEPS=1;fi
-[ "$DEPS" -eq 0 ] && if NEEDED ../include/generator.h lib68k.a; then  DEPS=1;fi
+[[ "$DEPS" -eq 0 ]] && if NEEDED def68k-iibs.h          lib68k.a; then  DEPS=1;fi
+[[ "$DEPS" -eq 0 ]] && if NEEDED def68k.def             lib68k.a; then  DEPS=1;fi
+[[ "$DEPS" -eq 0 ]] && if NEEDED gen68k.c               lib68k.a; then  DEPS=1;fi
+[[ "$DEPS" -eq 0 ]] && if NEEDED tab68k.c               lib68k.a; then  DEPS=1;fi
+[[ "$DEPS" -eq 0 ]] && if NEEDED def68k.c               lib68k.a; then  DEPS=1;fi
+[[ "$DEPS" -eq 0 ]] && if NEEDED ../include/vars.h      lib68k.a; then  DEPS=1;fi
+[[ "$DEPS" -eq 0 ]] && if NEEDED ../include/generator.h lib68k.a; then  DEPS=1;fi
 
 
-if [ "$DEPS" -gt 0 ]
+if [[ "$DEPS" -gt 0 ]]
 then
 
 for src in tab68k.c def68k.c; do
@@ -595,11 +619,16 @@ rm -f lib68k.a
 
 # [0-9a-f] doesn't always work in some of the weirder systems.
 for i in 0 1 2 3 4 5 6 7 8 9 a b c d e f
- do
+do
   ARLIST="$ARLIST cpu68k-${i}.o"
- done
+done
 
-ar cru lib68k.a $ARLIST || exit 1
+if [[ -n "$DARWIN" ]]; then
+  ar cru lib68k.a $ARLIST || exit 1
+else
+  ar crD lib68k.a $ARLIST || exit 1
+fi
+
 ranlib lib68k.a || exit 1
 
 fi
@@ -612,13 +641,13 @@ echo "* Generator CPU Library        (./generator)"
 cd ../generator
 
 DEPS=0
-[ "$DEPS" -eq 0 ] && if  NEEDED ../include/vars.h  libgenerator.a;then  DEPS=1; fi
-[ "$DEPS" -eq 0 ] && if  NEEDED cpu68k.c           libgenerator.a;then  DEPS=1; fi
-[ "$DEPS" -eq 0 ] && if  NEEDED reg68k.c           libgenerator.a;then  DEPS=1; fi
-[ "$DEPS" -eq 0 ] && if  NEEDED diss68k.c          libgenerator.a;then  DEPS=1; fi
-[ "$DEPS" -eq 0 ] && if  NEEDED ui_log.c           libgenerator.a;then  DEPS=1; fi
+[[ "$DEPS" -eq 0 ]] && if  NEEDED ../include/vars.h  libgenerator.a;then  DEPS=1; fi
+[[ "$DEPS" -eq 0 ]] && if  NEEDED cpu68k.c           libgenerator.a;then  DEPS=1; fi
+[[ "$DEPS" -eq 0 ]] && if  NEEDED reg68k.c           libgenerator.a;then  DEPS=1; fi
+[[ "$DEPS" -eq 0 ]] && if  NEEDED diss68k.c          libgenerator.a;then  DEPS=1; fi
+[[ "$DEPS" -eq 0 ]] && if  NEEDED ui_log.c           libgenerator.a;then  DEPS=1; fi
 
-if [ "$DEPS" -gt 0 ]
+if [[ "$DEPS" -gt 0 ]]
 then
 for src in cpu68k reg68k ui_log diss68k; do
     #only compile what we need, unlike ./cpu68k this is less sensitive
@@ -628,7 +657,7 @@ for src in cpu68k reg68k ui_log diss68k; do
       $CC $WITHDEBUG $WITHTRACE $CFLAGS -c ${src}.c || exit 1
     fi
 done
-ar cru libgenerator.a cpu68k.o reg68k.o ui_log.o diss68k.o ../cpu68k/tab68k.o || exit 1
+ar crD libgenerator.a cpu68k.o reg68k.o ui_log.o diss68k.o ../cpu68k/tab68k.o || exit 1
 ranlib libgenerator.a || exit 1
 
 fi
@@ -645,9 +674,9 @@ do
 	LIST="$LIST $i.o"
 
   DEPS=0
-  [ "$DEPS" -eq 0 ] && if NEEDED ../include/vars.h  ${i}.o;then DEPS=1; fi
-  [ "$DEPS" -eq 0 ] && if NEEDED ${i}.c             ${i}.o;then DEPS=1; fi
-  if [ "$DEPS" -gt 0 ]
+  [[ "$DEPS" -eq 0 ]] && if NEEDED ../include/vars.h  ${i}.o;then DEPS=1; fi
+  [[ "$DEPS" -eq 0 ]] && if NEEDED ${i}.c             ${i}.o;then DEPS=1; fi
+  if [[ "$DEPS" -gt 0 ]]
   then
      echo "  Compiling ${i}.c..."
      $CC -W $WARNINGS -Wstrict-prototypes -Wno-format -Wno-unused  $WITHDEBUG $WITHTRACE $CFLAGS -c ${i}.c -o ${i}.o || exit 1
@@ -655,17 +684,17 @@ do
 done
 
 DEPS=0
-[ "$DEPS" -eq 0 ] && if NEEDED lisadiskinfo.c ../bin/lisadiskinfo;then  DEPS=1; fi
-[ "$DEPS" -eq 0 ] && if NEEDED libdc42.o      ../bin/lisadiskinfo;then  DEPS=1; fi
-if [ "$DEPS" -gt 0 ]
+[[ "$DEPS" -eq 0 ]] && if NEEDED lisadiskinfo.c ../bin/lisadiskinfo;then  DEPS=1; fi
+[[ "$DEPS" -eq 0 ]] && if NEEDED libdc42.o      ../bin/lisadiskinfo;then  DEPS=1; fi
+if [[ "$DEPS" -gt 0 ]]
 then
   echo "  Linking ./bin/lisadiskinfo..."
   $CC $CFLAGS $LDFLAGS -o ../bin/lisadiskinfo lisadiskinfo.c libdc42.o || exit 1
-  if [ -z "$WITHDEBUG" ]
+  if [[ -z "$WITHDEBUG" ]]
   then
     strip ../bin/lisadiskinfo${EXT}
-    if  [ -z "$WITHOUTUPX"                 ]; then
-     if [ -x "`which upx 2>/dev/null`"     ]; then upx --best ../bin/lisadiskinfo${EXT} ; fi
+    if  [[ -z "$WITHOUTUPX"                 ]]; then
+     if [[ -x "`which upx 2>/dev/null`"     ]]; then upx --best ../bin/lisadiskinfo${EXT} ; fi
     fi
 
    fi
@@ -674,17 +703,17 @@ fi
 
 
 DEPS=0
-[ "$DEPS" -eq 0 ] && if NEEDED lisafsh-tool.c ../bin/lisafsh-tool;then  DEPS=1; fi
-[ "$DEPS" -eq 0 ] && if NEEDED libdc42.o      ../bin/lisafsh-tool;then  DEPS=1; fi
-if [ "$DEPS" -gt 0 ]
+[[ "$DEPS" -eq 0 ]] && if NEEDED lisafsh-tool.c ../bin/lisafsh-tool;then  DEPS=1; fi
+[[ "$DEPS" -eq 0 ]] && if NEEDED libdc42.o      ../bin/lisafsh-tool;then  DEPS=1; fi
+if [[ "$DEPS" -gt 0 ]]
 then
   echo "  Linking ./bin/lisafsh-tool..."
   $CC $CFLAGS -o ../bin/lisafsh-tool lisafsh-tool.c libdc42.o || exit 1
-  if [ -z "$WITHDEBUG" ]
+  if [[ -z "$WITHDEBUG" ]]
   then
     strip ../bin/lisafsh-tool${EXT}
-    if  [ -z "$WITHOUTUPX"                 ]; then
-     if [ -x "`which upx 2>/dev/null`"     ]; then upx --best ../bin/lisafsh-tool${EXT} ; fi
+    if  [[ -z "$WITHOUTUPX"                 ]]; then
+     if [[ -x "`which upx 2>/dev/null`"     ]]; then upx --best ../bin/lisafsh-tool${EXT} ; fi
     fi
    fi
 fi
@@ -699,7 +728,7 @@ echo
 echo "* LisaEm Resources             (./resources)"
 cd ../resources
 
-if [ -n "$CYGWIN" ]
+if [[ -n "$CYGWIN" ]]
 then
  for i in floppy0 floppy1 floppy2 floppy3 floppyN lisaface0 lisaface1 lisaface2 lisaface3 power_off power_on
  do
@@ -717,7 +746,7 @@ fi
 # on Linux, *BSD, we use PNG's in the /usr/local/share/lisaem directory.
 # so we can skip the XPM generation.  On windows, it's BMP's, so this is only for X11/GTK builds
 
-### if [ -z "${CYGWIN}${DARWIN}" ]
+### if [[ -z "${CYGWIN}${DARWIN}" ]]
 ### then
 ###     for i in floppy0 floppy1 floppy2 floppy3 floppyN lisaface0 lisaface1 lisaface2 lisaface3 power_off power_on
 ###     do
@@ -731,20 +760,20 @@ fi
 
 cd ../lisa
 
-if [ "$VSTATIC" -gt 0 ]; then DEPS=1; else DEPS=0; fi
-[ "$DEPS" -eq 0 ] && if NEEDED lisaem_static_resources.cpp lisaem_static_resources.o; then DEPS=1; fi
+if [[ "$VSTATIC" -gt 0 ]]; then DEPS=1; else DEPS=0; fi
+[[ "$DEPS" -eq 0 ]] && if NEEDED lisaem_static_resources.cpp lisaem_static_resources.o; then DEPS=1; fi
 
-if [ "$DEPS" -gt 0 ]
+if [[ "$DEPS" -gt 0 ]]
 then
   echo "  Compiling lisaem_static_resources.cpp..."
   $CXX $CFLAGS -c lisaem_static_resources.cpp -o lisaem_static_resources.o || exit 1
 fi
 LIST="$LIST lisaem_static_resources.o"
 
-if [ -n "$CYGWIN" ]
+if [[ -n "$CYGWIN" ]]
 then
- [ "$VSTATIC" -eq 0 ] && if NEEDED lisaem_private_src.rc lisaem_private.res; then VSTATIC=1; fi
- if [ "$VSTATIC" -gt 0 ]
+ [[ "$VSTATIC" -eq 0 ]] && if NEEDED lisaem_private_src.rc lisaem_private.res; then VSTATIC=1; fi
+ if [[ "$VSTATIC" -gt 0 ]]
  then
     echo win32 resources
     MINIVER="`echo $VERSION| cut -f1 -d'-' | sed 's/\./,/g'`,0"
@@ -759,8 +788,7 @@ then
  LIST="$LIST ..\\resources\\lisaem_private.res"
 fi
 
-
-
+cd ../bin
 rm -f lisaem lisaem.exe
 
 # If we're on Darwin, we know the system libraries are there and we
@@ -768,14 +796,14 @@ rm -f lisaem lisaem.exe
 # for the binary release so we don't have to worry about cross-distribution
 # library version issues.
 # Also, Apple's GCC doesn't support --static, so disable it there.
-if [ -n "$DARWIN" ]
+if [[ -n "$DARWIN" ]]
 then
     SYSLIBS=
     GCCSTATIC=
 else
 
     # only needed for wxX11 and we don't like those anymore
-    ## [ -z "$CYGWIN" ] && \
+    ## [[ -z "$CYGWIN" ]] && \
     ## SYSLIBS="/usr/lib/libX*.a  /usr/lib/libcairo*.a /usr/lib/libpango*.a
     ##         /usr/lib/libfreetype.a /usr/lib/libexpat.a /usr/X11R6/lib/libICE.a
     ##         /usr/lib/librt.a /usr/lib/libXrender.a /usr/lib/libX11.a
@@ -787,6 +815,7 @@ fi
 #vars.c must be linked in before any C++ source code or else there will be linking conflicts!
 
 cd ../wxui
+
 echo
 echo "* wxWidgets User Interface     (./wxui)"
 
@@ -794,31 +823,32 @@ echo "* wxWidgets User Interface     (./wxui)"
 
 CFLAGS="$CFLAGS -DVERSION=\"${VERSION}\" "
 
-for i in  lisaem_wx imagewriter-wx #lisaemframe lisawin
+for i in  lisaem_wx imagewriter-wx
 do
-  if [ -z "$CYGWIN" ]; then LIST="$LIST ../wxui/${i}.o"
+  if [[ -z "$CYGWIN" ]]; then LIST="$LIST ../wxui/${i}.o"
   else                      LIST="$LIST ..\\wxui\\${i}.o"
   fi
 
   if NEEDED ${i}.cpp ${i}.o
   then
-     echo "  Compiling ${i}.cpp..."
-     $CXX -W $WARNINGS $WITHDEBUG $WITHTRACE $WITHBLITS $CFLAGS -c ${i}.cpp -o ${i}.o || exit 1
+      echo "  Compiling ${i}.cpp..."
+      #echo "    $CXX -W $WARNINGS $WITHDEBUG $WITHTRACE $WITHBLITS $CFLAGS -c ${i}.cpp -o ${i}.o"
+      $CXX -W $WARNINGS $WITHDEBUG $WITHTRACE $WITHBLITS $CFLAGS -std=c++11 -c ${i}.cpp -o ${i}.o || exit 1
   fi
 done
 
 CXXFLAGS="$CXXFLAGS -DVERSION=\"$VERSION\" "
-for i in LisaConfig LisaConfigFrame
+for i in LisaConfig LisaConfigFrame LisaSkin
 do
-  if [ -z "$CYGWIN" ]; then LIST="$LIST ../wxui/${i}.o"
+  if [[ -z "$CYGWIN" ]]; then LIST="$LIST ../wxui/${i}.o"
   else                      LIST="$LIST ..\\wxui\\${i}.o"
   fi
 
   DEPS=0;
-  [ "$DEPS" -eq 0 ] && if NEEDED ${i}.cpp ${i}.o;   then DEPS=1; fi
-  [ "$DEPS" -eq 0 ] && if NEEDED ${i}.h   ${i}.o;   then DEPS=1; fi
+  [[ "$DEPS" -eq 0 ]] && if NEEDED ${i}.cpp ${i}.o;   then DEPS=1; fi
+  [[ "$DEPS" -eq 0 ]] && if NEEDED ${i}.h   ${i}.o;   then DEPS=1; fi
 
-  if [ "$DEPS" -gt 0 ]
+  if [[ "$DEPS" -gt 0 ]]
   then
      echo "  Compiling ${i}.cpp..."
      $CXX -W $WARNINGS $CXXFLAGS -c ${i}.cpp -o ${i}.o || exit 1
@@ -829,19 +859,19 @@ done
 # hack compile until the big merge is done - this will be removed
 # once merging is done and there will only be a single executable
 # produced
-# if [ -n "$WITHWXUI" ]
+# if [[ -n "$WITHWXUI" ]]
 #then
 # for i in LisaCanvas LisaEmApp LisaEmFrame
 # do
-#   if [ -z "$CYGWIN" ]; then WXLIST="$LIST ../wxui/${i}.o"
+#   if [[ -z "$CYGWIN" ]]; then WXLIST="$LIST ../wxui/${i}.o"
 #   else                      WXLIST="$LIST ..\\wxui\\${i}.o"
 #   fi
 #
 #   DEPS=0;
-#   [ "$DEPS" -eq 0 ] && if NEEDED ${i}.cpp ${i}.o;   then DEPS=1; fi
-#   [ "$DEPS" -eq 0 ] && if NEEDED ${i}.h   ${i}.cpp; then DEPS=1; fi
+#   [[ "$DEPS" -eq 0 ]] && if NEEDED ${i}.cpp ${i}.o;   then DEPS=1; fi
+#   [[ "$DEPS" -eq 0 ]] && if NEEDED ${i}.h   ${i}.cpp; then DEPS=1; fi
 #
-#   if [ "$DEPS" -gt 0 ]
+#   if [[ "$DEPS" -gt 0 ]]
 #   then
 #     echo Compiling ${i}.cpp...
 #     $CXX -W $WARNINGS $CXXFLAGS -c ${i}.cpp -o ${i}.o || exit 1
@@ -857,7 +887,7 @@ done
 
 cd ../lisa
 
-if [ -n "$DARWIN" ]
+if [[ -n "$DARWIN" ]]
 then
   echo "  Linking ./bin/LisaEm.app"
 else
@@ -865,14 +895,14 @@ else
 fi
 
 #echo $CXX $GCCSTATIC $WITHTRACE $WITHDEBUG -o ../bin/lisaem  $LIST ../generator/libgenerator.a ../cpu68k/lib68k.a $LINKOPTS $SYSLIBS
-if [ -z "$WITHWXUI" ]
+if [[ -z "$WITHWXUI" ]]
 then
 $CXX $GCCSTATIC $WITHTRACE $WITHDEBUG $LDFLAGS -o ../bin/lisaem  $LIST ../generator/libgenerator.a ../cpu68k/lib68k.a $LINKOPTS $SYSLIBS 2>&1  | head -20
 echo
 echo $CXX $GCCSTATIC $WITHTRACE $WITHDEBUG $LDFLAGS -o ../bin/lisaem  $LIST ../generator/libgenerator.a ../cpu68k/lib68k.a $LINKOPTS $SYSLIBS 2>&1  | head -20
 fi
 
-if [ -f ../bin/lisaem ]
+if [[ -f ../bin/lisaem ]]
 then
 
 cd ../bin
@@ -880,7 +910,7 @@ echo -n " "
 
 # Report size and hashes ####
 
-if [ -z "$DARWIN" ]
+if [[ -z "$DARWIN" ]]
 then
     SIZE="`du -sh lisaem 2>/dev/null`"
 else
@@ -888,7 +918,7 @@ else
 fi
 
 
-if [ -n "$DARWIN" ]
+if [[ -n "$DARWIN" ]]
 then
 
     mkdir -pm775 LisaEm.app/Contents/MacOS
@@ -902,25 +932,25 @@ then
              floppy_eject.wav floppy_insert_sound.wav        \
              floppy_motor1.wav floppy_motor2.wav             \
              lisa_power_switch01.wav lisa_power_switch02.wav \
-             poweroffclk.wav                                	
+             poweroffclk.wav
     do
 	    RESCPYLIST="$RESCPYLIST ../resources/$i"
 	done
 	cp $RESCPYLIST LisaEm.app/Contents/Resources/   || exit 1
 
-    [ -z "$WITHDEBUG" ] && strip ./lisaem
+    [[ -z "$WITHDEBUG" ]] && strip ./lisaem
     chmod 755 lisaem
     mv lisaem LisaEm
     mv LisaEm LisaEm.app/Contents/MacOS/
-    [ -n "$WITHDEBUG" ] && echo run >gdb-run && gdb ./LisaEm.app/Contents/MacOS/LisaEm
+    [[ -n "$WITHDEBUG" ]] && (echo "$RUN"; echo "quit") >gdb-run && gdb ./LisaEm.app/Contents/MacOS/LisaEm
     #if we turned on profiling, process the results
-    if [ `echo "$WITHDEBUG" | grep 'p' >/dev/null 2>/dev/null` ]
+    if [[ `echo "$WITHDEBUG" | grep 'p' >/dev/null 2>/dev/null` ]]
     then
       $GPROF LisaEm.app/Contents/MacOS/LisaEm/lisaem >lisaem-gprof-out
       echo lisaem-gprof-out created.
     fi
 
-    if [ -n "$INSTALL" ]
+    if [[ -n "$INSTALL" ]]
     then
       cd ../bin/
       echo Installing LisaEm.app
@@ -934,9 +964,9 @@ then
 fi
 
 # some older OS's don't support du -sh, so fall back to du -sk and convert to MB's
-if [ -z "$SIZE" ]
+if [[ -z "$SIZE" ]]
 then
-    if [ -n "$DARWIN" ]
+    if [[ -n "$DARWIN" ]]
 	then
         SIZE="`du -sk LisaEm.app 2>/dev/null | cut -f1`"
     else
@@ -949,33 +979,33 @@ fi
 echo " $SIZE"
 
 MD5BIN="`which md5 2>/dev/null`"
-if [ -z "$MD5BIN" ]; then MD5BIN="`which md5sum 2>/dev/null`"; fi
+if [[ -z "$MD5BIN" ]]; then MD5BIN="`which md5sum 2>/dev/null`"; fi
 
-if [ -n "$MD5BIN" ]
+if [[ -n "$MD5BIN" ]]
 then
-   if [ "$DARWIN" ]; then MD5="`$MD5BIN ./LisaEm.app/Contents/MacOS/LisaEm 2>/dev/null`"
+   if [[ "$DARWIN" ]]; then MD5="`$MD5BIN ./LisaEm.app/Contents/MacOS/LisaEm 2>/dev/null`"
    else                   MD5="`$MD5BIN ./lisaem                           2>/dev/null`"; fi
-   [ -n "$MD5" ] && echo "  $MD5"         
-fi                                        
-                                          
+   [[ -n "$MD5" ]] && echo "  $MD5"
+fi
+
 MD5BIN="`which sha1 2>/dev/null`"
-if [ -z "$MD5BIN" ]; then MD5BIN="`which sha1sum 2>/dev/null`"; fi
+if [[ -z "$MD5BIN" ]]; then MD5BIN="`which sha1sum 2>/dev/null`"; fi
 
-if [ -n "$MD5BIN" ]
+if [[ -n "$MD5BIN" ]]
 then
-   if [ "$DARWIN" ]; then MD5="`$MD5BIN ./LisaEm.app/Contents/MacOS/LisaEm 2>/dev/null`"
+   if [[ "$DARWIN" ]]; then MD5="`$MD5BIN ./LisaEm.app/Contents/MacOS/LisaEm 2>/dev/null`"
    else                   MD5="`$MD5BIN ./lisaem                           2>/dev/null`"; fi
-   [ -n "$MD5" ] && echo "  $MD5"
+   [[ -n "$MD5" ]] && echo "  $MD5"
 fi
 
 MD5BIN="`which sha256 2>/dev/null`"
-if [ -z "$MD5BIN" ]; then MD5BIN="`which sha256sum 2>/dev/null`"; fi
+if [[ -z "$MD5BIN" ]]; then MD5BIN="`which sha256sum 2>/dev/null`"; fi
 
-if [ -n "$MD5BIN" ]
+if [[ -n "$MD5BIN" ]]
 then
-   if [ "$DARWIN" ]; then MD5="`$MD5BIN ./LisaEm.app/Contents/MacOS/LisaEm 2>/dev/null`"
+   if [[ "$DARWIN" ]]; then MD5="`$MD5BIN ./LisaEm.app/Contents/MacOS/LisaEm 2>/dev/null`"
    else                   MD5="`$MD5BIN ./lisaem                           2>/dev/null`"; fi
-   [ -n "$MD5" ] && echo "  $MD5"
+   [[ -n "$MD5" ]] && echo "  $MD5"
 fi
 
 
@@ -983,9 +1013,9 @@ echo
 ####
 
 
-if [ -n "$DARWIN" ]; then echo "Done."; exit 0; fi  # end of OS X
-	
-if [ -z "$WITHDEBUG" ]
+if [[ -n "$DARWIN" ]]; then echo "Done."; exit 0; fi  # end of OS X
+
+if [[ -z "$WITHDEBUG" ]]
 then
 
   echo "Freshly compiled `du -sh lisaem`"
@@ -993,8 +1023,8 @@ then
   echo "Stripped `du -sh lisaem`"
 
   # compress it if upx exists.
-  if [ -z "$WITHOUTUPX"              ]; then
-   if [ -n "`which upx 2>/dev/null`" ]
+  if [[ -z "$WITHOUTUPX"              ]]; then
+   if [[ -n "`which upx 2>/dev/null`" ]]
     then
       upx --best lisaem${EXT}
       echo "upxed `du -sh lisaem`"
@@ -1002,11 +1032,11 @@ then
   fi
 
   ## Install ###################################################
-  if [ -n "$INSTALL" ]
+  if [[ -n "$INSTALL" ]]
   then
 
 
-    if [ -n "$CYGWIN" ]
+    if [[ -n "$CYGWIN" ]]
     then
          #PREFIX   ="/cygdrive/c/Program Files/Sunder.NET/LisaEm"
          #PREFIXLIB="/cygdrive/c/Program Files/Sunder.NET/LisaEm"
@@ -1020,7 +1050,7 @@ then
       exit 0
     fi
 
-    if [ -z "$CYGWIN" ]
+    if [[ -z "$CYGWIN" ]]
     then
 
       #   PREFIX="/usr/local/bin"
@@ -1041,22 +1071,22 @@ then
 
 else
 
- if [ -z "$CYGWIN" ]
+ if [[ -z "$CYGWIN" ]]
  then
-    cd ../bin 
-    echo run >gdb-run
+    cd ../bin
+    (echo "$RUN"; echo "quit") >gdb-run
     gdb lisaem      -x gdb-run
  else
-    cd ../bin 
-    echo run >gdb-run
+    cd ../bin
+    (echo "$RUN"; echo "quit") >gdb-run
     gdb.exe lisaem.exe -x gdb-run
  fi
 
 
- if [ -n "`echo -- $WITHDEBUG | grep p`" ]
+ if [[ -n "`echo -- $WITHDEBUG | grep p`" ]]
  then
-   [ -n "$CYGWIN" ] && $GPROF lisaem.exe >lisaem-gprof-out.txt
-   [ -z "$CYGWIN" ] && $GPROF lisaem     >lisaem-gprof-out.txt
+   [[ -n "$CYGWIN" ]] && $GPROF lisaem.exe >lisaem-gprof-out.txt
+   [[ -z "$CYGWIN" ]] && $GPROF lisaem     >lisaem-gprof-out.txt
  fi
 
 fi

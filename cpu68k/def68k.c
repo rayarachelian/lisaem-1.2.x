@@ -29,7 +29,7 @@ static int clocks_movetable_l[]; /* pre-declaration */
 /* private functions for forward references */
 
 void procline(char *line, int lineno, FILE *outiibs, FILE *outfuncs,
-	      FILE *outproto);
+          FILE *outproto);
 int clocks_ea(t_datatype type);
 int clocks_eacalc(t_datatype type, t_size size);
 int clocks_6or8(t_datatype type);
@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
   /* output footer */
 
   fprintf(outiibs, "  { 0, 0, 0, { 0, 0, 0, 0, 0 }, "
-	  "0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }\n");
+      "0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }\n");
   fprintf(outiibs, "};\n");
   fprintf(outiibs, "int iibs_num = %d;\n", total);
 
@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
 /* process a line */
 
 void procline(char *line, int lineno, FILE *outiibs, FILE *outfuncs,
-	      FILE *outproto) {
+          FILE *outproto) {
   int i;
   char *p;
   t_bit bit = bit0, lastbit = bit0;
@@ -229,11 +229,11 @@ void procline(char *line, int lineno, FILE *outiibs, FILE *outfuncs,
 
     if (*p != '0' && *p != '1') {
       if (num[bit]) {
-	/* we've seen this bit before, make sure the last bit was the same */
-	if (bit < 15 && bit != lastbit) {
-	  fprintf(stderr, "%d: Non contiguous bits of %c\n", lineno, *p);
-	  exit(1);
-	}
+    /* we've seen this bit before, make sure the last bit was the same */
+    if (bit < 15 && bit != lastbit) {
+      fprintf(stderr, "%d: Non contiguous bits of %c\n", lineno, *p);
+      exit(1);
+    }
       }
       /* we're looping down, so the last time start[bit] is set is the start */
       start[bit] = i;
@@ -346,7 +346,7 @@ void procline(char *line, int lineno, FILE *outiibs, FILE *outfuncs,
   }
   if (*p == '\t') {
     fprintf(stderr, "%d: Incorrect number of fields - extra tab found\n",
-	    lineno);
+        lineno);
     exit(1);
   }
   *m = '\0';
@@ -366,15 +366,15 @@ void procline(char *line, int lineno, FILE *outiibs, FILE *outfuncs,
     case 'L': isize = sz_long; break;
     case 'z':
       if (!num[bitz]) {
-	fprintf(stderr, "%d: 'z' given as size but no 'z' in bit pattern\n",
-		lineno);
-	exit(1);
+    fprintf(stderr, "%d: 'z' given as size but no 'z' in bit pattern\n",
+        lineno);
+    exit(1);
       }
       /* size will be set automatically later */
       break;
     default:
       fprintf(stderr, "%d: Unknown size '%c' after mnemonic\n",
-	      lineno, *p);
+          lineno, *p);
       exit(1);
     }
     p++;
@@ -383,7 +383,7 @@ void procline(char *line, int lineno, FILE *outiibs, FILE *outfuncs,
     if (num[bitz]) {
       /* oh, perhaps it is but it's a mistake */
       fprintf(stderr, "%d: 'z's in bit pattern but no .z after mnemonic\n",
-	      lineno);
+          lineno);
       exit(1);
     }
   }
@@ -392,7 +392,7 @@ void procline(char *line, int lineno, FILE *outiibs, FILE *outfuncs,
   if (*p == '\0') {
     /* no source and destination information given */
     if (num[bite] || num[bitE] || num[bitf] || num[bitF] ||
-	num[biti] || num[bitn] || num[bitN] || num[bitv]) {
+    num[biti] || num[bitn] || num[bitN] || num[bitv]) {
       fprintf(stderr, "%d: No information given after mnemonic\n", lineno);
       exit(1);
     }
@@ -401,13 +401,13 @@ void procline(char *line, int lineno, FILE *outiibs, FILE *outfuncs,
     case 'n':
     case 'N':
       if (*(p-1) == 'n') {
-	sbitpos = start[bitn];
+    sbitpos = start[bitn];
       } else {
-	sbitpos = start[bitN];
+    sbitpos = start[bitN];
       }
       if (*p++ != '(') {
-	fprintf(stderr, "%d: missing qualifier for n()\n", lineno);
-	exit(1);
+    fprintf(stderr, "%d: missing qualifier for n()\n", lineno);
+    exit(1);
       }
       if (!strncmp(p, "Dreg", 4)) { stype = dt_Dreg; p = p+4;
       } else if (!strncmp(p, "Areg", 4)) { stype = dt_Areg; p = p+4;
@@ -421,12 +421,12 @@ void procline(char *line, int lineno, FILE *outiibs, FILE *outfuncs,
       } else if (!strncmp(p, "Pdis", 4)) { stype = dt_Pdis; p = p+4;
       } else if (!strncmp(p, "Pidx", 4)) { stype = dt_Pidx; p = p+4;
       } else {
-	fprintf(stderr, "%d: unknown qualifier for n()\n", lineno);
-	exit(1);
+    fprintf(stderr, "%d: unknown qualifier for n()\n", lineno);
+    exit(1);
       }
       if (*p++ != ')') {
-	fprintf(stderr, "%d: unknown qualifier for n()\n", lineno);
-	exit(1);
+    fprintf(stderr, "%d: unknown qualifier for n()\n", lineno);
+    exit(1);
       }
       break;
     case '#':
@@ -436,100 +436,100 @@ void procline(char *line, int lineno, FILE *outiibs, FILE *outfuncs,
       case 'L': stype = dt_ImmL; break;
       case 'z': expand_s_immsize = 1; break;
       case 's':
-	if (num[biti] != 8) {
-	  fprintf(stderr, "%d: sign extend not from 8 bits\n", lineno);
-	  exit(1);
-	}
-	stype = dt_Imm8s;
-	break;
+    if (num[biti] != 8) {
+      fprintf(stderr, "%d: sign extend not from 8 bits\n", lineno);
+      exit(1);
+    }
+    stype = dt_Imm8s;
+    break;
       case 'i':
-	switch (num[biti]) {
-	case 3: stype = dt_Imm3; break;
-	case 4: stype = dt_Imm4; break;
-	case 8: stype = dt_Imm8; break;
-	default:
-	  fprintf(stderr, "%d: unknown immediate data size or bad dimension\n",
-		lineno);
-	  exit(1);
-	}
-	sbitpos = start[biti];
-	break;
+    switch (num[biti]) {
+    case 3: stype = dt_Imm3; break;
+    case 4: stype = dt_Imm4; break;
+    case 8: stype = dt_Imm8; break;
+    default:
+      fprintf(stderr, "%d: unknown immediate data size or bad dimension\n",
+        lineno);
+      exit(1);
+    }
+    sbitpos = start[biti];
+    break;
       case 'I':
-	imm_notzero = 1;
-	switch (num[biti]) {
-	case 3: stype = dt_Imm3; break;
-	case 4: stype = dt_Imm4; break;
-	case 8: stype = dt_Imm8; break;
-	default:
-	  fprintf(stderr, "%d: unknown immediate data size or bad dimension\n",
-		lineno);
-	  exit(1);
-	}
-	sbitpos = start[biti];
-	break;
+    imm_notzero = 1;
+    switch (num[biti]) {
+    case 3: stype = dt_Imm3; break;
+    case 4: stype = dt_Imm4; break;
+    case 8: stype = dt_Imm8; break;
+    default:
+      fprintf(stderr, "%d: unknown immediate data size or bad dimension\n",
+        lineno);
+      exit(1);
+    }
+    sbitpos = start[biti];
+    break;
       case 'V':
-	stype = dt_ImmV;
-	sbitpos = start[bitv];
-	break;
+    stype = dt_ImmV;
+    sbitpos = start[bitv];
+    break;
       default:
-	p--;
-	if (isdigit((int)*p)) {
-	  immvalue = strtol(p, &p, 10);
-	  stype = dt_ImmS;
-	} else {
-	  fprintf(stderr, "%d: unknown source immediate type #%c\n",
-		  lineno, *(p-1));
-	  exit(1);
-	}
+    p--;
+    if (isdigit((int)*p)) {
+      immvalue = strtol(p, &p, 10);
+      stype = dt_ImmS;
+    } else {
+      fprintf(stderr, "%d: unknown source immediate type #%c\n",
+          lineno, *(p-1));
+      exit(1);
+    }
       }
       break;
     case 'e':
       expand_s_ea_e = 1;
 
       if (*p++ != '(') {
-	fprintf(stderr, "%d: missing qualifier for EA\n", lineno);
-	exit(1);
+    fprintf(stderr, "%d: missing qualifier for EA\n", lineno);
+    exit(1);
       }
       do {
-	setting = 1;
-	if (*p == '-') {
-	  p++;
-	  setting = 0;
-	}
-	if (!strncmp(p, "*", 1)) {
-	  e[ea_Dreg] = e[ea_Areg] = e[ea_Aind] = e[ea_Ainc] = setting;
-	  e[ea_Adec] = e[ea_Adis] = e[ea_Aidx] = e[ea_AbsW] = setting;
-	  e[ea_AbsL] = e[ea_Pdis] = e[ea_Pidx] = e[ea_Imm] = setting;
-	  p = p+1;
-	} else if (!strncmp(p, "Regs", 4)) {
-	  e[ea_Dreg] = e[ea_Areg] = setting;
-	  p = p+4;
-	} else if (!strncmp(p, "PC", 2)) {
-	  e[ea_Pdis] = e[ea_Pidx] = setting;
-	  p = p+2;
-	} else if (!strncmp(p, "Amod", 4)) {
-	  e[ea_Ainc] = e[ea_Adec] = setting;
-	  p = p+4;
-	} else if (!strncmp(p, "Dreg", 4)) { e[ea_Dreg] = setting; p = p+4;
-	} else if (!strncmp(p, "Areg", 4)) { e[ea_Areg] = setting; p = p+4;
-	} else if (!strncmp(p, "Aind", 4)) { e[ea_Aind] = setting; p = p+4;
-	} else if (!strncmp(p, "Ainc", 4)) { e[ea_Ainc] = setting; p = p+4;
-	} else if (!strncmp(p, "Adec", 4)) { e[ea_Adec] = setting; p = p+4;
-	} else if (!strncmp(p, "Adis", 4)) { e[ea_Adis] = setting; p = p+4;
-	} else if (!strncmp(p, "Aidx", 4)) { e[ea_Aidx] = setting; p = p+4;
-	} else if (!strncmp(p, "AbsW", 4)) { e[ea_AbsW] = setting; p = p+4;
-	} else if (!strncmp(p, "AbsL", 4)) { e[ea_AbsL] = setting; p = p+4;
-	} else if (!strncmp(p, "Pdis", 4)) { e[ea_Pdis] = setting; p = p+4;
-	} else if (!strncmp(p, "Pidx", 4)) { e[ea_Pidx] = setting; p = p+4;
-	} else if (!strncmp(p, "Imm", 3))  { e[ea_Imm]  = setting; p = p+3;
-	} else {
-	  fprintf(stderr, "%d: unknown qualifier for EA\n", lineno);
-	  exit(1);
-	}
+    setting = 1;
+    if (*p == '-') {
+      p++;
+      setting = 0;
+    }
+    if (!strncmp(p, "*", 1)) {
+      e[ea_Dreg] = e[ea_Areg] = e[ea_Aind] = e[ea_Ainc] = setting;
+      e[ea_Adec] = e[ea_Adis] = e[ea_Aidx] = e[ea_AbsW] = setting;
+      e[ea_AbsL] = e[ea_Pdis] = e[ea_Pidx] = e[ea_Imm] = setting;
+      p = p+1;
+    } else if (!strncmp(p, "Regs", 4)) {
+      e[ea_Dreg] = e[ea_Areg] = setting;
+      p = p+4;
+    } else if (!strncmp(p, "PC", 2)) {
+      e[ea_Pdis] = e[ea_Pidx] = setting;
+      p = p+2;
+    } else if (!strncmp(p, "Amod", 4)) {
+      e[ea_Ainc] = e[ea_Adec] = setting;
+      p = p+4;
+    } else if (!strncmp(p, "Dreg", 4)) { e[ea_Dreg] = setting; p = p+4;
+    } else if (!strncmp(p, "Areg", 4)) { e[ea_Areg] = setting; p = p+4;
+    } else if (!strncmp(p, "Aind", 4)) { e[ea_Aind] = setting; p = p+4;
+    } else if (!strncmp(p, "Ainc", 4)) { e[ea_Ainc] = setting; p = p+4;
+    } else if (!strncmp(p, "Adec", 4)) { e[ea_Adec] = setting; p = p+4;
+    } else if (!strncmp(p, "Adis", 4)) { e[ea_Adis] = setting; p = p+4;
+    } else if (!strncmp(p, "Aidx", 4)) { e[ea_Aidx] = setting; p = p+4;
+    } else if (!strncmp(p, "AbsW", 4)) { e[ea_AbsW] = setting; p = p+4;
+    } else if (!strncmp(p, "AbsL", 4)) { e[ea_AbsL] = setting; p = p+4;
+    } else if (!strncmp(p, "Pdis", 4)) { e[ea_Pdis] = setting; p = p+4;
+    } else if (!strncmp(p, "Pidx", 4)) { e[ea_Pidx] = setting; p = p+4;
+    } else if (!strncmp(p, "Imm", 3))  { e[ea_Imm]  = setting; p = p+3;
+    } else {
+      fprintf(stderr, "%d: unknown qualifier for EA\n", lineno);
+      exit(1);
+    }
       } while (*p++ == ',');
       if (*(p-1) != ')') {
-	fprintf(stderr, "%d: unknown qualifier for EA\n", lineno);
-	exit(1);
+    fprintf(stderr, "%d: unknown qualifier for EA\n", lineno);
+    exit(1);
       }
       break;
     default:
@@ -542,136 +542,136 @@ void procline(char *line, int lineno, FILE *outiibs, FILE *outfuncs,
       switch(*p++) {
       case 'n':
       case 'N':
-	if (*(p-1) == 'n') {
-	  dbitpos = start[bitn];
-	} else {
-	  dbitpos = start[bitN];
-	}
-	if (*p++ != '(') {
-	  fprintf(stderr, "%d: missing qualifier for n()\n", lineno);
-	  exit(1);
-	}
-	if (!strncmp(p, "Dreg", 4)) { dtype = dt_Dreg; p = p+4;
-	} else if (!strncmp(p, "Areg", 4)) { dtype = dt_Areg; p = p+4;
-	} else if (!strncmp(p, "Aind", 4)) { dtype = dt_Aind; p = p+4;
-	} else if (!strncmp(p, "Ainc", 4)) { dtype = dt_Ainc; p = p+4;
-	} else if (!strncmp(p, "Adec", 4)) { dtype = dt_Adec; p = p+4;
-	} else if (!strncmp(p, "Adis", 4)) { dtype = dt_Adis; p = p+4;
-	} else if (!strncmp(p, "Aidx", 4)) { dtype = dt_Aidx; p = p+4;
-	} else if (!strncmp(p, "AbsW", 4)) { dtype = dt_AbsW; p = p+4;
-	} else if (!strncmp(p, "AbsL", 4)) { dtype = dt_AbsL; p = p+4;
-	} else if (!strncmp(p, "Pdis", 4)) { dtype = dt_Pdis; p = p+4;
-	} else if (!strncmp(p, "Pidx", 4)) { dtype = dt_Pidx; p = p+4;
-	} else {
-	  fprintf(stderr, "%d: unknown qualifier for n()\n", lineno);
-	  exit(1);
-	}
-	if (*p++ != ')') {
-	  fprintf(stderr, "%d: unknown qualifier for n()\n", lineno);
-	  exit(1);
-	}
-	break;
+    if (*(p-1) == 'n') {
+      dbitpos = start[bitn];
+    } else {
+      dbitpos = start[bitN];
+    }
+    if (*p++ != '(') {
+      fprintf(stderr, "%d: missing qualifier for n()\n", lineno);
+      exit(1);
+    }
+    if (!strncmp(p, "Dreg", 4)) { dtype = dt_Dreg; p = p+4;
+    } else if (!strncmp(p, "Areg", 4)) { dtype = dt_Areg; p = p+4;
+    } else if (!strncmp(p, "Aind", 4)) { dtype = dt_Aind; p = p+4;
+    } else if (!strncmp(p, "Ainc", 4)) { dtype = dt_Ainc; p = p+4;
+    } else if (!strncmp(p, "Adec", 4)) { dtype = dt_Adec; p = p+4;
+    } else if (!strncmp(p, "Adis", 4)) { dtype = dt_Adis; p = p+4;
+    } else if (!strncmp(p, "Aidx", 4)) { dtype = dt_Aidx; p = p+4;
+    } else if (!strncmp(p, "AbsW", 4)) { dtype = dt_AbsW; p = p+4;
+    } else if (!strncmp(p, "AbsL", 4)) { dtype = dt_AbsL; p = p+4;
+    } else if (!strncmp(p, "Pdis", 4)) { dtype = dt_Pdis; p = p+4;
+    } else if (!strncmp(p, "Pidx", 4)) { dtype = dt_Pidx; p = p+4;
+    } else {
+      fprintf(stderr, "%d: unknown qualifier for n()\n", lineno);
+      exit(1);
+    }
+    if (*p++ != ')') {
+      fprintf(stderr, "%d: unknown qualifier for n()\n", lineno);
+      exit(1);
+    }
+    break;
       case 'e':
-	expand_d_ea_e = 1;
+    expand_d_ea_e = 1;
 
-	if (*p++ != '(') {
-	  fprintf(stderr, "%d: missing qualifier for EA\n", lineno);
-	  exit(1);
-	}
-	do {
-	  setting = 1;
-	  if (*p == '-') {
-	    p++;
-	    setting = 0;
-	  }
-	  if (!strncmp(p, "*", 1)) {
-	    e[ea_Dreg] = e[ea_Areg] = e[ea_Aind] = e[ea_Ainc] = setting;
-	    e[ea_Adec] = e[ea_Adis] = e[ea_Aidx] = e[ea_AbsW] = setting;
-	    e[ea_AbsL] = e[ea_Pdis] = e[ea_Pidx] = e[ea_Imm] = setting;
-	    p = p+1;
-	  } else if (!strncmp(p, "Regs", 4)) {
-	    e[ea_Dreg] = e[ea_Areg] = setting;
-	    p = p+4;
-	  } else if (!strncmp(p, "PC", 2)) {
-	    e[ea_Pdis] = e[ea_Pidx] = setting;
-	    p = p+2;
-	  } else if (!strncmp(p, "Amod", 4)) {
-	    e[ea_Ainc] = e[ea_Adec] = setting;
-	    p = p+4;
-	  } else if (!strncmp(p, "Dreg", 4)) { e[ea_Dreg] = setting; p = p+4;
-	  } else if (!strncmp(p, "Areg", 4)) { e[ea_Areg] = setting; p = p+4;
-	  } else if (!strncmp(p, "Aind", 4)) { e[ea_Aind] = setting; p = p+4;
-	  } else if (!strncmp(p, "Ainc", 4)) { e[ea_Ainc] = setting; p = p+4;
-	  } else if (!strncmp(p, "Adec", 4)) { e[ea_Adec] = setting; p = p+4;
-	  } else if (!strncmp(p, "Adis", 4)) { e[ea_Adis] = setting; p = p+4;
-	  } else if (!strncmp(p, "Aidx", 4)) { e[ea_Aidx] = setting; p = p+4;
-	  } else if (!strncmp(p, "AbsW", 4)) { e[ea_AbsW] = setting; p = p+4;
-	  } else if (!strncmp(p, "AbsL", 4)) { e[ea_AbsL] = setting; p = p+4;
-	  } else if (!strncmp(p, "Pdis", 4)) { e[ea_Pdis] = setting; p = p+4;
-	  } else if (!strncmp(p, "Pidx", 4)) { e[ea_Pidx] = setting; p = p+4;
-	  } else if (!strncmp(p, "Imm", 3))  { e[ea_Imm]  = setting; p = p+3;
-	  } else {
-	    fprintf(stderr, "%d: unknown qualifier for EA\n", lineno);
-	    exit(1);
-	  }
-	} while (*p++ == ',');
-	if (*(p-1) != ')') {
-	  fprintf(stderr, "%d: unknown qualifier for EA\n", lineno);
-	  exit(1);
-	}
-	break;
+    if (*p++ != '(') {
+      fprintf(stderr, "%d: missing qualifier for EA\n", lineno);
+      exit(1);
+    }
+    do {
+      setting = 1;
+      if (*p == '-') {
+        p++;
+        setting = 0;
+      }
+      if (!strncmp(p, "*", 1)) {
+        e[ea_Dreg] = e[ea_Areg] = e[ea_Aind] = e[ea_Ainc] = setting;
+        e[ea_Adec] = e[ea_Adis] = e[ea_Aidx] = e[ea_AbsW] = setting;
+        e[ea_AbsL] = e[ea_Pdis] = e[ea_Pidx] = e[ea_Imm] = setting;
+        p = p+1;
+      } else if (!strncmp(p, "Regs", 4)) {
+        e[ea_Dreg] = e[ea_Areg] = setting;
+        p = p+4;
+      } else if (!strncmp(p, "PC", 2)) {
+        e[ea_Pdis] = e[ea_Pidx] = setting;
+        p = p+2;
+      } else if (!strncmp(p, "Amod", 4)) {
+        e[ea_Ainc] = e[ea_Adec] = setting;
+        p = p+4;
+      } else if (!strncmp(p, "Dreg", 4)) { e[ea_Dreg] = setting; p = p+4;
+      } else if (!strncmp(p, "Areg", 4)) { e[ea_Areg] = setting; p = p+4;
+      } else if (!strncmp(p, "Aind", 4)) { e[ea_Aind] = setting; p = p+4;
+      } else if (!strncmp(p, "Ainc", 4)) { e[ea_Ainc] = setting; p = p+4;
+      } else if (!strncmp(p, "Adec", 4)) { e[ea_Adec] = setting; p = p+4;
+      } else if (!strncmp(p, "Adis", 4)) { e[ea_Adis] = setting; p = p+4;
+      } else if (!strncmp(p, "Aidx", 4)) { e[ea_Aidx] = setting; p = p+4;
+      } else if (!strncmp(p, "AbsW", 4)) { e[ea_AbsW] = setting; p = p+4;
+      } else if (!strncmp(p, "AbsL", 4)) { e[ea_AbsL] = setting; p = p+4;
+      } else if (!strncmp(p, "Pdis", 4)) { e[ea_Pdis] = setting; p = p+4;
+      } else if (!strncmp(p, "Pidx", 4)) { e[ea_Pidx] = setting; p = p+4;
+      } else if (!strncmp(p, "Imm", 3))  { e[ea_Imm]  = setting; p = p+3;
+      } else {
+        fprintf(stderr, "%d: unknown qualifier for EA\n", lineno);
+        exit(1);
+      }
+    } while (*p++ == ',');
+    if (*(p-1) != ')') {
+      fprintf(stderr, "%d: unknown qualifier for EA\n", lineno);
+      exit(1);
+    }
+    break;
       case 'f':
-	expand_d_ea_f = 1;
+    expand_d_ea_f = 1;
 
-	if (*p++ != '(') {
-	  fprintf(stderr, "%d: missing qualifier for EA\n", lineno);
-	  exit(1);
-	}
-	do {
-	  setting = 1;
-	  if (*p == '-') {
-	    p++;
-	    setting = 0;
-	  }
-	  if (!strncmp(p, "*", 1)) {
-	    f[ea_Dreg] = f[ea_Areg] = f[ea_Aind] = f[ea_Ainc] = setting;
-	    f[ea_Adec] = f[ea_Adis] = f[ea_Aidx] = f[ea_AbsW] = setting;
-	    f[ea_AbsL] = f[ea_Pdis] = f[ea_Pidx] = f[ea_Imm] = setting;
-	    p = p+1;
-	  } else if (!strncmp(p, "Regs", 4)) {
-	    f[ea_Dreg] = f[ea_Areg] = setting;
-	    p = p+4;
-	  } else if (!strncmp(p, "PC", 2)) {
-	    f[ea_Pdis] = f[ea_Pidx] = setting;
-	    p = p+2;
-	  } else if (!strncmp(p, "Amod", 4)) {
-	    f[ea_Ainc] = f[ea_Adec] = setting;
-	    p = p+4;
-	  } else if (!strncmp(p, "Dreg", 4)) { f[ea_Dreg] = setting; p = p+4;
-	  } else if (!strncmp(p, "Areg", 4)) { f[ea_Areg] = setting; p = p+4;
-	  } else if (!strncmp(p, "Aind", 4)) { f[ea_Aind] = setting; p = p+4;
-	  } else if (!strncmp(p, "Ainc", 4)) { f[ea_Ainc] = setting; p = p+4;
-	  } else if (!strncmp(p, "Adec", 4)) { f[ea_Adec] = setting; p = p+4;
-	  } else if (!strncmp(p, "Adis", 4)) { f[ea_Adis] = setting; p = p+4;
-	  } else if (!strncmp(p, "Aidx", 4)) { f[ea_Aidx] = setting; p = p+4;
-	  } else if (!strncmp(p, "AbsW", 4)) { f[ea_AbsW] = setting; p = p+4;
-	  } else if (!strncmp(p, "AbsL", 4)) { f[ea_AbsL] = setting; p = p+4;
-	  } else if (!strncmp(p, "Pdis", 4)) { f[ea_Pdis] = setting; p = p+4;
-	  } else if (!strncmp(p, "Pidx", 4)) { f[ea_Pidx] = setting; p = p+4;
-	  } else if (!strncmp(p, "Imm", 3))  { f[ea_Imm]  = setting; p = p+3;
-	  } else {
-	    fprintf(stderr, "%d: unknown qualifier for EA\n", lineno);
-	    exit(1);
-	  }
-	} while (*p++ == ',');
-	if (*(p-1) != ')') {
-	  fprintf(stderr, "%d: unknown qualifier for EA\n", lineno);
-	  exit(1);
-	}
-	break;
+    if (*p++ != '(') {
+      fprintf(stderr, "%d: missing qualifier for EA\n", lineno);
+      exit(1);
+    }
+    do {
+      setting = 1;
+      if (*p == '-') {
+        p++;
+        setting = 0;
+      }
+      if (!strncmp(p, "*", 1)) {
+        f[ea_Dreg] = f[ea_Areg] = f[ea_Aind] = f[ea_Ainc] = setting;
+        f[ea_Adec] = f[ea_Adis] = f[ea_Aidx] = f[ea_AbsW] = setting;
+        f[ea_AbsL] = f[ea_Pdis] = f[ea_Pidx] = f[ea_Imm] = setting;
+        p = p+1;
+      } else if (!strncmp(p, "Regs", 4)) {
+        f[ea_Dreg] = f[ea_Areg] = setting;
+        p = p+4;
+      } else if (!strncmp(p, "PC", 2)) {
+        f[ea_Pdis] = f[ea_Pidx] = setting;
+        p = p+2;
+      } else if (!strncmp(p, "Amod", 4)) {
+        f[ea_Ainc] = f[ea_Adec] = setting;
+        p = p+4;
+      } else if (!strncmp(p, "Dreg", 4)) { f[ea_Dreg] = setting; p = p+4;
+      } else if (!strncmp(p, "Areg", 4)) { f[ea_Areg] = setting; p = p+4;
+      } else if (!strncmp(p, "Aind", 4)) { f[ea_Aind] = setting; p = p+4;
+      } else if (!strncmp(p, "Ainc", 4)) { f[ea_Ainc] = setting; p = p+4;
+      } else if (!strncmp(p, "Adec", 4)) { f[ea_Adec] = setting; p = p+4;
+      } else if (!strncmp(p, "Adis", 4)) { f[ea_Adis] = setting; p = p+4;
+      } else if (!strncmp(p, "Aidx", 4)) { f[ea_Aidx] = setting; p = p+4;
+      } else if (!strncmp(p, "AbsW", 4)) { f[ea_AbsW] = setting; p = p+4;
+      } else if (!strncmp(p, "AbsL", 4)) { f[ea_AbsL] = setting; p = p+4;
+      } else if (!strncmp(p, "Pdis", 4)) { f[ea_Pdis] = setting; p = p+4;
+      } else if (!strncmp(p, "Pidx", 4)) { f[ea_Pidx] = setting; p = p+4;
+      } else if (!strncmp(p, "Imm", 3))  { f[ea_Imm]  = setting; p = p+3;
+      } else {
+        fprintf(stderr, "%d: unknown qualifier for EA\n", lineno);
+        exit(1);
+      }
+    } while (*p++ == ',');
+    if (*(p-1) != ')') {
+      fprintf(stderr, "%d: unknown qualifier for EA\n", lineno);
+      exit(1);
+    }
+    break;
       default:
-	fprintf(stderr, "%d: did not understand dest operand\n", lineno);
-	exit(1);
+    fprintf(stderr, "%d: did not understand dest operand\n", lineno);
+    exit(1);
       }
     }
   }
@@ -737,655 +737,655 @@ void procline(char *line, int lineno, FILE *outiibs, FILE *outfuncs,
     /* loop through 3 different sizes or just once if no size to loop on */
 
     for (size = isize;
-	 (size == isize) || (num[bitz] && (size <= sz_long)); size++) {
+     (size == isize) || (num[bitz] && (size <= sz_long)); size++) {
 
       /* loop through 'e' EA or just once if no EA 'e' to loop on */
 
       for (ea_e = ea_Dreg;
-	   (ea_e == ea_Dreg) || (num[bite] && (ea_e <= ea_Imm)); ea_e++) {
+       (ea_e == ea_Dreg) || (num[bite] && (ea_e <= ea_Imm)); ea_e++) {
 
-	/* loop through 'f' EA or just once if no EA 'e' to loop on */
+    /* loop through 'f' EA or just once if no EA 'e' to loop on */
 
-	for (ea_f = ea_Dreg;
-	     (ea_f == ea_Dreg) || (num[bitf] && (ea_f <= ea_Imm)); ea_f++) {
+    for (ea_f = ea_Dreg;
+         (ea_f == ea_Dreg) || (num[bitf] && (ea_f <= ea_Imm)); ea_f++) {
 
-	  for (cc = 0; (cc == 0) || (num[bitc] && (cc < 16)); cc++) {
+      for (cc = 0; (cc == 0) || (num[bitc] && (cc < 16)); cc++) {
 
-	    if (cc == 1)
-	      continue;
+        if (cc == 1)
+          continue;
 
-	    if ((size == sz_none) && num[bitz])
-	      continue;
+        if ((size == sz_none) && num[bitz])
+          continue;
 
-	    /* deal with size */
+        /* deal with size */
 
-	    if (num[bitz]) {
-	      /* set mask where zz is */
-	      mask |= (3<<start[bitz]);
-	      /* clear bits where zz is */
-	      bits &= ~(3<<start[bitz]);
-	      /* set correct value into where zz is */
-	      switch (size) {
-	      case sz_byte: break;
-	      case sz_word: bits |= (1<<start[bitz]); break;
-	      case sz_long: bits |= (2<<start[bitz]); break;
-	      default:
-		printf("%d: Invalid size\n", lineno);
-		continue;
-	      }
-	      if (expand_s_immsize) {
-		/* source immediate data depends on size of instruction */
-		switch (size) {
-		case sz_byte: stype = dt_ImmB; break;
-		case sz_word: stype = dt_ImmW; break;
-		case sz_long: stype = dt_ImmL; break;
-		default:
-		  printf("%d: Invalid size\n", lineno);
-		  exit(1);
-		}
-	      }
-	    }
+        if (num[bitz]) {
+          /* set mask where zz is */
+          mask |= (3<<start[bitz]);
+          /* clear bits where zz is */
+          bits &= ~(3<<start[bitz]);
+          /* set correct value into where zz is */
+          switch (size) {
+          case sz_byte: break;
+          case sz_word: bits |= (1<<start[bitz]); break;
+          case sz_long: bits |= (2<<start[bitz]); break;
+          default:
+        printf("%d: Invalid size\n", lineno);
+        continue;
+          }
+          if (expand_s_immsize) {
+        /* source immediate data depends on size of instruction */
+        switch (size) {
+        case sz_byte: stype = dt_ImmB; break;
+        case sz_word: stype = dt_ImmW; break;
+        case sz_long: stype = dt_ImmL; break;
+        default:
+          printf("%d: Invalid size\n", lineno);
+          exit(1);
+        }
+          }
+        }
 
-	    /* deal with cc */
+        /* deal with cc */
 
-	    if (num[bitc]) {
-	      /* set mask where cccc is */
-	      mask |= (15<<start[bitc]);
-	      /* clear bits where cccc is */
-	      bits &= ~(15<<start[bitc]);
-	      /* set correct value into where cccc is */
-	      bits |= cc<<start[bitc];
-	    }
+        if (num[bitc]) {
+          /* set mask where cccc is */
+          mask |= (15<<start[bitc]);
+          /* clear bits where cccc is */
+          bits &= ~(15<<start[bitc]);
+          /* set correct value into where cccc is */
+          bits |= cc<<start[bitc];
+        }
 
-	    /* deal with EA 'e' when used as source */
+        /* deal with EA 'e' when used as source */
 
-	    if (num[bite] && expand_s_ea_e) {
-	      if (!e[ea_e]) {
-		/* this has been disabled using -Axyz */
-		continue;
-	      }
-	      /* clear everything */
-	      mask |= (7<<start[bite]);  /* set mask for eee */
-	      mask &= ~(7<<start[bitE]); /* clear mask for EEE */
-	      bits &= ~(7<<start[bite]); /* clear bits in eee */
-	      bits &= ~(7<<start[bitE]); /* clear bits in EEE */
-	      if (ea_e <= ea_Aidx) {
-		/* ea mode with register in second part */
-		bits |= (ea_e<<start[bite]);
-		switch (ea_e) {
-		case ea_Dreg: stype = dt_Dreg; sbitpos = start[bitE]; break;
-		case ea_Areg: stype = dt_Areg; sbitpos = start[bitE]; break;
-		case ea_Aind: stype = dt_Aind; sbitpos = start[bitE]; break;
-		case ea_Ainc: stype = dt_Ainc; sbitpos = start[bitE]; break;
-		case ea_Adec: stype = dt_Adec; sbitpos = start[bitE]; break;
-		case ea_Adis: stype = dt_Adis; sbitpos = start[bitE]; break;
-		case ea_Aidx: stype = dt_Aidx; sbitpos = start[bitE]; break;
-		default: abort();
-		}
-	      } else {
-		bits |= (7<<start[bite]); /* eee should be 111 */
-		mask |= (7<<start[bitE]);
-		switch (ea_e) {
-		case ea_AbsW: stype = dt_AbsW; bits |= (0<<start[bitE]); break;
-		case ea_AbsL: stype = dt_AbsL; bits |= (1<<start[bitE]); break;
-		case ea_Pdis: stype = dt_Pdis; bits |= (2<<start[bitE]); break;
-		case ea_Pidx: stype = dt_Pidx; bits |= (3<<start[bitE]); break;
-		case ea_Imm:
-		  bits |= (4<<start[bitE]);
-		  switch (size) {
-		  case sz_byte: stype = dt_ImmB; break;
-		  case sz_word: stype = dt_ImmW; break;
-		  case sz_long: stype = dt_ImmL; break;
-		  default:
-		    printf("%d: Invalid size\n", lineno);
-		    exit(1);
-		  }
-		  break;
-		default: abort();
-		}
-	      }
-	    }
+        if (num[bite] && expand_s_ea_e) {
+          if (!e[ea_e]) {
+        /* this has been disabled using -Axyz */
+        continue;
+          }
+          /* clear everything */
+          mask |= (7<<start[bite]);  /* set mask for eee */
+          mask &= ~(7<<start[bitE]); /* clear mask for EEE */
+          bits &= ~(7<<start[bite]); /* clear bits in eee */
+          bits &= ~(7<<start[bitE]); /* clear bits in EEE */
+          if (ea_e <= ea_Aidx) {
+        /* ea mode with register in second part */
+        bits |= (ea_e<<start[bite]);
+        switch (ea_e) {
+        case ea_Dreg: stype = dt_Dreg; sbitpos = start[bitE]; break;
+        case ea_Areg: stype = dt_Areg; sbitpos = start[bitE]; break;
+        case ea_Aind: stype = dt_Aind; sbitpos = start[bitE]; break;
+        case ea_Ainc: stype = dt_Ainc; sbitpos = start[bitE]; break;
+        case ea_Adec: stype = dt_Adec; sbitpos = start[bitE]; break;
+        case ea_Adis: stype = dt_Adis; sbitpos = start[bitE]; break;
+        case ea_Aidx: stype = dt_Aidx; sbitpos = start[bitE]; break;
+        default: abort();
+        }
+          } else {
+        bits |= (7<<start[bite]); /* eee should be 111 */
+        mask |= (7<<start[bitE]);
+        switch (ea_e) {
+        case ea_AbsW: stype = dt_AbsW; bits |= (0<<start[bitE]); break;
+        case ea_AbsL: stype = dt_AbsL; bits |= (1<<start[bitE]); break;
+        case ea_Pdis: stype = dt_Pdis; bits |= (2<<start[bitE]); break;
+        case ea_Pidx: stype = dt_Pidx; bits |= (3<<start[bitE]); break;
+        case ea_Imm:
+          bits |= (4<<start[bitE]);
+          switch (size) {
+          case sz_byte: stype = dt_ImmB; break;
+          case sz_word: stype = dt_ImmW; break;
+          case sz_long: stype = dt_ImmL; break;
+          default:
+            printf("%d: Invalid size\n", lineno);
+            exit(1);
+          }
+          break;
+        default: abort();
+        }
+          }
+        }
 
-	    /* deal with EA 'e' when used as destination */
+        /* deal with EA 'e' when used as destination */
 
-	    if (num[bite] && expand_d_ea_e) {
-	      if (!e[ea_e]) {
-		/* this has been disabled using -Axyz */
-		continue;
-	      }
-	      /* clear everything */
-	      mask |= (7<<start[bite]);  /* set mask for eee */
-	      mask &= ~(7<<start[bitE]); /* clear mask for EEE */
-	      bits &= ~(7<<start[bite]); /* clear bits in eee */
-	      bits &= ~(7<<start[bitE]); /* clear bits in EEE */
-	      if (ea_e <= ea_Aidx) {
-		/* ea mode with register in second part */
-		bits |= (ea_e<<start[bite]);
-		switch (ea_e) {
-		case ea_Dreg: dtype = dt_Dreg; dbitpos = start[bitE]; break;
-		case ea_Areg: dtype = dt_Areg; dbitpos = start[bitE]; break;
-		case ea_Aind: dtype = dt_Aind; dbitpos = start[bitE]; break;
-		case ea_Ainc: dtype = dt_Ainc; dbitpos = start[bitE]; break;
-		case ea_Adec: dtype = dt_Adec; dbitpos = start[bitE]; break;
-		case ea_Adis: dtype = dt_Adis; dbitpos = start[bitE]; break;
-		case ea_Aidx: dtype = dt_Aidx; dbitpos = start[bitE]; break;
-		default: abort();
-		}
-	      } else {
-		bits |= (7<<start[bite]); /* eee should be 111 */
-		mask |= (7<<start[bitE]);
-		switch (ea_e) {
-		case ea_AbsW: dtype = dt_AbsW; bits |= (0<<start[bitE]); break;
-		case ea_AbsL: dtype = dt_AbsL; bits |= (1<<start[bitE]); break;
-		case ea_Pdis: dtype = dt_Pdis; bits |= (2<<start[bitE]); break;
-		case ea_Pidx: dtype = dt_Pidx; bits |= (3<<start[bitE]); break;
-		case ea_Imm:
-		  bits |= (4<<start[bitE]);
-		  switch (size) {
-		  case sz_byte: dtype = dt_ImmB; break;
-		  case sz_word: dtype = dt_ImmW; break;
-		  case sz_long: dtype = dt_ImmL; break;
-		  default:
-		    printf("%d: Invalid size\n", lineno);
-		    exit(1);
-		  }
-		  break;
-		default: abort();
-		}
-	      }
-	    }
+        if (num[bite] && expand_d_ea_e) {
+          if (!e[ea_e]) {
+        /* this has been disabled using -Axyz */
+        continue;
+          }
+          /* clear everything */
+          mask |= (7<<start[bite]);  /* set mask for eee */
+          mask &= ~(7<<start[bitE]); /* clear mask for EEE */
+          bits &= ~(7<<start[bite]); /* clear bits in eee */
+          bits &= ~(7<<start[bitE]); /* clear bits in EEE */
+          if (ea_e <= ea_Aidx) {
+        /* ea mode with register in second part */
+        bits |= (ea_e<<start[bite]);
+        switch (ea_e) {
+        case ea_Dreg: dtype = dt_Dreg; dbitpos = start[bitE]; break;
+        case ea_Areg: dtype = dt_Areg; dbitpos = start[bitE]; break;
+        case ea_Aind: dtype = dt_Aind; dbitpos = start[bitE]; break;
+        case ea_Ainc: dtype = dt_Ainc; dbitpos = start[bitE]; break;
+        case ea_Adec: dtype = dt_Adec; dbitpos = start[bitE]; break;
+        case ea_Adis: dtype = dt_Adis; dbitpos = start[bitE]; break;
+        case ea_Aidx: dtype = dt_Aidx; dbitpos = start[bitE]; break;
+        default: abort();
+        }
+          } else {
+        bits |= (7<<start[bite]); /* eee should be 111 */
+        mask |= (7<<start[bitE]);
+        switch (ea_e) {
+        case ea_AbsW: dtype = dt_AbsW; bits |= (0<<start[bitE]); break;
+        case ea_AbsL: dtype = dt_AbsL; bits |= (1<<start[bitE]); break;
+        case ea_Pdis: dtype = dt_Pdis; bits |= (2<<start[bitE]); break;
+        case ea_Pidx: dtype = dt_Pidx; bits |= (3<<start[bitE]); break;
+        case ea_Imm:
+          bits |= (4<<start[bitE]);
+          switch (size) {
+          case sz_byte: dtype = dt_ImmB; break;
+          case sz_word: dtype = dt_ImmW; break;
+          case sz_long: dtype = dt_ImmL; break;
+          default:
+            printf("%d: Invalid size\n", lineno);
+            exit(1);
+          }
+          break;
+        default: abort();
+        }
+          }
+        }
 
-	    /* deal with EA 'f' when used as destination */
+        /* deal with EA 'f' when used as destination */
 
-	    if (num[bitf] && expand_d_ea_f) {
-	      if (!f[ea_f]) {
-		/* this has been disabled using -Axyz */
-		continue;
-	      }
-	      /* clear everything */
-	      mask |= (7<<start[bitf]);  /* set mask for fff */
-	      mask &= ~(7<<start[bitF]); /* clear mask for FFF */
-	      bits &= ~(7<<start[bitf]); /* clear bits in fff */
-	      bits &= ~(7<<start[bitF]); /* clear bits in FFF */
-	      if (ea_f <= ea_Aidx) {
-		/* ea mode with register in second part */
-		bits |= (ea_f<<start[bitf]);
-		switch (ea_f) {
-		case ea_Dreg: dtype = dt_Dreg; dbitpos = start[bitF]; break;
-		case ea_Areg: dtype = dt_Areg; dbitpos = start[bitF]; break;
-		case ea_Aind: dtype = dt_Aind; dbitpos = start[bitF]; break;
-		case ea_Ainc: dtype = dt_Ainc; dbitpos = start[bitF]; break;
-		case ea_Adec: dtype = dt_Adec; dbitpos = start[bitF]; break;
-		case ea_Adis: dtype = dt_Adis; dbitpos = start[bitF]; break;
-		case ea_Aidx: dtype = dt_Aidx; dbitpos = start[bitF]; break;
-		default: abort();
-		}
-	      } else {
-		bits |= (7<<start[bitf]); /* eee should be 111 */
-		mask |= (7<<start[bitF]);
-		switch (ea_f) {
-		case ea_AbsW: dtype = dt_AbsW; bits |= (0<<start[bitF]); break;
-		case ea_AbsL: dtype = dt_AbsL; bits |= (1<<start[bitF]); break;
-		case ea_Pdis: dtype = dt_Pdis; bits |= (2<<start[bitF]); break;
-		case ea_Pidx: dtype = dt_Pidx; bits |= (3<<start[bitF]); break;
-		case ea_Imm:
-		  bits |= (4<<start[bitF]);
-		  switch (size) {
-		  case sz_byte: dtype = dt_ImmB; break;
-		  case sz_word: dtype = dt_ImmW; break;
-		  case sz_long: dtype = dt_ImmL; break;
-		  default:
-		    printf("%d: Invalid size\n", lineno);
-		    exit(1);
-		  }
-		  break;
-		default: abort();
-		}
-	      }
-	    }
+        if (num[bitf] && expand_d_ea_f) {
+          if (!f[ea_f]) {
+        /* this has been disabled using -Axyz */
+        continue;
+          }
+          /* clear everything */
+          mask |= (7<<start[bitf]);  /* set mask for fff */
+          mask &= ~(7<<start[bitF]); /* clear mask for FFF */
+          bits &= ~(7<<start[bitf]); /* clear bits in fff */
+          bits &= ~(7<<start[bitF]); /* clear bits in FFF */
+          if (ea_f <= ea_Aidx) {
+        /* ea mode with register in second part */
+        bits |= (ea_f<<start[bitf]);
+        switch (ea_f) {
+        case ea_Dreg: dtype = dt_Dreg; dbitpos = start[bitF]; break;
+        case ea_Areg: dtype = dt_Areg; dbitpos = start[bitF]; break;
+        case ea_Aind: dtype = dt_Aind; dbitpos = start[bitF]; break;
+        case ea_Ainc: dtype = dt_Ainc; dbitpos = start[bitF]; break;
+        case ea_Adec: dtype = dt_Adec; dbitpos = start[bitF]; break;
+        case ea_Adis: dtype = dt_Adis; dbitpos = start[bitF]; break;
+        case ea_Aidx: dtype = dt_Aidx; dbitpos = start[bitF]; break;
+        default: abort();
+        }
+          } else {
+        bits |= (7<<start[bitf]); /* eee should be 111 */
+        mask |= (7<<start[bitF]);
+        switch (ea_f) {
+        case ea_AbsW: dtype = dt_AbsW; bits |= (0<<start[bitF]); break;
+        case ea_AbsL: dtype = dt_AbsL; bits |= (1<<start[bitF]); break;
+        case ea_Pdis: dtype = dt_Pdis; bits |= (2<<start[bitF]); break;
+        case ea_Pidx: dtype = dt_Pidx; bits |= (3<<start[bitF]); break;
+        case ea_Imm:
+          bits |= (4<<start[bitF]);
+          switch (size) {
+          case sz_byte: dtype = dt_ImmB; break;
+          case sz_word: dtype = dt_ImmW; break;
+          case sz_long: dtype = dt_ImmL; break;
+          default:
+            printf("%d: Invalid size\n", lineno);
+            exit(1);
+          }
+          break;
+        default: abort();
+        }
+          }
+        }
 
-	    wordlen = 1;
-	    for (type = 0; type < 2; type++) {
-	      switch(type ? stype : dtype) {
-	      case dt_Ill:
-	      case dt_Dreg:
-	      case dt_Areg:
-	      case dt_Aind:
-	      case dt_Ainc:
-	      case dt_Adec:
-		break;
-	      case dt_Adis:
-	      case dt_Aidx:
-	      case dt_AbsW:
-	      case dt_Pdis:
-	      case dt_Pidx:
-	      case dt_ImmB:
-	      case dt_ImmW:
-		wordlen++;
-		break;
-	      case dt_AbsL:
-	      case dt_ImmL:
-		wordlen+= 2;
-		break;
-	      case dt_ImmS:
-	      case dt_Imm3:
-	      case dt_Imm4:
-	      case dt_Imm8:
-	      case dt_Imm8s:
-	      case dt_ImmV:
-		break;
-	      default:
-		printf("%d: Invalid type\n", lineno);
-		exit(1);
-	      }
-	    }
+        wordlen = 1;
+        for (type = 0; type < 2; type++) {
+          switch(type ? stype : dtype) {
+          case dt_Ill:
+          case dt_Dreg:
+          case dt_Areg:
+          case dt_Aind:
+          case dt_Ainc:
+          case dt_Adec:
+        break;
+          case dt_Adis:
+          case dt_Aidx:
+          case dt_AbsW:
+          case dt_Pdis:
+          case dt_Pidx:
+          case dt_ImmB:
+          case dt_ImmW:
+        wordlen++;
+        break;
+          case dt_AbsL:
+          case dt_ImmL:
+        wordlen+= 2;
+        break;
+          case dt_ImmS:
+          case dt_Imm3:
+          case dt_Imm4:
+          case dt_Imm8:
+          case dt_Imm8s:
+          case dt_ImmV:
+        break;
+          default:
+        printf("%d: Invalid type\n", lineno);
+        exit(1);
+          }
+        }
 
-	    /* BUG: The immediate instructions are probably not correct,
-	       e.g. ADDI, ADDQ, ANDI, CMPI, EORI, MOVEQ, ORI, SUBI, SUBQ */
+        /* BUG: The immediate instructions are probably not correct,
+           e.g. ADDI, ADDQ, ANDI, CMPI, EORI, MOVEQ, ORI, SUBI, SUBQ */
 
-	    clocks = -1;
+        clocks = -1;
 
-	    switch(mnemonic_num) {
-	    case i_EOR:
+        switch(mnemonic_num) {
+        case i_EOR:
               if ( (bits & 0xff00)==0xa000 )                                                                               // EORI RA2005.05.06
               {                                                                                                            //
                   if ( (bits & 0xffb0)==0xa030 ) clocks=20;                                                                // EORI to CCR/SR
                   else {                                                                                                   //
- 		         if (dtype == dt_Dreg) clocks=(size != sz_long ?  8 : 12);                      	           // EORI D0-D7
- 		         else                         clocks=(size != sz_long ? 16 : 20) + clocks_eacalc(dtype, size);     // EORI Memory
+                  if (dtype == dt_Dreg) clocks=(size != sz_long ?  8 : 12);                                     // EORI D0-D7
+                  else                         clocks=(size != sz_long ? 16 : 20) + clocks_eacalc(dtype, size);     // EORI Memory
                        }                                                                                                   //
               }                                                                                                            // EORI RA2005.05.06
               else
               {
-	           if (dtype == dt_Dreg) {
-		     clocks = size != sz_long ? 4 : 8;
-		     clocks+= clocks_eacalc(stype, size);
-	           } else if (stype == dt_Dreg) {
-		     clocks = size != sz_long ? 8 : 12;
-		     clocks+= clocks_eacalc(dtype, size);
-	           } else {
-		     clocks = size != sz_long ? 20 : 12;
-		     clocks+= clocks_eacalc(dtype, size);
-	           }
+               if (dtype == dt_Dreg) {
+             clocks = size != sz_long ? 4 : 8;
+             clocks+= clocks_eacalc(stype, size);
+               } else if (stype == dt_Dreg) {
+             clocks = size != sz_long ? 8 : 12;
+             clocks+= clocks_eacalc(dtype, size);
+               } else {
+             clocks = size != sz_long ? 20 : 12;
+             clocks+= clocks_eacalc(dtype, size);
+               }
               }
-	      break;
-	    case i_OR:
-	    case i_AND:
+          break;
+        case i_OR:
+        case i_AND:
               if ( (bits & 0xff0)==0x020 || (bits & 0xff0)==0x000  )                                                       // ANDI/ORI RA2005.05.06
               {                                                                                                            //
                   if ( (bits & 0xffbf)==0x003c || (bits & 0xffbf)==0x023c ) clocks=20;                                     // to CCR/SR
                   {                                                                                                        //
- 		      if (dtype == dt_Dreg) clocks=(size != sz_long ?  8 : 12);                                            // D0-D7
- 		      else                  clocks=(size != sz_long ? 16 : 20) +clocks_eacalc(dtype, size);	           // Memory
+               if (dtype == dt_Dreg) clocks=(size != sz_long ?  8 : 12);                                            // D0-D7
+               else                  clocks=(size != sz_long ? 16 : 20) +clocks_eacalc(dtype, size);               // Memory
                   }                                                                                                        //
               }                                                                                                            // ANDI/ORI RA2005.05.06
               else
               {
-	           if (dtype == dt_Dreg) {
-		     clocks = size != sz_long ? 4 : clocks_6or8(stype);
-		     clocks+= clocks_eacalc(stype, size);
-	           } else if (stype == dt_Dreg) {
-		     clocks = size != sz_long ? 8 : 12;
-		     clocks+= clocks_eacalc(dtype, size);
-	           } else {
-		     clocks = size != sz_long ? 20 : 12;
-		     clocks+= clocks_eacalc(dtype, size);
-	           }
-	      }
-	      break;
-	    case i_ADDA:
-	    case i_SUBA:
-	      if (dtype == dt_Areg) {
-		clocks = size != sz_long ? 8 : clocks_6or8(stype);
-		clocks+= clocks_eacalc(stype, size);
-	      } else {
-		printf("%d: clock count invalid type\n", lineno);
-		exit(1);
-	      }
-	      break;
-	    case i_ADD:
-	    case i_SUB:
-	      if      ((bits & 0xf100)==0x5000 || (bits & 0xf100)==0x5100)                                                 // SUBQ/ADDQ RA2005.05.06
+               if (dtype == dt_Dreg) {
+             clocks = size != sz_long ? 4 : clocks_6or8(stype);
+             clocks+= clocks_eacalc(stype, size);
+               } else if (stype == dt_Dreg) {
+             clocks = size != sz_long ? 8 : 12;
+             clocks+= clocks_eacalc(dtype, size);
+               } else {
+             clocks = size != sz_long ? 20 : 12;
+             clocks+= clocks_eacalc(dtype, size);
+               }
+          }
+          break;
+        case i_ADDA:
+        case i_SUBA:
+          if (dtype == dt_Areg) {
+        clocks = size != sz_long ? 8 : clocks_6or8(stype);
+        clocks+= clocks_eacalc(stype, size);
+          } else {
+        printf("%d: clock count invalid type\n", lineno);
+        exit(1);
+          }
+          break;
+        case i_ADD:
+        case i_SUB:
+          if      ((bits & 0xf100)==0x5000 || (bits & 0xf100)==0x5100)                                                 // SUBQ/ADDQ RA2005.05.06
                                         clocks=(size != sz_long ?4:8) +clocks_eacalc(dtype, size);                         //
               else if ((bits & 0xff00)==0x0400 || (bits & 0xff00)==0x0600)                                                 // ADDI/SUBI
               {                                                                                                            //
- 		  if (dtype == dt_Dreg) clocks=(size != sz_long ?  8 : 12);                       	                   // D0-D7
- 		  else                  clocks=(size != sz_long ? 16 : 20) +clocks_eacalc(dtype, size);	                   // Memory
+           if (dtype == dt_Dreg) clocks=(size != sz_long ?  8 : 12);                                              // D0-D7
+           else                  clocks=(size != sz_long ? 16 : 20) +clocks_eacalc(dtype, size);                       // Memory
               }                                                                                                            //
               else                                                                                                         //
               {
-	           if (dtype == dt_Dreg) {
-		     clocks = size != sz_long ? 4 : clocks_6or8(stype);
-		     clocks+= clocks_eacalc(stype, size);
-	           } else if (stype == dt_Dreg) {
-		     clocks = size != sz_long ? 8 : 12;
-		     clocks+= clocks_eacalc(dtype, size);
-	           } else {
-		     clocks = size != sz_long ? 20 : 12;
-		     clocks+= clocks_eacalc(dtype, size);
-	           }
-	      }
-	      break;
-	    case i_CMP:
-	    case i_CMPA:
+               if (dtype == dt_Dreg) {
+             clocks = size != sz_long ? 4 : clocks_6or8(stype);
+             clocks+= clocks_eacalc(stype, size);
+               } else if (stype == dt_Dreg) {
+             clocks = size != sz_long ? 8 : 12;
+             clocks+= clocks_eacalc(dtype, size);
+               } else {
+             clocks = size != sz_long ? 20 : 12;
+             clocks+= clocks_eacalc(dtype, size);
+               }
+          }
+          break;
+        case i_CMP:
+        case i_CMPA:
               if (((bits & 0xff00)==0x0c00 ))                                                                              // CMPI RA2005.05.06
               {                                                                                                            //
- 		  if (dtype == dt_Dreg) clocks=(size != sz_long ?  8 : 12);                                                // D0-D7
- 		  else                  clocks=(size != sz_long ?  8 : 12) +clocks_eacalc(dtype, size);	                   // Memory
+           if (dtype == dt_Dreg) clocks=(size != sz_long ?  8 : 12);                                                // D0-D7
+           else                  clocks=(size != sz_long ?  8 : 12) +clocks_eacalc(dtype, size);                       // Memory
               }                                                                                                            //
               else
               {
-	           if (dtype == dt_Areg) {
-		     clocks = 6;
-		     clocks+= clocks_eacalc(stype, size);
-	           } else if (dtype == dt_Dreg) {
-		     clocks = size != sz_long ? 4 : 6;
-		     clocks+= clocks_eacalc(stype, size);
-	           } else { /* CMPM */
-		     clocks = 12 + clocks_eacalc(stype, size) +
-		       clocks_eacalc(dtype, size);
-	           }
-	      }
-	      break;
-	    case i_DIVS:
-	      clocks = 158 - 8 + clocks_eacalc(stype, size);
-	      break;
-	    case i_DIVU:
-	      clocks = 140 - 8 + clocks_eacalc(stype, size);
-	      break;
-	    case i_MULS:
-	      clocks = 38 + clocks_eacalc(stype, size);
-	      break;
-	    case i_MULU:
-	      clocks = 38 + clocks_eacalc(stype, size);
-	      break;
-	    case i_MOVE:
-	    case i_MOVEA:
+               if (dtype == dt_Areg) {
+             clocks = 6;
+             clocks+= clocks_eacalc(stype, size);
+               } else if (dtype == dt_Dreg) {
+             clocks = size != sz_long ? 4 : 6;
+             clocks+= clocks_eacalc(stype, size);
+               } else { /* CMPM */
+             clocks = 12 + clocks_eacalc(stype, size) +
+               clocks_eacalc(dtype, size);
+               }
+          }
+          break;
+        case i_DIVS:
+          clocks = 158 - 8 + clocks_eacalc(stype, size);
+          break;
+        case i_DIVU:
+          clocks = 140 - 8 + clocks_eacalc(stype, size);
+          break;
+        case i_MULS:
+          clocks = 38 + clocks_eacalc(stype, size);
+          break;
+        case i_MULU:
+          clocks = 38 + clocks_eacalc(stype, size);
+          break;
+        case i_MOVE:
+        case i_MOVEA:
 
-	      if ((bits & 0xf10)==0x700 ) clocks =4;                                                                        //MOVEQ RA2005.05.06
+          if ((bits & 0xf10)==0x700 ) clocks =4;                                                                        //MOVEQ RA2005.05.06
               else
               {
-	          if ((idx = clocks_typetoindex(dtype)) == -1) {
-    		    printf("%d: clock count invalid MOVE type\n", lineno);
-		    exit(1);
-	          }
-	          // RA 2005.05.06 - added long move timings.
-	          clocks =size != sz_long ? clocks_movetable[clocks_typetoindex(stype)*9+idx] : clocks_movetable_l[clocks_typetoindex(stype)*9+idx];
+              if ((idx = clocks_typetoindex(dtype)) == -1) {
+                printf("%d: clock count invalid MOVE type\n", lineno);
+            exit(1);
               }
-	      break;
-	    case i_CLR:
-	    case i_NEG:
-	    case i_NEGX:
-	    case i_NOT:
-	      if (stype == dt_Dreg || stype == dt_Areg) {
-		clocks = size != sz_long ? 4 : 6;
-	      } else {
-		clocks = size != sz_long ? 8 : 12;
-		clocks+= clocks_eacalc(stype, size);
-	      }
-	      break;
-	    case i_NBCD:
-	      if (stype == dt_Dreg || stype == dt_Areg) {
-		clocks = 6;
-	      } else {
-		clocks = 8 + clocks_eacalc(stype, size);
-	      }
-	      break;
-	    case i_Scc:
-	    case i_SF:
-	      if (stype == dt_Dreg || stype == dt_Areg) {
-		clocks = size != sz_long ? 4 : 6;
-	      } else {
-		clocks = 8 + clocks_eacalc(stype, size);
-	      }
-	      break;
-	    case i_TAS:
-	      if (stype == dt_Dreg || stype == dt_Areg) {
-		clocks = 4;
-	      } else {
-		clocks = 10 + clocks_eacalc(stype, size);
-	      }
-	      break;
-	    case i_TST:
-	      if (stype == dt_Dreg || stype == dt_Areg) {
-		clocks = 4;
-	      } else {
-		clocks = 4 + clocks_eacalc(stype, size);
-	      }
-	      break;
-	    case i_ASR:
-	    case i_ASL:
-	    case i_LSR:
-	    case i_LSL:
-	    case i_ROR:
-	    case i_ROL:
-	    case i_ROXR:
-	    case i_ROXL:
-	      if (stype == dt_Dreg || stype == dt_Areg) {
-		clocks = size != sz_long ? 8 : 10; /* minimums */
-	      } else {
-		clocks = 8 + clocks_eacalc(stype, size);
-	      }
-	      break;
-	    case i_BCHG:
-	    case i_BSET:
-	      if (stype == dt_Dreg) { /* dynamic */
-		clocks = (dtype == dt_Dreg) ? 8 : 8 +
+              // RA 2005.05.06 - added long move timings.
+              clocks =size != sz_long ? clocks_movetable[clocks_typetoindex(stype)*9+idx] : clocks_movetable_l[clocks_typetoindex(stype)*9+idx];
+              }
+          break;
+        case i_CLR:
+        case i_NEG:
+        case i_NEGX:
+        case i_NOT:
+          if (stype == dt_Dreg || stype == dt_Areg) {
+        clocks = size != sz_long ? 4 : 6;
+          } else {
+        clocks = size != sz_long ? 8 : 12;
+        clocks+= clocks_eacalc(stype, size);
+          }
+          break;
+        case i_NBCD:
+          if (stype == dt_Dreg || stype == dt_Areg) {
+        clocks = 6;
+          } else {
+        clocks = 8 + clocks_eacalc(stype, size);
+          }
+          break;
+        case i_Scc:
+        case i_SF:
+          if (stype == dt_Dreg || stype == dt_Areg) {
+        clocks = size != sz_long ? 4 : 6;
+          } else {
+        clocks = 8 + clocks_eacalc(stype, size);
+          }
+          break;
+        case i_TAS:
+          if (stype == dt_Dreg || stype == dt_Areg) {
+        clocks = 4;
+          } else {
+        clocks = 10 + clocks_eacalc(stype, size);
+          }
+          break;
+        case i_TST:
+          if (stype == dt_Dreg || stype == dt_Areg) {
+        clocks = 4;
+          } else {
+        clocks = 4 + clocks_eacalc(stype, size);
+          }
+          break;
+        case i_ASR:
+        case i_ASL:
+        case i_LSR:
+        case i_LSL:
+        case i_ROR:
+        case i_ROL:
+        case i_ROXR:
+        case i_ROXL:
+          if (stype == dt_Dreg || stype == dt_Areg) {
+        clocks = size != sz_long ? 8 : 10; /* minimums */
+          } else {
+        clocks = 8 + clocks_eacalc(stype, size);
+          }
+          break;
+        case i_BCHG:
+        case i_BSET:
+          if (stype == dt_Dreg) { /* dynamic */
+        clocks = (dtype == dt_Dreg) ? 8 : 8 +
           clocks_eacalc(dtype, size);               // RA2005.05.07 see below
-	      } else { /* static */
-		clocks = (dtype == dt_Dreg) ? 14 : 12 +
+          } else { /* static */
+        clocks = (dtype == dt_Dreg) ? 14 : 12 +
           clocks_eacalc(dtype, size);               // RA2005.05.07 see below
-	      }
-	    case i_BCLR:
-	      if (stype == dt_Dreg) { /* dynamic */
-		clocks = (dtype == dt_Dreg) ? 10 : 8 +
+          }
+        case i_BCLR:
+          if (stype == dt_Dreg) { /* dynamic */
+        clocks = (dtype == dt_Dreg) ? 10 : 8 +
           clocks_eacalc(dtype, size);               // RA2005.05.07 see below
-	      } else { /* static */
-		clocks = (dtype == dt_Dreg) ? 14 : 12 +
+          } else { /* static */
+        clocks = (dtype == dt_Dreg) ? 14 : 12 +
           clocks_eacalc(dtype, size);               // RA2005.05.07 see below
-	      }
-	      break;
-	    case i_BTST:
-	      if (stype == dt_Dreg) { /* dynamic */
-		clocks = (dtype == dt_Dreg) ? 6 : 4 +
+          }
+          break;
+        case i_BTST:
+          if (stype == dt_Dreg) { /* dynamic */
+        clocks = (dtype == dt_Dreg) ? 6 : 4 +
           clocks_eacalc(dtype, size);               // was stype, changed to dtype RA2005.05.07 because 4+ is on the else part of ?
-	      } else { /* static */
-		clocks = (dtype == dt_Dreg) ? 10 : 8 +
+          } else { /* static */
+        clocks = (dtype == dt_Dreg) ? 10 : 8 +
           clocks_eacalc(dtype, size);               // ditto - wonder if it applies to the above too, not just BTST???
-	      }
-	      break;
-	    case i_JMP:
-	      switch(stype) {
-	      case dt_Aind: clocks =  8; break;
-	      case dt_Adis: clocks = 10; break;
-	      case dt_Aidx: clocks = 14; break;
-	      case dt_AbsW: clocks = 10; break;
-	      case dt_AbsL: clocks = 12; break;
-	      case dt_Pdis: clocks = 10; break;
-	      case dt_Pidx: clocks = 14; break;
-	      default:
-		printf("%d: clock count invalid type\n", lineno);
-		exit(1);
-	      }
-	      break;
-	    case i_JSR:
-	      switch(stype) {
-	      case dt_Aind: clocks = 16; break;
-	      case dt_Adis: clocks = 18; break;
-	      case dt_Aidx: clocks = 22; break;
-	      case dt_AbsW: clocks = 18; break;
-	      case dt_AbsL: clocks = 20; break;
-	      case dt_Pdis: clocks = 18; break;
-	      case dt_Pidx: clocks = 22; break;
-	      default:
-		printf("%d: clock count invalid type\n", lineno);
-		exit(1);
-	      }
-	      break;
-	    case i_LEA:
-	      switch(stype) {
-	      case dt_Aind: clocks =  4; break;
-	      case dt_Adis: clocks =  8; break;
-	      case dt_Aidx: clocks = 12; break;
-	      case dt_AbsW: clocks =  8; break;
-	      case dt_AbsL: clocks = 12; break;
-	      case dt_Pdis: clocks =  8; break;
-	      case dt_Pidx: clocks = 12; break;
-	      default:
-		printf("%d: clock count invalid type\n", lineno);
-		exit(1);
-	      }
-	      break;
-	    case i_PEA:
-	      switch(stype) {
-	      case dt_Aind: clocks = 12; break;
-	      case dt_Adis: clocks = 16; break;
-	      case dt_Aidx: clocks = 20; break;
-	      case dt_AbsW: clocks = 16; break;
-	      case dt_AbsL: clocks = 20; break;
-	      case dt_Pdis: clocks = 16; break;
-	      case dt_Pidx: clocks = 20; break;
-	      default:
-		printf("%d: clock count invalid type\n", lineno);
-		exit(1);
-	      }
-	      break;
-	    case i_MOVEMMR:
-	      clocks = 20;
-	      break;
-	    case i_MOVEMRM:
-	      clocks = 16;
-	      break;
-	    case i_SUBX:
-	    case i_ADDX:
-	      if (stype == dt_Dreg) {
-		clocks = size != sz_long ? 4 : 8;
-	      } else {
-		clocks = size != sz_long ? 18 : 30;
-	      }
-	      break;
-	    case i_ABCD:
-	    case i_SBCD:
-	      clocks = (stype == dt_Dreg) ? 6 : 18;
-	      break;
-	    case i_ORSR:
-	    case i_ANDSR:
-	    case i_EORSR:
-	      clocks = 20;
-	      break;
-	    case i_CHK:
-	      clocks = 10 + clocks_eacalc(stype, size);
-	      break;
-	    case i_EXG:
-	      clocks = 6;
-	      break;
-	    case i_EXT:
-	      clocks = 4;
-	      break;
-	    case i_LINK:
-	      clocks = 16;
-	      break;
-	    case i_MOVEFSR:
-	      clocks = (stype == dt_Dreg) ? 6 : 8 + clocks_eacalc(stype, size);
-	      break;
-	    case i_MOVETSR:
-	      clocks = (stype == dt_Dreg) ? 12 : 12 +
-		clocks_eacalc(stype, size);
-	      break;
-	    case i_MOVETUSP:
-	    case i_MOVEFUSP:
-	      clocks = 4;
-	      break;
-	    case i_NOP:
-	      clocks = 4;
-	      break;
-	    case i_RESET:
-	      clocks = 132;
-	      break;
-	    case i_RTE:
-	    case i_RTR:
-	      clocks = 20;
-	      break;
-	    case i_RTS:
-	      clocks = 20;
-	      break;
-	    case i_STOP:
-	      clocks = 4;
-	      break;
-	    case i_SWAP:
-	      clocks = 4;
-	      break;
-	    case i_TRAPV:
-	      clocks = 4;
-	      break;
-	    case i_TRAP:
-	      clocks = 4; /* exception */
-	      break;
-	    case i_UNLK:
-	      clocks = 12;
-	      break;
-	    case i_DBcc:
+          }
+          break;
+        case i_JMP:
+          switch(stype) {
+          case dt_Aind: clocks =  8; break;
+          case dt_Adis: clocks = 10; break;
+          case dt_Aidx: clocks = 14; break;
+          case dt_AbsW: clocks = 10; break;
+          case dt_AbsL: clocks = 12; break;
+          case dt_Pdis: clocks = 10; break;
+          case dt_Pidx: clocks = 14; break;
+          default:
+        printf("%d: clock count invalid type\n", lineno);
+        exit(1);
+          }
+          break;
+        case i_JSR:
+          switch(stype) {
+          case dt_Aind: clocks = 16; break;
+          case dt_Adis: clocks = 18; break;
+          case dt_Aidx: clocks = 22; break;
+          case dt_AbsW: clocks = 18; break;
+          case dt_AbsL: clocks = 20; break;
+          case dt_Pdis: clocks = 18; break;
+          case dt_Pidx: clocks = 22; break;
+          default:
+        printf("%d: clock count invalid type\n", lineno);
+        exit(1);
+          }
+          break;
+        case i_LEA:
+          switch(stype) {
+          case dt_Aind: clocks =  4; break;
+          case dt_Adis: clocks =  8; break;
+          case dt_Aidx: clocks = 12; break;
+          case dt_AbsW: clocks =  8; break;
+          case dt_AbsL: clocks = 12; break;
+          case dt_Pdis: clocks =  8; break;
+          case dt_Pidx: clocks = 12; break;
+          default:
+        printf("%d: clock count invalid type\n", lineno);
+        exit(1);
+          }
+          break;
+        case i_PEA:
+          switch(stype) {
+          case dt_Aind: clocks = 12; break;
+          case dt_Adis: clocks = 16; break;
+          case dt_Aidx: clocks = 20; break;
+          case dt_AbsW: clocks = 16; break;
+          case dt_AbsL: clocks = 20; break;
+          case dt_Pdis: clocks = 16; break;
+          case dt_Pidx: clocks = 20; break;
+          default:
+        printf("%d: clock count invalid type\n", lineno);
+        exit(1);
+          }
+          break;
+        case i_MOVEMMR:
+          clocks = 20;
+          break;
+        case i_MOVEMRM:
+          clocks = 16;
+          break;
+        case i_SUBX:
+        case i_ADDX:
+          if (stype == dt_Dreg) {
+        clocks = size != sz_long ? 4 : 8;
+          } else {
+        clocks = size != sz_long ? 18 : 30;
+          }
+          break;
+        case i_ABCD:
+        case i_SBCD:
+          clocks = (stype == dt_Dreg) ? 6 : 18;
+          break;
+        case i_ORSR:
+        case i_ANDSR:
+        case i_EORSR:
+          clocks = 20;
+          break;
+        case i_CHK:
+          clocks = 10 + clocks_eacalc(stype, size);
+          break;
+        case i_EXG:
+          clocks = 6;
+          break;
+        case i_EXT:
+          clocks = 4;
+          break;
+        case i_LINK:
+          clocks = 16;
+          break;
+        case i_MOVEFSR:
+          clocks = (stype == dt_Dreg) ? 6 : 8 + clocks_eacalc(stype, size);
+          break;
+        case i_MOVETSR:
+          clocks = (stype == dt_Dreg) ? 12 : 12 +
+        clocks_eacalc(stype, size);
+          break;
+        case i_MOVETUSP:
+        case i_MOVEFUSP:
+          clocks = 4;
+          break;
+        case i_NOP:
+          clocks = 4;
+          break;
+        case i_RESET:
+          clocks = 132;
+          break;
+        case i_RTE:
+        case i_RTR:
+          clocks = 20;
+          break;
+        case i_RTS:
+          clocks = 20;
+          break;
+        case i_STOP:
+          clocks = 4;
+          break;
+        case i_SWAP:
+          clocks = 4;
+          break;
+        case i_TRAPV:
+          clocks = 4;
+          break;
+        case i_TRAP:
+          clocks = 4; /* exception */
+          break;
+        case i_UNLK:
+          clocks = 12;
+          break;
+        case i_DBcc:
               clocks = 10;                  // opcode will tweak as needed - RA2005.05.09
-	      break;
-	    case i_DBRA:
+          break;
+        case i_DBRA:
           clocks = 10;
           break;
-	    case i_Bcc:
+        case i_Bcc:
               clocks = 8; // opcode will tweak as needed - RA2005.05.09
-	      break;
-	    case i_BSR:
-	      clocks = 18;
-	      break;
-	    case i_MOVEPRM:
-	    case i_MOVEPMR:
-	      clocks = (size != sz_long) ? 16 : 24;
-	      break;
-	    case i_ILLG:
+          break;
+        case i_BSR:
+          clocks = 18;
+          break;
+        case i_MOVEPRM:
+        case i_MOVEPMR:
+          clocks = (size != sz_long) ? 16 : 24;
+          break;
+        case i_ILLG:
           clocks = 34;                  // RA2005.05.09
-	      break;
-	    case i_LINE10:
-	    case i_LINE15:
-	      clocks = 4; /* exception */
-	      break;
-	    default:
-	      printf("%d: Invalid mnemonic type\n", lineno);
-	      exit(1);
-	    }
+          break;
+        case i_LINE10:
+        case i_LINE15:
+          clocks = 4; /* exception */
+          break;
+        default:
+          printf("%d: Invalid mnemonic type\n", lineno);
+          exit(1);
+        }
 
-	    if (clocks == -1) {
-	      printf("%d: Clocks not found\n", lineno);
-	      exit(1);
-	    }
+        if (clocks == -1) {
+          printf("%d: Clocks not found\n", lineno);
+          exit(1);
+        }
 
-	    /* write output lines */
+        /* write output lines */
 
-	    fprintf(outiibs, "  { 0x%x, 0x%x, %d, { %d, %d, %d, %d, %d }, ",
-		    mask, bits, mnemonic_num, priv, endblk, imm_notzero, used,
-		    set);
-	    fprintf(outiibs, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d /*clk*/    },\n",
-		    size, stype, dtype, sbitpos, dbitpos, immvalue,
-		    cc, total, wordlen, clocks);
-	    fprintf(outiibs, "%60s/* %s */\n", "", mnemonic);
-	    if (set == 0) {
-	      fprintf(outfuncs, "  cpu_op_%ia, /* %s */\n", total, mnemonic);
-	      fprintf(outfuncs, "  cpu_op_%ia, /* %s */\n", total, mnemonic);
-	      fprintf(outproto, "extern void cpu_op_%ia("
-		      "t_ipc *ipc); /* %s */\n", total, mnemonic);
-	    } else {
-	      fprintf(outfuncs, "  cpu_op_%ia, /* %s - normal */\n", total,
-		      mnemonic);
-	      fprintf(outfuncs, "  cpu_op_%ib, /* %s - no flags */\n", total,
-		      mnemonic);
-	      fprintf(outproto, "extern void cpu_op_%ia("
-		      "t_ipc *ipc); /* %s */\n", total, mnemonic);
-	      fprintf(outproto, "extern void cpu_op_%ib("
-		      "t_ipc *ipc); /* %s */\n", total, mnemonic);
-	    }
+        fprintf(outiibs, "  { 0x%x, 0x%x, %d, { %d, %d, %d, %d, %d }, ",
+            mask, bits, mnemonic_num, priv, endblk, imm_notzero, used,
+            set);
+        fprintf(outiibs, "%d, %d, %d, %d, %d, %d, %d, %d, %d, %d /*clk*/    },\n",
+            size, stype, dtype, sbitpos, dbitpos, immvalue,
+            cc, total, wordlen, clocks);
+        fprintf(outiibs, "%60s/* %s */\n", "", mnemonic);
+        if (set == 0) {
+          fprintf(outfuncs, "  cpu_op_%ia, /* %s */\n", total, mnemonic);
+          fprintf(outfuncs, "  cpu_op_%ia, /* %s */\n", total, mnemonic);
+          fprintf(outproto, "extern void cpu_op_%ia("
+              "t_ipc *ipc); /* %s */\n", total, mnemonic);
+        } else {
+          fprintf(outfuncs, "  cpu_op_%ia, /* %s - normal */\n", total,
+              mnemonic);
+          fprintf(outfuncs, "  cpu_op_%ib, /* %s - no flags */\n", total,
+              mnemonic);
+          fprintf(outproto, "extern void cpu_op_%ia("
+              "t_ipc *ipc); /* %s */\n", total, mnemonic);
+          fprintf(outproto, "extern void cpu_op_%ib("
+              "t_ipc *ipc); /* %s */\n", total, mnemonic);
+        }
 
-	    total++;
+        total++;
 
-	  } /* cc */
-	} /* ea_f */
+      } /* cc */
+    } /* ea_f */
       } /* ea_e */
     } /* size */
   } /* block */

@@ -47,12 +47,12 @@ void printiib(t_iib *iib)
 
 int diss68k_gettext(t_ipc * ipc, char *text)
 {
-	t_iib *iib;
-	char *p, *c;
+    t_iib *iib;
+    char *p, *c;
     char src[128], dst[128];
     char mnemonic[64];
 
-	*text = '\0';
+    *text = '\0';
 
 //    DEBUG_LOG(1,"getting iib for opcode:%04x",ipc->opcode);
     iib = cpu68k_iibtable[ipc->opcode];
@@ -73,100 +73,103 @@ int diss68k_gettext(t_ipc * ipc, char *text)
 
 
 
-	if ((iib->mnemonic == i_Bcc) || (iib->mnemonic == i_BSR) ||
-		(iib->mnemonic == i_DBcc)) {
-		sprintf(src, "$%08x", ipc->src);
-	}
+    if ((iib->mnemonic == i_Bcc) || (iib->mnemonic == i_BSR) ||
+        (iib->mnemonic == i_DBcc)) {
+        sprintf(src, "$%08x", ipc->src);
+    }
 
 
-	strcpy(mnemonic, mnemonic_table[iib->mnemonic].name);
+    strcpy(mnemonic, mnemonic_table[iib->mnemonic].name);
 
-	if ((p = strstr(mnemonic, "cc")) != NULL) {
-		if (iib->mnemonic == i_Bcc && iib->cc == 0) {
-			p[0] = 'R';
-			p[1] = 'A';
-		} else {
-			c = condition_table[iib->cc];
-			strcpy(p, c);
-		}
-	}
+    if ((p = strstr(mnemonic, "cc")) != NULL) {
+        if (iib->mnemonic == i_Bcc && iib->cc == 0) {
+            p[0] = 'R';
+            p[1] = 'A';
+        } else {
+            c = condition_table[iib->cc];
+            strcpy(p, c);
+        }
+    }
 
-	switch (iib->size) {
-		case sz_byte:
-			strcat(mnemonic, ".B");
-			break;
-		case sz_word:
-			strcat(mnemonic, ".W");
-			break;
-		case sz_long:
-			strcat(mnemonic, ".L");
-			break;
-		default:
-			break;
-	}
+    switch (iib->size) {
+        case sz_byte:
+            strcat(mnemonic, ".B");
+            break;
+        case sz_word:
+            strcat(mnemonic, ".W");
+            break;
+        case sz_long:
+            strcat(mnemonic, ".L");
+            break;
+        default:
+            break;
+    }
 
-	sprintf(text, "%-10s %s%s%s", mnemonic, src, dst[0] ? "," : "", dst);
+    sprintf(text, "%-10s %s%s%s", mnemonic, src, dst[0] ? "," : "", dst);
 
 
-	return 1;
+    return 1;
 }
 
 void diss68k_getoperand(char *text, t_ipc * ipc, t_iib * iib, t_type type)
 {
-	int bitpos;
-	uint32 val;
+    int bitpos;
+    uint32 val;
 
-	if (type == tp_src) {
-		bitpos = iib->sbitpos;
-		val = ipc->src;
-	} else {
-		bitpos = iib->dbitpos;
-		val = ipc->dst;
-	}
+    if (type == tp_src) {
+        bitpos = iib->sbitpos;
+        val = ipc->src;
+    } else {
+        bitpos = iib->dbitpos;
+        val = ipc->dst;
+    }
 
-	switch (type == tp_src ? iib->stype : iib->dtype) {
-		case dt_Dreg:
-			sprintf(text, "D%d", (ipc->opcode >> bitpos) & 7);
-			break;
-		case dt_Areg:
-			sprintf(text, "A%d", (ipc->opcode >> bitpos) & 7);
-			break;
-		case dt_Aind:
-			sprintf(text, "(A%d)", (ipc->opcode >> bitpos) & 7);
-			break;
-		case dt_Ainc:
-			sprintf(text, "(A%d)+", (ipc->opcode >> bitpos) & 7);
-			break;
-		case dt_Adec:
-			sprintf(text, "-(A%d)", (ipc->opcode >> bitpos) & 7);
-			break;
-		case dt_Adis:
-			sprintf(text, "$%04x(A%d)", (uint16)val, (ipc->opcode >> bitpos) & 7);
-			break;
-		case dt_Aidx:
+    switch (type == tp_src ? iib->stype : iib->dtype) {
+        case dt_Dreg:
+            sprintf(text, "D%d", (ipc->opcode >> bitpos) & 7);
+            break;
+        case dt_Areg:
+            sprintf(text, "A%d", (ipc->opcode >> bitpos) & 7);
+            break;
+        case dt_Aind:
+            sprintf(text, "(A%d)", (ipc->opcode >> bitpos) & 7);
+            break;
+        case dt_Ainc:
+            sprintf(text, "(A%d)+", (ipc->opcode >> bitpos) & 7);
+            break;
+        case dt_Adec:
+            sprintf(text, "-(A%d)", (ipc->opcode >> bitpos) & 7);
+            break;
+        case dt_Adis:
+            sprintf(text, "$%04x(A%d)", (uint16)val, (ipc->opcode >> bitpos) & 7);
+            break;
+        case dt_Aidx:
+            //sprintf(text, "$%02x(A%d,Rx.X)", (uint8)val, (ipc->opcode >> bitpos) & 7);
             //sprintf(text, "AIDX:%d(A%d,%c%d.%c)",
-            sprintf(text, "{AIDX:%08x}=(%d+A%d+%c%d.%c)",val,
+            // this is broken here: s/b: MOVEA.L                     -4(A0,D0.W),A0
+            // shows up as:     2070 00fc  MOVE.L     {AIDX:fffffffc}=(-4+A0+A7.L),A0 
+            sprintf(text, "%d(A%d+%c%d.%c)",
                          (sint8)(val & 0xff),  // RA - signed decimal since it's signed
                          (ipc->opcode >> bitpos) & 7,
-                         ((val & 0x80000000) ? 'A':'D'),  // RA 2004.04.27 Address vs Data register
-                         ((val>>(12+16)) & 7),              //               Reg #
-                         ((val & 0x8000000) ? 'L':'W')   //               word VS Long
-                         );                            //
-			break;
-		case dt_AbsW:
-			sprintf(text, "$%08x", val);
-			break;
-		case dt_AbsL:
-			sprintf(text, "$%08x", val);
-			break;
-		case dt_Pdis:
+                         ((val & 0x80000000) ? 'A':'D'), // this was wrong // RA 2004.04.27 Address vs Data register
+                         ((val>>(12+16)) & 7),           // this should have been D0. //               Reg #
+                         ((val & 0x8000000) ? 'L':'W')    //               word VS Long
+                         );                               
+            break;
+        case dt_AbsW:
+            sprintf(text, "$%08x", val);
+            break;
+        case dt_AbsL:
+            sprintf(text, "$%08x", val);
+            break;
+        case dt_Pdis:
             //sprintf(text, "%d(pc)",
             sprintf(text, "{PDIS:%08x}=(PC%c#$%04x)",val,
                      ((val-pc24) & 0x80000000 ?'-':'+'),
                      ((val-pc24) & 0x80000000 ? (pc24-val):(val-pc24)) & 0xffff);   // RA 2004.11.13 +2 as per Macintosh ResEdit
-			break;
+            break;
 
-		case dt_Pidx:
+        case dt_Pidx:
             //sprintf(text, "PIDX:%d(pc, %c%d.%c)",
             sprintf(text, "{PIDX:%08x}=(%d+PC+%c%d.%c)",val,
                          (sint8)(val-pc24),                // RA 2004.04.27 - decimal because it's signed
@@ -174,13 +177,13 @@ void diss68k_getoperand(char *text, t_ipc * ipc, t_iib * iib, t_type type)
                          ((val>>(12+16)) & 7),                  //               Reg #
                          ((val & 0x8000000) ? 'L':'W')     //               word VS Long
                     );                                     // might want to change %02x to signed decimal
-			break;
+            break;
 
-		case dt_ImmB:
-			sprintf(text, "#$%02x", val);
-			break;
+        case dt_ImmB:
+            sprintf(text, "#$%02x", val);
+            break;
 
-		case dt_ImmW:
+        case dt_ImmW:
             // Added by RAY for output of LINK #$ (needs to print negative integers instead of #$FFxx
             if (iib->mnemonic==i_LINK) {int32 ival=(int16)(val); sprintf(text,"#%d",ival); break;}
 
@@ -206,18 +209,18 @@ void diss68k_getoperand(char *text, t_ipc * ipc, t_iib * iib, t_type type)
                       if (val & (1<<i))
                       {       text[k++]=REGMASK[(15-i)*3]; text[k++]=REGMASK[(15-i)*3+1];  // bit is set, print register associated with it
 
-                              if (val & (1<<(i-1)) && i!=7)  // is the next bit selected too?
-                              {     text[k++]='-';   // yes, and this is going to be a range.
+                              if (val & (1<<(i-1)) && i!=7)                                // is the next bit selected too?
+                              {     text[k++]='-';                                         // yes, and this is going to be a range.
 
-                                    while (val & (1<<i) && i>-1)  // skip over bits that are not in the range.
-                                          {i--; if (i==7) break;}   // but stop on border b/w A/D regs
+                                    while (val & (1<<i) && i>-1)                           // skip over bits that are not in the range.
+                                          {i--; if (i==7) break;}                          // but stop on border b/w A/D regs
 
-                                    i++;  // step back one since we passed the last 1 bit (or on border)
+                                    i++;                                                   // step back one since we passed the last 1 bit (or on border)
 
                                     // print the end register's name
                                     text[k++]=REGMASK[(15-i)*3]; text[k++]=REGMASK[(15-i)*3+1];
                               }
-                              text[k++]='/';  // print a slash and leave it for the next one.
+                              text[k++]='/';                                               // print a slash and leave it for the next one.
                       }
                     }
                 }
@@ -226,147 +229,142 @@ void diss68k_getoperand(char *text, t_ipc * ipc, t_iib * iib, t_type type)
                     // remove next line after debug
                     strcat(text,"FWD:");
 
-                    for (i=0; i<16; i++)             // there are 16 registers to deal with. A0-A7,D0-D7
+                    for (i=0; i<16; i++)                                                    // there are 16 registers to deal with. A0-A7,D0-D7
                     {
                       if (val & (1<<i))
-                      {       text[k++]=REGMASK[i*3]; text[k++]=REGMASK[i*3+1];  // bit is set, print register associated with it
+                      {       text[k++]=REGMASK[i*3]; text[k++]=REGMASK[i*3+1];             // bit is set, print register associated with it
 
-                              if (val & (1<<(i+1)) && i!=8)  // is the next bit selected too?
-                              {     text[k++]='-';   // yes, and this is going to be a range.
+                              if (val & (1<<(i+1)) && i!=8)                                 // is the next bit selected too?
+                              {     text[k++]='-';                                          // yes, and this is going to be a range.
 
-                                    while (val & (1<<i))  // skip over bits that are not in the range.
-                                          {i++; if (i==8) break;}   // but stop on border b/w A/D regs
+                                    while (val & (1<<i))                                    // skip over bits that are not in the range.
+                                          {i++; if (i==8) break;}                           // but stop on border b/w A/D regs
 
-                                    i--;  // step back one since we passed the last 1 bit (or on border)
+                                    i--;                                                    // step back one since we passed the last 1 bit (or on border)
 
-                                    // print the end register's name
+                                                                                            // print the end register's name
                                     text[k++]=REGMASK[i*3]; text[k++]=REGMASK[i*3+1];
                               }
-                              text[k++]='/';  // print a slash and leave it for the next one.
+                              text[k++]='/';                                                // print a slash and leave it for the next one.
                       }
                     }
                 }
-            text[k-1]=0;                  // terminate
+            text[k-1]=0;                                                                    // terminate
             }
             break;
 
-		case dt_ImmL:
-			sprintf(text, "#$%08x", val);
-			break;
-		case dt_ImmS:
-			sprintf(text, "#%d", iib->immvalue);
-			break;
-		case dt_Imm3:
-			sprintf(text, "#%d", (ipc->opcode >> bitpos) & 7);
-			break;
-		case dt_Imm4:
-			sprintf(text, "#%d", (ipc->opcode >> bitpos) & 15);
-			break;
-		case dt_Imm8:
-			sprintf(text, "#%d", (ipc->opcode >> bitpos) & 255);
-			break;
-		case dt_Imm8s:
-			sprintf(text, "#%d", (sint32)val);
-			break;
+        case dt_ImmL:
+            sprintf(text, "#$%08x", val);
+            break;
+        case dt_ImmS:
+            sprintf(text, "#%d", iib->immvalue);
+            break;
+        case dt_Imm3:
+            sprintf(text, "#%d", (ipc->opcode >> bitpos) & 7);
+            break;
+        case dt_Imm4:
+            sprintf(text, "#%d", (ipc->opcode >> bitpos) & 15);
+            break;
+        case dt_Imm8:
+            sprintf(text, "#%d", (ipc->opcode >> bitpos) & 255);
+            break;
+        case dt_Imm8s:
+            sprintf(text, "#%d", (sint32)val);
+            break;
 
 
         default:
             *text=0;
-			break;
-	}
+            break;
+    }
 }
 
 /** DANGER ** When we call this the *addr param must come from fetchaddr(addr) else no MMU translation! **/
 // actually *addr appears to no longer be used, so there.
 //int diss68k_getdumpline(uint32 addr68k, uint8 *addr, char *dumpline)
+
 int diss68k_getdumpline(uint32 addr68k, char *dumpline)
 {
-	t_ipc ipc;
-
-    //t_iib *iibp = cpu68k_iibtable[LOCENDIAN16(*(uint16 *)addr)];
+    t_ipc ipc;
     abort_opcode=2;
+    PAUSE_DEBUG_MESSAGES();
     t_iib *iibp = cpu68k_iibtable[fetchword(addr68k)];
-    if (abort_opcode==1) {DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
+    
+    if (abort_opcode==1) {RESUME_DEBUG_MESSAGES(); DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
 
     int words, i;
-	char dissline[64], *p;
+    char dissline[64], *p;
 
-	if (addr68k < 256) {
-        //sprintf(dissline, "dc.l $%08x", LOCENDIAN32(*(uint32 *)addr));
+    if (addr68k < 256) {
         abort_opcode=2;
         sprintf(dissline, "dc.l $%08x", fetchlong(addr68k));
-        if (abort_opcode==1) {DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
-
-         abort_opcode=0;
-
-		words = 2;
-	} else {
+    
+        if (abort_opcode==1) {RESUME_DEBUG_MESSAGES(); DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
+        abort_opcode=0;
+        words = 2;
+    } else {
 
        #if DEBUG
        if (!iibp) ALERT_LOG(0,"about to pass NULL IIB");
        #endif
-        cpu68k_ipc(addr68k, iibp, &ipc); if (abort_opcode==1) {DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
-		if (!diss68k_gettext(&ipc, dissline))
-			strcpy(dissline, "Illegal Instruction");
-		words = ipc.wordlen;
-	}
 
-	p = dumpline;
-    //p += sprintf(p, "%6x : %04x ", addr68k, (addr[0] << 8) + addr[1]);
+       if (iibp!=NULL)
+       {
+          cpu68k_ipc(addr68k, iibp, &ipc); 
+          if (abort_opcode==1) {RESUME_DEBUG_MESSAGES(); DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
+          if (!diss68k_gettext(&ipc, dissline))
+              strcpy(dissline, "Illegal Instruction");
+        }
+        else strcpy(dissline, "Illegal Instruction");
+        words = ipc.wordlen;
+    }
+
+    p = dumpline;
     abort_opcode=2;
-    p += sprintf(p, "%6x : %04x ", addr68k, (fetchbyte(addr68k) << 8) + fetchbyte(addr68k+1));
-    if (abort_opcode==1) {DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
+    p += sprintf(p,       ": %04x ",          (fetchbyte(addr68k) << 8) + fetchbyte(addr68k+1));
+    if (abort_opcode==1) {RESUME_DEBUG_MESSAGES(); DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
 
-	for (i = 1; i < words; i++) {
-        //p += sprintf(p, "%04x ", (addr[i * 2] << 8) + addr[i * 2 + 1]);
+    for (i = 1; i < words; i++) {
+        uint16 w;
         abort_opcode=2;
         p += sprintf(p, "%04x ", fetchword(addr68k+(i * 2)));
-        if (abort_opcode==1) {DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
-	}
-	for (i = 29 - strlen(dumpline); i > 0; i--) {
-		*p++ = ' ';
-	}
-	p += sprintf(p, ": ");
-    /*-----------------5/7/2003 6:49PM------------------
-   for (i = 0; i < words; i++) {
-    if (isalnum(addr[i * 2])) {
-      *p++ = addr[i * 2];
-    } else
-      *p++ = '.';
-    if (isalnum(addr[i * 2 + 1])) {
-      *p++ = addr[i * 2 + 1];
-    } else
-    * --------------------------------------------------*/
+        if (abort_opcode==1) {RESUME_DEBUG_MESSAGES(); DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
+    }
+    for (i = 29 - strlen(dumpline); i > 0; i--) {
+        *p++ = ' ';
+    }
+    p += sprintf(p, ": ");
 
     for (i = 0; i < words; i++) {
         abort_opcode=2;
         if (isalnum(fetchbyte(addr68k+(i * 2)))) {
-            if (abort_opcode==1) {DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
+            if (abort_opcode==1) {RESUME_DEBUG_MESSAGES(); DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
             abort_opcode=2;
             *p++ = fetchbyte(addr68k+i * 2);
-            if (abort_opcode==1) {DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
-		} else
-			*p++ = '.';
+            if (abort_opcode==1) {RESUME_DEBUG_MESSAGES(); DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
+        } else
+            *p++ = '.';
         abort_opcode=2;
         if (isalnum(fetchbyte(addr68k+(i * 2 + 1)))) {
-            if (abort_opcode==1) {DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
+            if (abort_opcode==1) {RESUME_DEBUG_MESSAGES(); DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
             abort_opcode=2;
             *p++ = fetchbyte(addr68k+(i * 2 + 1));
-            if (abort_opcode==1) {DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
-		} else
-			*p++ = '.';
-	}
-	*p = '\0';
-	for (i = 39 - strlen(dumpline); i > 0; i--) {
-		*p++ = ' ';
-	}
-	if (iibp) {
-		sprintf(p, " : %4d : %s\n", iibp->funcnum, dissline);
-	} else {
-		sprintf(p, " :      : %s\n", dissline);
-	}
+            if (abort_opcode==1) {RESUME_DEBUG_MESSAGES(); DEBUG_LOG(0,"got_abort_opcode!"); return 0;} else abort_opcode=0;
+        } else
+            *p++ = '.';
+    }
+    *p = '\0';
+    for (i = 39 - strlen(dumpline); i > 0; i--) {
+        *p++ = ' ';
+    }
+    if (iibp) {
+        sprintf(p, " : %4d : %s", iibp->funcnum, dissline);
+    } else {
+        sprintf(p, " :      : %s", dissline);
+    }
 
-	return words;
+    RESUME_DEBUG_MESSAGES();
+    return words;
 }
 
 
