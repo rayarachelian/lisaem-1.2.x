@@ -1,8 +1,8 @@
 /**************************************************************************************\
 *                             Apple Lisa 2 Emulator                                    *
 *                                                                                      *
-*              The Lisa Emulator Project  1.2.7-DEVEL_2019.09.09                  *
-*                  Copyright (C) 2018 Ray A. Arachelian                                *
+*              The Lisa Emulator Project  1.2.7-ALPHA_2019.10.12                  *
+*                  Copyright (C) 2019 Ray A. Arachelian                                *
 *                            All Rights Reserved                                       *
 *                                                                                      *
 *                        Reset Global Variables .c file                                *

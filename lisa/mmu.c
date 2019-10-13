@@ -116,7 +116,7 @@ void xxxcheckcontext(uint8 c, char *text)
     }
 }
 #else
- void checkcontext(uint8 c, char *text) {;}
+ void checkcontext(uint8 c, char *text) {UNUSED(c); UNUSED(text);}
 #endif
 
 

@@ -1,6 +1,6 @@
 /**************************************************************************************\
 *                                                                                      *
-*              The Lisa Emulator Project  V1.2.7      DEV 2007.12.04                   *
+*              The Lisa Emulator Project  V1.2.7      DEV 2019.09.29                   *
 *                             http://lisaem.sunder.net                                 *
 *                                                                                      *
 *                  Copyright (C) 1998, 2007 Ray A. Arachelian                          *
@@ -1132,93 +1132,86 @@ case GET_CMDBLK_STATE:           // 4          // now copy command bytes into co
                     return;
                 }
 
-
-         P->BSYLine=1;
-         if (EVENT_WRITE_NUL) return;
+          P->BSYLine=1;
+          if (EVENT_WRITE_NUL) return;
 
          // step 4a
-         #ifdef DEBUG
-         if (!(EVENT_WRITE_NUL))   DEBUG_LOG(0,"State4a: Waiting for event=2:%02x RRWline=1:%02x and !P->CMDLine:%02x",
-                                   event,P->RRWLine,P->CMDLine);
-         #endif
+          #ifdef DEBUG
+            if (!(EVENT_WRITE_NUL))   DEBUG_LOG(0,"State4a: Waiting for event=2:%02x RRWline=1:%02x and !P->CMDLine:%02x",
+                                      event,P->RRWLine,P->CMDLine);
+          #endif
 
-         if (EVENT_WRITE_ORA && !P->CMDLine)
-                         {
+          if  (EVENT_WRITE_ORA && !P->CMDLine)
+              {
+                  SET_PROFILE_LOOP_NO_PREDELAY(TENTH_OF_A_SECOND);   // reset timeout when we get a byte
+                  // avoid a 2nd write as 0x55
+                  if  (P->VIA_PA==0x55 && P->indexwrite==4)
+                      {
+                          DEBUG_LOG(0,"Ignoring 2nd 0x55 write to avoid sync issues");
+                          return;
+                      }
 
-                          SET_PROFILE_LOOP_NO_PREDELAY(TENTH_OF_A_SECOND);   // reset timeout when we get a byte
+                  P->DataBlock[P->indexwrite++]=P->VIA_PA;
 
-                           // avoid a 2nd write as 0x55
-                          if (P->VIA_PA==0x55 && P->indexwrite==4)
-                           {
-                             DEBUG_LOG(0,"Ignoring 2nd 0x55 write to avoid sync issues");
-                             return;
-                           }
+                  switch (P->indexwrite-1)
+                    {
+                          case 4 : DEBUG_LOG(0,"Wrote CMD  %02x into ProFile Data block index:%d",P->VIA_PA,P->indexwrite-1); break;
+                          case 5 : DEBUG_LOG(0,"Wrote MSB  %02x into ProFile Data block index:%d",P->VIA_PA,P->indexwrite-1); break;
+                          case 6 : DEBUG_LOG(0,"Wrote mid  %02x into ProFile Data block index:%d",P->VIA_PA,P->indexwrite-1); break;
+                          case 7 : DEBUG_LOG(0,"Wrote LSB  %02x into ProFile Data block index:%d",P->VIA_PA,P->indexwrite-1); break;
+                          case 8 : DEBUG_LOG(0,"Wrote RTRY %02x into ProFile Data block index:%d",P->VIA_PA,P->indexwrite-1); break;
+                          case 9 : DEBUG_LOG(0,"Wrote SPAR %02x into ProFile Data block index:%d",P->VIA_PA,P->indexwrite-1); break;
+                          default: DEBUG_LOG(0,"Wrote ???? %02x into ProFile Data block index:%d",P->VIA_PA,P->indexwrite-1);
+                    }
 
+                    if (P->indexwrite>542) P->indexwrite=4; // prevent overrun
 
-                           P->DataBlock[P->indexwrite++]=P->VIA_PA;
+                    return;
+              }
 
-                           switch(P->indexwrite-1)
-                           {
-                            case 4 : DEBUG_LOG(0,"Wrote CMD  %02x into ProFile Data block index:%d",P->VIA_PA,P->indexwrite-1); break;
-                            case 5 : DEBUG_LOG(0,"Wrote MSB  %02x into ProFile Data block index:%d",P->VIA_PA,P->indexwrite-1); break;
-                            case 6 : DEBUG_LOG(0,"Wrote mid  %02x into ProFile Data block index:%d",P->VIA_PA,P->indexwrite-1); break;
-                            case 7 : DEBUG_LOG(0,"Wrote LSB  %02x into ProFile Data block index:%d",P->VIA_PA,P->indexwrite-1); break;
-                            case 8 : DEBUG_LOG(0,"Wrote RTRY %02x into ProFile Data block index:%d",P->VIA_PA,P->indexwrite-1); break;
-                            case 9 : DEBUG_LOG(0,"Wrote SPAR %02x into ProFile Data block index:%d",P->VIA_PA,P->indexwrite-1); break;
-
-                            default: DEBUG_LOG(0,"Wrote ???? %02x into ProFile Data block index:%d",P->VIA_PA,P->indexwrite-1);
-                           }
-
-                           if (P->indexwrite>542) P->indexwrite=4; // prevent overrun ?
-                           return;
-                         }
-
-         #ifdef DEBUG
-         if (!(EVENT_WRITE_NUL))
-         DEBUG_LOG(0,"State4b: Waiting for CMDLine");
-         #endif
+              #ifdef DEBUG
+                if (!(EVENT_WRITE_NUL)) DEBUG_LOG(0,"State4b: Waiting for CMDLine");
+              #endif
 
          //step 4b
          if (P->CMDLine) //for lisaos// && !P->RRWLine)  // we are done.
-                         {
+            {
+                  // interpret command
+                  blocknumber=(P->DataBlock[5]<<16) |
+                              (P->DataBlock[6]<< 8) |
+                              (P->DataBlock[7]    ) ;
+                  DEBUG_LOG(0,"In 4b. Lisa raised CMDLine, might go to step 5. blk#%d",blocknumber);
 
-                          // interpret command
-                          blocknumber=(P->DataBlock[5]<<16) |
-                                      (P->DataBlock[6]<< 8) |
-                                      (P->DataBlock[7]    ) ;
-
-                          DEBUG_LOG(0,"In 4b. Lisa raised CMDLine, might go to step 5. blk#%d",blocknumber);
-
-                          switch (P->DataBlock[4])
-                          {                                     //20060515-P->BSYLINE=0 replaced with 1
-                              case 0 : P->VIA_PA=0x02; P->last_a_accs=0; P->BSYLine=1; DEBUG_LOG(0,"4b: ACK READ");          // read block
-                                       P->StateMachineStep=WAIT_2nd_0x55_STATE;
-                                       SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
-                                       return;
-                              case 1 : P->VIA_PA=0x03; P->last_a_accs=0; P->BSYLine=1; DEBUG_LOG(0,"4b: ACK WRITE");         // write block
-                                       P->StateMachineStep=WAIT_2nd_0x55_STATE;
-                                       SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
-                                       return;
-                              case 2 : P->VIA_PA=0x04; P->last_a_accs=0; P->BSYLine=1; DEBUG_LOG(0,"4b: ACK WRITE/VERIFY");  // write/verify block
-                                       P->StateMachineStep=WAIT_2nd_0x55_STATE;
-                                       SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
-                                       return;
-                              case 0x12: // Status
-                                       {
-                                       P->VIA_PA=0x00; P->BSYLine=0; DEBUG_LOG(0,"<!BSY")
-                                       P->StateMachineStep=IDLE_STATE; // changeme!
-                                       #ifdef DEBUG
-                                       {uint8 chk=P->DataBlock[4]+P->DataBlock[5]+P->DataBlock[6]+P->DataBlock[7]+P->DataBlock[8]+P->DataBlock[9]+P->DataBlock[10]+1;
+                  switch (P->DataBlock[4])
+                         {                                     //20060515-P->BSYLINE=0 replaced with 1
+                            case 0: P->VIA_PA=0x02; P->last_a_accs=0; P->BSYLine=1; DEBUG_LOG(0,"4b: ACK READ");          // read block
+                                    P->StateMachineStep=WAIT_2nd_0x55_STATE;
+                                    SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
+                                    return;
+                            case 1: P->VIA_PA=0x03; P->last_a_accs=0; P->BSYLine=1; DEBUG_LOG(0,"4b: ACK WRITE");         // write block
+                                    P->StateMachineStep=WAIT_2nd_0x55_STATE;
+                                    SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
+                                    return;
+                            case 2: P->VIA_PA=0x04; P->last_a_accs=0; P->BSYLine=1; DEBUG_LOG(0,"4b: ACK WRITE/VERIFY");  // write/verify block
+                                    P->StateMachineStep=WAIT_2nd_0x55_STATE;
+                                    SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
+                                    return;
+                            case 0x12: // Status
+                                  {
+                                    P->VIA_PA=0x00; P->BSYLine=0; DEBUG_LOG(0,"<!BSY")
+                                    P->StateMachineStep=IDLE_STATE; // changeme!
+                                    #ifdef DEBUG
+                                      { uint8 chk=P->DataBlock[4]+P->DataBlock[5]+P->DataBlock[6]+P->DataBlock[7]+P->DataBlock[8]+P->DataBlock[9]+P->DataBlock[10]+1;
                                         ALERT_LOG(0,"profile.c:widget.c:12: Status block#%d,0x%06x - calc-chk:%02x len:%d buffer:"
                                                     " %02x.%02x.%02x.%02x(%02x )(cmd:%02x) [count:%02x] [%02x:%02x:%02x] %02x %02x %02x %02x %02x %02x   pc24:%08x",
-                                          blocknumber, blocknumber, chk, P->indexwrite,
-                                          P->DataBlock[ 0], P->DataBlock[ 1], P->DataBlock[ 2],   P->DataBlock[ 3],
-                                          P->DataBlock[ 4], P->DataBlock[ 5], P->DataBlock[ 6],   P->DataBlock[ 7],
-                                          P->DataBlock[ 8], P->DataBlock[ 9], P->DataBlock[10],   P->DataBlock[11],
-                                          P->DataBlock[12], P->DataBlock[13], P->DataBlock[14],   P->DataBlock[15],  pc24  );
-                                        }
-                                        #endif
-                                        P->last_cmd=0x1200 | P->DataBlock[5];
+                                        blocknumber, blocknumber, chk, P->indexwrite,
+                                        P->DataBlock[ 0], P->DataBlock[ 1], P->DataBlock[ 2],   P->DataBlock[ 3],
+                                        P->DataBlock[ 4], P->DataBlock[ 5], P->DataBlock[ 6],   P->DataBlock[ 7],
+                                        P->DataBlock[ 8], P->DataBlock[ 9], P->DataBlock[10],   P->DataBlock[11],
+                                        P->DataBlock[12], P->DataBlock[13], P->DataBlock[14],   P->DataBlock[15],  pc24  );
+                                      }
+                                    #endif
+                                    P->last_cmd=0x1200 | P->DataBlock[5]; // :TODO: insert subcommands here
                                        // 12 00 ED - Read ID
                                        // 12 07 E6 - Soft Reset
                                        // 12 08 E5 - Send Park
@@ -1229,25 +1222,25 @@ case GET_CMDBLK_STATE:           // 4          // now copy command bytes into co
                                        // 12 11 DC - Read Abort Stat
                                        // 12 12 DB - Reset Servo
                                        // 12 13 DA - Scan for bad blocks.
-                                       if (P->DataBlock[5]==0x0d && P->DataBlock[6]==0xe0)
-                                       {
-                                         get_spare_table(P);
-                                         SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
-                                         ALERT_LOG(0,"widget.c:got 120d0e, sending <0x22"); ALERT_LOG(0,"widget.c<+BSY=1, next state WAIT_2nd_0x55_STATE");
-                                         P->VIA_PA=0x22; P->last_a_accs=0; P->BSYLine=1;
-                                         P->StateMachineStep=WAIT_2nd_0x55_STATE;
-                                         return;
-                                       }
+                                    if  (P->DataBlock[5]==0x0d && P->DataBlock[6]==0xe0)
+                                        {
+                                          get_spare_table(P);
+                                          SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
+                                          ALERT_LOG(0,"widget.c:got 120d0e, sending <0x22"); ALERT_LOG(0,"widget.c<+BSY=1, next state WAIT_2nd_0x55_STATE");
+                                          P->VIA_PA=0x22; P->last_a_accs=0; P->BSYLine=1;
+                                          P->StateMachineStep=WAIT_2nd_0x55_STATE;
+                                          return;
+                                        }
                                        //switch (P->DataBlock[5])
                                        //{
                                        // case: 0x0d: do_widget_spare_fffffe(); // read spare table
                                        //}
-                                      }
-                                      break;
+                                  } // end of status case
+                                  break;
 
-                              case 0x26: // SYSREAD   26,00,<count>,<3-bytes-block-id>,checkbyte  Widget_ERS.pdf pdf-pg127
-                                         // SYSWRITE  26,01,<count>,<3-bytes-block-id>,checkbyte
-                                         // SYSWRITEV 26,02,<count>,<3-bytes-block-id>,checkbyte
+                            case 0x26: // SYSREAD   26,00,<count>,<3-bytes-block-id>,checkbyte  Widget_ERS.pdf pdf-pg127
+                                       // SYSWRITE  26,01,<count>,<3-bytes-block-id>,checkbyte
+                                       // SYSWRITEV 26,02,<count>,<3-bytes-block-id>,checkbyte
                               /*
                               profile.c:ProfileLoop:1182:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-id>,checkbyte block#256,0x000100 - buffer: 80.00.00.00(26 )[00 01 00]:00:26 b2 31 31 20 20 20
 profile.c:ProfileLoop:1182:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-id>,checkbyte block#256,0x000100 - buffer: 80.00.00.00(26 )[00 01 00]:00:26 b2 31 31 20 20 20
@@ -1255,31 +1248,29 @@ profile.c:ProfileLoop:1182:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-i
 profile.c:ProfileLoop:1182:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-id>,checkbyte block#256,0x000100 - buffer: 80.00.00.00(26 )[00 01 00]:00:26 b2 31 31 20 20 20
 profile.c:ProfileLoop:1182:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-id>,checkbyte block#256,0x000100 - 
                                                                         v  read  +1  blk blk  blk   chk  ??????????????
-                                                   buffer: 80.00.00.00(26 )[00   01  00]:00:  26    b2   31 31 20 20 20
-                                                   must respond with controller ready whatever that means in between block reads
-                                                   checksum= ~1+~2+~3+~4
+//                                                 buffer: 80.00.00.00(26 )[00   01  00]:00:  26    b2   31 31 20 20 20
+//                                                 must respond with controller ready whatever that means in between block reads
+//                                                 checksum= ~1+~2+~3+~4
 */
-                                          #ifdef DEBUG
-                                          {uint8 chk=P->DataBlock[4]+P->DataBlock[5]+P->DataBlock[6]+P->DataBlock[7]+P->DataBlock[8]+P->DataBlock[9]+P->DataBlock[10]+1;
+                                        #ifdef DEBUG
+                                          {  uint8 chk=P->DataBlock[4]+P->DataBlock[5]+P->DataBlock[6]+P->DataBlock[7]+P->DataBlock[8]+P->DataBlock[9]+P->DataBlock[10]+1;
+                                            ALERT_LOG(0,"profile.c:widget.c:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-id>,checkbyte block#%d,0x%06x - calc-chk:%02x len:%d buffer:"
+                                                        " %02x.%02x.%02x.%02x(%02x )(cmd:%02x) [count:%02x] [%02x:%02x:%02x] %02x %02x %02x %02x %02x %02x   pc24:%08x",
+                                            blocknumber, blocknumber, chk, P->indexwrite,
+                                            P->DataBlock[ 0], P->DataBlock[ 1], P->DataBlock[ 2],   P->DataBlock[ 3],
+                                            P->DataBlock[ 4], P->DataBlock[ 5], P->DataBlock[ 6],   P->DataBlock[ 7],
+                                            P->DataBlock[ 8], P->DataBlock[ 9], P->DataBlock[10],   P->DataBlock[11],
+                                            P->DataBlock[12], P->DataBlock[13], P->DataBlock[14],   P->DataBlock[15],  pc24  ); }
+                                        #endif
 
-                                           ALERT_LOG(0,"profile.c:widget.c:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-id>,checkbyte block#%d,0x%06x - calc-chk:%02x len:%d buffer:"
-                                                         " %02x.%02x.%02x.%02x(%02x )(cmd:%02x) [count:%02x] [%02x:%02x:%02x] %02x %02x %02x %02x %02x %02x   pc24:%08x",
-                                             blocknumber, blocknumber, chk, P->indexwrite,
-                                             P->DataBlock[ 0], P->DataBlock[ 1], P->DataBlock[ 2],   P->DataBlock[ 3],
-                                             P->DataBlock[ 4], P->DataBlock[ 5], P->DataBlock[ 6],   P->DataBlock[ 7],
-                                             P->DataBlock[ 8], P->DataBlock[ 9], P->DataBlock[10],   P->DataBlock[11],
-                                             P->DataBlock[12], P->DataBlock[13], P->DataBlock[14],   P->DataBlock[15],  pc24  );
-                                          }
-                                          #endif
-
-                                       P->last_cmd=0x2600 | P->DataBlock[5];
-                                       blocknumber=P->blocktowrite=(P->DataBlock[7]<<16) | (P->DataBlock[8]<<8) | P->DataBlock[9];
-                                       P->StateMachineStep=WAIT_2nd_0x55_STATE;
-                                       SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
+                                        P->last_cmd=0x2600 | P->DataBlock[5];
+                                        blocknumber=P->blocktowrite=(P->DataBlock[7]<<16) | (P->DataBlock[8]<<8) | P->DataBlock[9];
+                                        P->StateMachineStep=WAIT_2nd_0x55_STATE;
+                                        SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
                                        // need to add a widget flag to the profile structure and then keep the block read and count and state
                                        // not sure what the widget ACK is either.
-                                       switch (P->DataBlock[5]) // subcommand.
-                                       {
+                                        switch (P->DataBlock[5]) // subcommand.
+                                        {
                                            // this was invoked.
                                            case 0 : P->VIA_PA=0x22; P->last_a_accs=0; P->BSYLine=1; DEBUG_LOG(0,"100 4b: SYSREAD ACK");      // read blocks
                                                     P->StateMachineStep=WID_MULTI_READ_SEND_DATA_AND_TAGS_STATE;
@@ -1297,107 +1288,97 @@ profile.c:ProfileLoop:1182:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-i
                                                     P->StateMachineStep=WAIT_2nd_0x55_STATE;
                                                     SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
                                                     return;
-                                           default: ;
-                                       }
-                              default: P->VIA_PA=0x00; P->BSYLine=0; DEBUG_LOG(0,"<!BSY")
-                                       P->StateMachineStep=IDLE_STATE;
-
-                                       ALERT_LOG(0,"profile.c:widget.c:S4B. Unknown command! Returning %02x as response to Lisa's command %02x and going to step %d  pc24:%08x",
-                                                    P->VIA_PA,  P->DataBlock[4],  P->StateMachineStep);
-                                       #ifdef DEBUG
-                                       {uint8 chk=P->DataBlock[4]+P->DataBlock[5]+P->DataBlock[6]+P->DataBlock[7]+P->DataBlock[8]+P->DataBlock[9]+P->DataBlock[10]+1;
-                                        ALERT_LOG(0,"profile.c:widget.c:Unknown CMD: block#%d,0x%06x - calc-chk:%02x len:%d buffer:"
-                                                    " %02x.%02x.%02x.%02x(%02x )(cmd:%02x) [count:%02x] [%02x:%02x:%02x] %02x %02x %02x %02x %02x %02x",
-                                        blocknumber, blocknumber, chk, P->indexwrite,
-                                        P->DataBlock[ 0], P->DataBlock[ 1], P->DataBlock[ 2], P->DataBlock[ 3],
-                                        P->DataBlock[ 4], P->DataBlock[ 5], P->DataBlock[ 6], P->DataBlock[ 7],
-                                        P->DataBlock[ 8], P->DataBlock[ 9], P->DataBlock[10], P->DataBlock[11],
-                                        P->DataBlock[12], P->DataBlock[13], P->DataBlock[14], P->DataBlock[15],   pc24);
+                                          default: ;
                                         }
-                                       #endif
 
-                          }
-                         }
+                            default:  P->VIA_PA=0x00; P->BSYLine=0; DEBUG_LOG(0,"<!BSY")
+                                      P->StateMachineStep=IDLE_STATE;
+                                      ALERT_LOG(0,"profile.c:widget.c:S4B. Unknown command! Returning %02x as response to Lisa's command %02x and going to step %d  pc24:%08x",
+                                                    P->VIA_PA,  P->DataBlock[4],  P->StateMachineStep);
+                                      #ifdef DEBUG
+                                        {uint8 chk=P->DataBlock[4]+P->DataBlock[5]+P->DataBlock[6]+P->DataBlock[7]+P->DataBlock[8]+P->DataBlock[9]+P->DataBlock[10]+1;
+                                          ALERT_LOG(0,"profile.c:widget.c:Unknown CMD: block#%d,0x%06x - calc-chk:%02x len:%d buffer:"
+                                                      " %02x.%02x.%02x.%02x(%02x )(cmd:%02x) [count:%02x] [%02x:%02x:%02x] %02x %02x %02x %02x %02x %02x",
+                                          blocknumber, blocknumber, chk, P->indexwrite,
+                                          P->DataBlock[ 0], P->DataBlock[ 1], P->DataBlock[ 2], P->DataBlock[ 3],
+                                          P->DataBlock[ 4], P->DataBlock[ 5], P->DataBlock[ 6], P->DataBlock[ 7],
+                                          P->DataBlock[ 8], P->DataBlock[ 9], P->DataBlock[10], P->DataBlock[11],
+                                          P->DataBlock[12], P->DataBlock[13], P->DataBlock[14], P->DataBlock[15],   pc24); }
+                                      #endif
 
-         return;
+                          } // end of switch (P->DataBlock[4])
+             } // end of if  (P->CMDLine) //for lisaos// && !P->RRWLine)  // we are done.
+
+        return;
 
     case WAIT_2nd_0x55_STATE:       // 5
 
-         #ifdef DEBUG
-         if (!(EVENT_WRITE_NUL))               DEBUG_LOG(0,"State 5");
-         #endif
+        #ifdef DEBUG
+        if (!(EVENT_WRITE_NUL))               DEBUG_LOG(0,"State 5");
+        #endif
 
-         CHECK_PROFILE_LOOP_TIMEOUT;
+        CHECK_PROFILE_LOOP_TIMEOUT;
 
-         #ifdef DEBUG
-         if (!(EVENT_WRITE_NUL))
-         DEBUG_LOG(0,"State5: Waiting for EVENT_WRITE_ORA:%02x && P->last_a_accs:%02x && P->CMDLine>0:%02x && RRWLine>0:%02x && PortA=0x55|0x69:%02x",
+        #ifdef DEBUG
+        if (!(EVENT_WRITE_NUL))
+        DEBUG_LOG(0,"State5: Waiting for EVENT_WRITE_ORA:%02x && P->last_a_accs:%02x && P->CMDLine>0:%02x && RRWLine>0:%02x && PortA=0x55|0x69:%02x",
                 event,
                 P->last_a_accs,
                 P->CMDLine,
                 P->RRWLine,
                 P->VIA_PA);
-         #endif
+        #endif
 
-         P->BSYLine=1; DEBUG_LOG(0,"<+BSY") //2006.05.09 was 0
-         if (EVENT_WRITE_NUL) return;
-         if (EVENT_WRITE_ORA) //  && P->last_a_accs && P->CMDLine && P->RRWLine)
-                                         {      DEBUG_LOG(0,"State 5: checking what we got:%02x==0x55",P->VIA_PA);
-                                               if (P->VIA_PA==0x55)
-                                                                     {
-                                                                       P->StateMachineStep=PARSE_CMD_STATE;
-                                                                       SET_PROFILE_LOOP_TIMEOUT(HALF_OF_A_SECOND);
-                                                                       PRO_STATUS_GOT55;
+        P->BSYLine=1; DEBUG_LOG(0,"<+BSY") //2006.05.09 was 0
+        if  (EVENT_WRITE_NUL) return;
+        if  (EVENT_WRITE_ORA) //  && P->last_a_accs && P->CMDLine && P->RRWLine)
+            {   DEBUG_LOG(0,"State 5: checking what we got:%02x==0x55",P->VIA_PA);
+                if  (P->VIA_PA==0x55)
+                    {
+                        P->StateMachineStep=PARSE_CMD_STATE;
+                        SET_PROFILE_LOOP_TIMEOUT(HALF_OF_A_SECOND);
+                        PRO_STATUS_GOT55;
+                        DEBUG_LOG(0,"State5: got 0x55 w00t!");
+                    }
+                else
+                    {
+                        P->StateMachineStep=0; // possibly our old code
+                        PRO_STATUS_NO55;
+                        DEBUG_LOG(0,"State5: going into state 0 now. oh well.");
+                    }
+            } // if EVENT_WRITE_ORA
+        return;
 
-                                                                       DEBUG_LOG(0,"State5: got 0x55 w00t!");
-                                                                      }
-
-                                                else
-
-                                                                      {
-                                                                       P->StateMachineStep=0; // possibly our old code
-                                                                       PRO_STATUS_NO55;
-                                                                       DEBUG_LOG(0,"State5: going into state 0 now. oh well.");
-                                                                      }
-                                         }
-
-         return;
-
-    case PARSE_CMD_STATE:   //6 // now we execute the command after simulating a busy profile
+    case  PARSE_CMD_STATE:   //6 // now we execute the command after simulating a busy profile
          // play some profile sounds now?
-         CHECK_PROFILE_LOOP_TIMEOUT;
+          CHECK_PROFILE_LOOP_TIMEOUT;
 
-         if ( !TIMEPASSED_PROFILE_LOOP(HUN_THOUSANDTH_OF_A_SEC) )  // this block was disabled -200604025
+          if  ( !TIMEPASSED_PROFILE_LOOP(HUN_THOUSANDTH_OF_A_SEC) )  // this block was disabled -200604025
               {
 
                 #ifdef DEBUG
-                if (!(EVENT_WRITE_NUL))
-                 DEBUG_LOG(0,"State 6 - wasting cycles for a bit to simulate a busy profile (%d cycles)",PROFILE_WAIT_EXEC_CYCLE);
+                if (!(EVENT_WRITE_NUL)) DEBUG_LOG(0,"State 6 - wasting cycles for a bit to simulate a busy profile (%d cycles)",PROFILE_WAIT_EXEC_CYCLE);
                 #endif
 
                 return;
               }
 
-         PRO_STATUS_CLEAR;
+          PRO_STATUS_CLEAR;
 
-         #ifdef DEBUG
-         if (!(EVENT_WRITE_NUL))
-         DEBUG_LOG(0,"Done wasting cycles in step 6");
-         #endif
+          #ifdef DEBUG
+          if (!(EVENT_WRITE_NUL)) DEBUG_LOG(0,"Done wasting cycles in step 6");
+          #endif
 
-         P->indexread=0;
+          P->indexread=0;
 
-         blocknumber=(P->DataBlock[5]<<16) | (P->DataBlock[6]<< 8) |  (P->DataBlock[7]    ) ;
+          blocknumber=(P->DataBlock[5]<<16) | (P->DataBlock[6]<< 8) |  (P->DataBlock[7]    ) ;
 
+          P->BSYLine=1; //20060425-moved from step 5, and re-enabled above delay to slow down
+          if (EVENT_WRITE_NUL) return;
 
-         P->BSYLine=1; //20060425-moved from step 5, and re-enabled above delay to slow down
-         if (EVENT_WRITE_NUL) return;
-
-         switch (P->DataBlock[4])                                                       // Now execute the command
-         {
-
-             case 0 :
-                                                                         //   0     1    2    3    4     5   6    7     8     9   10   11   12   13   14  15
+          switch (P->DataBlock[4])                                                       // Now execute the command
+          {
+              case 0 :                                                   //   0     1    2    3    4     5   6    7     8     9   10   11   12   13   14  15
                       DEBUG_LOG(0,"step6: Reading block#%d,0x%06x - buffer: %02x.%02x.%02x.%02x(%02x )[%02x %02x %02x]:%02x:%02x %02x %02x %02x %02x %02x %02x",
                         blocknumber, blocknumber,
                         P->DataBlock[ 0], P->DataBlock[ 1], P->DataBlock[ 2],  P->DataBlock[ 3],
@@ -1411,9 +1392,8 @@ profile.c:ProfileLoop:1182:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-i
                       break;
                       //no, this is bad//PRO_STATUS_GOT55;  // force status[0] to return the got 0x55 status.
 
-             case 1 : // FALLTHROUGH
-             case 2 :
-
+              case 1 : // FALLTHROUGH
+              case 2 :
                       P->StateMachineStep=ACCEPT_DATA_FOR_WRITE_STATE;
                       P->indexwrite=10;  // bytes 0-3 are status, 4-6 are cmd block, 10-522 are byte, 523-542 are tags.
                       SET_PROFILE_LOOP_TIMEOUT(FIFTH_OF_A_SECOND);
@@ -1425,8 +1405,7 @@ profile.c:ProfileLoop:1182:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-i
                         P->DataBlock[12], P->DataBlock[13], P->DataBlock[14],  P->DataBlock[15]);
                      break;  // write/verify block
 
-               case 0x12: // Status
-
+              case 0x12: // Status
                       P->VIA_PA=0x00; P->BSYLine=0; DEBUG_LOG(0,"<!BSY")
                       P->StateMachineStep=IDLE_STATE; // changeme!
 
@@ -1438,9 +1417,9 @@ profile.c:ProfileLoop:1182:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-i
                         P->DataBlock[ 0], P->DataBlock[ 1], P->DataBlock[ 2],  P->DataBlock[ 3],
                         P->DataBlock[ 4], P->DataBlock[ 5], P->DataBlock[ 6],  P->DataBlock[ 7],
                         P->DataBlock[ 8], P->DataBlock[ 9], P->DataBlock[10],  P->DataBlock[11],
-                        P->DataBlock[12], P->DataBlock[13], P->DataBlock[14],  P->DataBlock[15], pc24);
-                      }
+                        P->DataBlock[12], P->DataBlock[13], P->DataBlock[14],  P->DataBlock[15], pc24);}
                       #endif
+
                       P->last_cmd=0x1200 | P->DataBlock[5];
 
                         //switch (P->DataBlock[5])
@@ -1459,21 +1438,20 @@ profile.c:ProfileLoop:1182:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-i
 profile.c:ProfileLoop:1182:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-id>,checkbyte block#256,0x000100 - buffer: 80.00.00.00(26 )[00 01 00]:00:26 b2 31 31 20 20 20
 profile.c:ProfileLoop:1182:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-id>,checkbyte block#256,0x000100 - buffer: 80.00.00.00(26 )[00 01 00]:00:26 b2 31 31 20 20 20
 profile.c:ProfileLoop:1182:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-id>,checkbyte block#256,0x000100 - 
-                                                                        v  read  +1  blk blk  blk   chk  ??????????????
-                                                   buffer: 80.00.00.00(26 )[00   01  00]:00:  26    b2   31 31 20 20 20
-                                                   must respond with controller ready whatever that means in between block reads
-                                                   checksum= ~1+~2+~3+~4
+//                                                                      v  read  +1  blk blk  blk   chk  ??????????????
+//                                                 buffer: 80.00.00.00(26 )[00   01  00]:00:  26    b2   31 31 20 20 20
+//                                                 must respond with controller ready whatever that means in between block reads
+//                                                 checksum= ~1+~2+~3+~4
 */
                             #ifdef DEBUG
-                            {uint8 chk=P->DataBlock[4]+P->DataBlock[5]+P->DataBlock[6]+P->DataBlock[7]+P->DataBlock[8]+P->DataBlock[9]+P->DataBlock[10]+1;
-                            ALERT_LOG(0,"profile.c:widget.c:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-id>,checkbyte block#%d,0x%06x - calc-chk:%02x len:%d buffer:"
-                                         " %02x.%02x.%02x.%02x(%02x )(cmd:%02x) [count:%02x] [%02x:%02x:%02x] %02x %02x %02x %02x %02x %02x   pc24:%08x",
-                                             blocknumber, blocknumber, chk, P->indexwrite,
-                                         P->DataBlock[ 0], P->DataBlock[ 1], P->DataBlock[ 2],  P->DataBlock[ 3],
-                                         P->DataBlock[ 4], P->DataBlock[ 5], P->DataBlock[ 6],  P->DataBlock[ 7],
-                                         P->DataBlock[ 8], P->DataBlock[ 9], P->DataBlock[10],  P->DataBlock[11],
-                                         P->DataBlock[12], P->DataBlock[13], P->DataBlock[14],  P->DataBlock[15], pc24);
-                            }
+                            { uint8 chk=P->DataBlock[4]+P->DataBlock[5]+P->DataBlock[6]+P->DataBlock[7]+P->DataBlock[8]+P->DataBlock[9]+P->DataBlock[10]+1;
+                              ALERT_LOG(0,"profile.c:widget.c:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-id>,checkbyte block#%d,0x%06x - calc-chk:%02x len:%d buffer:"
+                                          " %02x.%02x.%02x.%02x(%02x )(cmd:%02x) [count:%02x] [%02x:%02x:%02x] %02x %02x %02x %02x %02x %02x   pc24:%08x",
+                                            blocknumber, blocknumber, chk, P->indexwrite,
+                                            P->DataBlock[ 0], P->DataBlock[ 1], P->DataBlock[ 2],  P->DataBlock[ 3],
+                                            P->DataBlock[ 4], P->DataBlock[ 5], P->DataBlock[ 6],  P->DataBlock[ 7],
+                                            P->DataBlock[ 8], P->DataBlock[ 9], P->DataBlock[10],  P->DataBlock[11],
+                                            P->DataBlock[12], P->DataBlock[13], P->DataBlock[14],  P->DataBlock[15], pc24);   }
                             #endif
                             P->last_cmd=0x2600 | P->DataBlock[5];
                             P->blocktowrite=(P->DataBlock[7]<<16) | (P->DataBlock[8]<<8) | P->DataBlock[9];
@@ -1483,363 +1461,280 @@ profile.c:ProfileLoop:1182:26: SYSCMD 26,[01R|02W|03WV],<count>,<3-bytes-block-i
                             // need to add a widget flag to the profile structure and then keep the block read and count and state
                             // not sure what the widget ACK is either.
                             switch (P->DataBlock[5]) // subcommand.
-                                   {
-                                           case 0 : P->VIA_PA=0x22; P->last_a_accs=0; P->BSYLine=1; DEBUG_LOG(0,"6 PARSE_CMD_STATE-> SYSCMD READ ACK");      // read blocks
-                                                    P->StateMachineStep=WID_MULTI_READ_SEND_DATA_AND_TAGS_STATE;
-                                                    do_profile_read(P,blocknumber);
-                                                    SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
-                                                    return;
+                                  {
+                                       case 0 : P->VIA_PA=0x22; P->last_a_accs=0; P->BSYLine=1; DEBUG_LOG(0,"6 PARSE_CMD_STATE-> SYSCMD READ ACK");      // read blocks
+                                                P->StateMachineStep=WID_MULTI_READ_SEND_DATA_AND_TAGS_STATE;
+                                                do_profile_read(P,blocknumber);
+                                                SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
+                                                return;
 
-                                           case 1 : P->VIA_PA=0x23; P->last_a_accs=0; P->BSYLine=1; DEBUG_LOG(0,"6 PARSE_CMD_STATE-> SYSCMD ACK WRITE");         // write blocks
-                                                    P->StateMachineStep=WAIT_2nd_0x55_STATE;
-                                                    SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
-                                                    return;
+                                       case 1 : P->VIA_PA=0x23; P->last_a_accs=0; P->BSYLine=1; DEBUG_LOG(0,"6 PARSE_CMD_STATE-> SYSCMD ACK WRITE");         // write blocks
+                                                P->StateMachineStep=WAIT_2nd_0x55_STATE;
+                                                SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
+                                                return;
 
-                                           case 2 : P->VIA_PA=0x24; P->last_a_accs=0; P->BSYLine=1; DEBUG_LOG(0,"6 PARSE_CMD_STATE-> SYSCMD ACK WRITE/VERIFY");  // write/verify block
-                                                    P->StateMachineStep=WAIT_2nd_0x55_STATE;
-                                                    SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
-                                                    return;
-                                    }
+                                       case 2 : P->VIA_PA=0x24; P->last_a_accs=0; P->BSYLine=1; DEBUG_LOG(0,"6 PARSE_CMD_STATE-> SYSCMD ACK WRITE/VERIFY");  // write/verify block
+                                                P->StateMachineStep=WAIT_2nd_0x55_STATE;
+                                                SET_PROFILE_LOOP_NO_PREDELAY(HALF_OF_A_SECOND);
+                                                return;
+                                  }
 
-               default:  ALERT_LOG(0,"profile.c:widget.c:Unhandled Profile/Widget command: %02x",P->DataBlock[4]);
-                         ALERT_LOG(0,"profile.c:widget.c:step6: (cmd:%02x) block#%d,0x%06x - buffer: %02x.%02x.%02x.%02x(%02x )[%02x %02x %02x]:%02x:%02x %02x %02x %02x %02x %02x %02x   pc24:%08x",
-                         P->DataBlock[4],
-                         blocknumber, blocknumber,
-                         P->DataBlock[ 0], P->DataBlock[ 1], P->DataBlock[ 2],  P->DataBlock[ 3],
-                         P->DataBlock[ 4], P->DataBlock[ 5], P->DataBlock[ 6],  P->DataBlock[ 7],
-                         P->DataBlock[ 8], P->DataBlock[ 9], P->DataBlock[10],  P->DataBlock[11],
-                         P->DataBlock[12], P->DataBlock[13], P->DataBlock[14],  P->DataBlock[15], pc24);
-                         P->StateMachineStep=IDLE_STATE;
-         }
-         return;
-
-
-    case ACCEPT_DATA_FOR_WRITE_STATE:    // 7    // handle write/write+verify - read bytes from lisa into buffer
-
-         CHECK_PROFILE_LOOP_TIMEOUT;
-
-         P->BSYLine=0; DEBUG_LOG(0,"<!BSY")
-
-         #ifdef DEBUG
-         if (!(EVENT_WRITE_NUL))
-
-         DEBUG_LOG(0,"State 7 - ready to read bytes from ProFile for writes event:%02x bsy:%02x cmd:%02x rrw:%02x PA:%02x @%d",
-           event, P->BSYLine,   P->CMDLine,  P->RRWLine, P->VIA_PA, P->indexwrite );
-         #endif
-
-         if (EVENT_WRITE_NUL) return; //2006.05.19
+              default:    ALERT_LOG(0,"profile.c:widget.c:Unhandled Profile/Widget command: %02x",P->DataBlock[4]);
+                          ALERT_LOG(0,"profile.c:widget.c:step6: (cmd:%02x) block#%d,0x%06x - buffer: %02x.%02x.%02x.%02x(%02x )[%02x %02x %02x]:%02x:%02x %02x %02x %02x %02x %02x %02x   pc24:%08x",
+                          P->DataBlock[4],blocknumber, blocknumber,
+                          P->DataBlock[ 0], P->DataBlock[ 1], P->DataBlock[ 2],  P->DataBlock[ 3],
+                          P->DataBlock[ 4], P->DataBlock[ 5], P->DataBlock[ 6],  P->DataBlock[ 7],
+                          P->DataBlock[ 8], P->DataBlock[ 9], P->DataBlock[10],  P->DataBlock[11],
+                          P->DataBlock[12], P->DataBlock[13], P->DataBlock[14],  P->DataBlock[15], pc24);
+                          P->StateMachineStep=IDLE_STATE;
+        }
+        return;
 
 
-         if (EVENT_WRITE_ORA && P->RRWLine && !P->CMDLine)
-         {
+    case  ACCEPT_DATA_FOR_WRITE_STATE:    // 7    // handle write/write+verify - read bytes from lisa into buffer
+          CHECK_PROFILE_LOOP_TIMEOUT;
+          P->BSYLine=0; DEBUG_LOG(0,"<!BSY")
+          #ifdef DEBUG
+          if (!(EVENT_WRITE_NUL)) DEBUG_LOG(0,"State 7 - ready to read bytes from ProFile for writes event:%02x bsy:%02x cmd:%02x rrw:%02x PA:%02x @%d",
+                                              event, P->BSYLine,   P->CMDLine,  P->RRWLine, P->VIA_PA, P->indexwrite );
+          #endif
+          if (EVENT_WRITE_NUL) return; //2006.05.19
+
+          if (EVENT_WRITE_ORA && P->RRWLine && !P->CMDLine)
+          {
             P->DataBlock[P->indexwrite++]=P->VIA_PA;
             if (P->indexwrite>552) {PRO_STATUS_BUFFER_OVERFLOW; P->StateMachineStep=0; DEBUG_LOG(0,"State 7 write buffer Overflow");}
             else SET_PROFILE_LOOP_TIMEOUT(TENTH_OF_A_SECOND);
 
-         }
-         else
-            if (P->CMDLine)
-            {
-                P->BSYLine=1; DEBUG_LOG(0,"<+BSY")
-                P->VIA_PA=0x06;
-                DEBUG_LOG(0,"State7 ACK WRITE command with 06");
-
-                P->StateMachineStep=WAIT_3rd_0x55_STATE;
-                SET_PROFILE_LOOP_TIMEOUT(FIFTH_OF_A_SECOND);
-            }
-            else
+          }
+          else
+          { if  (P->CMDLine)
                 {
-                    DEBUG_LOG(0,"State 7 did not recognize byte event:%02x bsy:%02x cmd:%02x rrw:%02x",
-                      event,
-                      P->BSYLine,
-                      P->CMDLine,
-                      P->RRWLine);
+                  P->BSYLine=1; DEBUG_LOG(0,"<+BSY")
+                  P->VIA_PA=0x06;
+                  DEBUG_LOG(0,"State7 ACK WRITE command with 06");
+                  P->StateMachineStep=WAIT_3rd_0x55_STATE;
+                  SET_PROFILE_LOOP_TIMEOUT(FIFTH_OF_A_SECOND);
                 }
-
-         return;
-
-
-case WAIT_3rd_0x55_STATE:              // 8    // wait for 0x55 again
-
-         #ifdef DEBUG
-         if (!(EVENT_WRITE_NUL))
-
-         DEBUG_LOG(0,"State 8 - wait for 3rd 0x55 - write:bsy:%d",P->BSYLine);
-         #endif
-
-         CHECK_PROFILE_LOOP_TIMEOUT;
-         //
-         //if (EVENT_WRITE_ORA && P->RRWLine && !P->CMDLine)
-         //
-
-         P->BSYLine=1; DEBUG_LOG(0,"<+BSY") //no this should always be 1 - do not change it!
-         if (EVENT_WRITE_NUL) return;
-
-         if (EVENT_WRITE_ORA)
-                                               {if (P->VIA_PA==0x55)
-                                                   {
-                                                    P->StateMachineStep=WRITE_BLOCK_STATE; // accept command
-                                                    SET_PROFILE_LOOP_TIMEOUT(FIFTH_OF_A_SECOND);
-
-                                                    P->indexread=0;
-                                                    PRO_STATUS_GOT55;
-                                                    DEBUG_LOG(0,"Command accepted, transition to 9");
-                                                   }
-                                                else
-                                                    {P->StateMachineStep=0;
-                                                     PRO_STATUS_NO55;}
-                                               }
-         return;
+            else
+                { DEBUG_LOG(0,"State 7 did not recognize byte event:%02x bsy:%02x cmd:%02x rrw:%02x", event, P->BSYLine, P->CMDLine, P->RRWLine); }
+          }
+          return;
 
 
-    case WRITE_BLOCK_STATE:     // 8  // do the write and waste some time
-         #ifdef DEBUG
-         if (!(EVENT_WRITE_NUL))
+    case  WAIT_3rd_0x55_STATE:              // 8    // wait for 0x55 again
+          #ifdef DEBUG
+            if (!(EVENT_WRITE_NUL)) DEBUG_LOG(0,"State 8 - wait for 3rd 0x55 - write:bsy:%d",P->BSYLine);
+          #endif
 
-         DEBUG_LOG(0,"State 9 - write and waste more time (%d)",PROFILE_WAIT_EXEC_CYCLE);
-         #endif
+          CHECK_PROFILE_LOOP_TIMEOUT;
+          //
+          //if (EVENT_WRITE_ORA && P->RRWLine && !P->CMDLine)
+          //
+          P->BSYLine=1; DEBUG_LOG(0,"<+BSY") //no this should always be 1 - do not change it!
+          if (EVENT_WRITE_NUL) return;
 
-         CHECK_PROFILE_LOOP_TIMEOUT;
-         if ( !TIMEPASSED_PROFILE_LOOP(HUN_THOUSANDTH_OF_A_SEC) ) return;
+          if  (EVENT_WRITE_ORA)
+              {
+                if  (P->VIA_PA==0x55)
+                    {
+                        P->StateMachineStep=WRITE_BLOCK_STATE; // accept command
+                        SET_PROFILE_LOOP_TIMEOUT(FIFTH_OF_A_SECOND);
+                        P->indexread=0;
+                        PRO_STATUS_GOT55;
+                        DEBUG_LOG(0,"Command accepted, transition to 9");
+                    }
+                else
+                    {P->StateMachineStep=0; PRO_STATUS_NO55;}
+              }
+          return;
 
-         blocknumber=(P->DataBlock[5]<<16) |
-                     (P->DataBlock[6]<< 8) |
-                     (P->DataBlock[7]    ) ;
+    case  WRITE_BLOCK_STATE:     // 8  // do the write and waste some time
+          #ifdef DEBUG
+            if (!(EVENT_WRITE_NUL)) DEBUG_LOG(0,"State 9 - write and waste more time (%d)",PROFILE_WAIT_EXEC_CYCLE);
+          #endif
+
+          CHECK_PROFILE_LOOP_TIMEOUT;
+          if ( !TIMEPASSED_PROFILE_LOOP(HUN_THOUSANDTH_OF_A_SEC) ) return;
+
+          blocknumber=(P->DataBlock[5]<<16) |
+                      (P->DataBlock[6]<< 8) |
+                      (P->DataBlock[7]    ) ;
 
          #ifdef DEBUG                                                              //   0     1    2    3    4     5   6    7     8     9   10   11   12   13   14  15
-          DEBUG_LOG(0,"Writing block#%d,0x%06x - buffer: %02x.%02x.%02x.%02x(%02x )[%02x %02x %02x]:%02x:%02x|%02x %02x %02x %02x %02x %02x",
-            blocknumber, blocknumber,
-            P->DataBlock[ 0],
-            P->DataBlock[ 1],
-            P->DataBlock[ 2],
-            P->DataBlock[ 3],
-            P->DataBlock[ 4],
-            P->DataBlock[ 5],
-            P->DataBlock[ 6],
-            P->DataBlock[ 7],
-            P->DataBlock[ 8],
-            P->DataBlock[ 9],
-            P->DataBlock[10],
-            P->DataBlock[11],
-            P->DataBlock[12],
-            P->DataBlock[13],
-            P->DataBlock[14],
-            P->DataBlock[15]);
-
+          DEBUG_LOG(0,"Writing block#%d,0x%06x - buffer: %02x.%02x.%02x.%02x(%02x )[%02x %02x %02x]:%02x:%02x|%02x %02x %02x %02x %02x %02x", blocknumber, blocknumber,
+            P->DataBlock[ 0], P->DataBlock[ 1], P->DataBlock[ 2], P->DataBlock[ 3],
+            P->DataBlock[ 4], P->DataBlock[ 5], P->DataBlock[ 6], P->DataBlock[ 7],
+            P->DataBlock[ 8], P->DataBlock[ 9], P->DataBlock[10], P->DataBlock[11],
+            P->DataBlock[12], P->DataBlock[13], P->DataBlock[14], P->DataBlock[15]);
           //                   0    1    2    3   4   5    6    7    8    9     10   11   12   13  14   15   16   17   18   19
           DEBUG_LOG(0,"Tags: %02x %02x %02x %02x[%02x %02x]%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x ",
-            P->DataBlock[522+ 0],
-            P->DataBlock[522+ 1],
-            P->DataBlock[522+ 2],
-            P->DataBlock[522+ 3],
-            P->DataBlock[522+ 4],
-            P->DataBlock[522+ 5],
-            P->DataBlock[522+ 6],
-            P->DataBlock[522+ 7],
-            P->DataBlock[522+ 0],
-            P->DataBlock[522+ 9],
-            P->DataBlock[522+ 10],
-            P->DataBlock[522+ 11],
-            P->DataBlock[522+ 12],
-            P->DataBlock[522+ 13],
-            P->DataBlock[522+ 14],
-            P->DataBlock[522+ 15],
-            P->DataBlock[522+ 16],
-            P->DataBlock[522+ 17],
-            P->DataBlock[522+ 18],
-            P->DataBlock[522+ 19]
-            );
+            P->DataBlock[522+ 0],  P->DataBlock[522+ 1],  P->DataBlock[522+ 2],  P->DataBlock[522+ 3],
+            P->DataBlock[522+ 4],  P->DataBlock[522+ 5],  P->DataBlock[522+ 6],  P->DataBlock[522+ 7],
+            P->DataBlock[522+ 0],  P->DataBlock[522+ 9],  P->DataBlock[522+ 10], P->DataBlock[522+ 11],
+            P->DataBlock[522+ 12], P->DataBlock[522+ 13], P->DataBlock[522+ 14], P->DataBlock[522+ 15],
+            P->DataBlock[522+ 16], P->DataBlock[522+ 17], P->DataBlock[522+ 18], P->DataBlock[522+ 19]                            );
+          #endif
 
+          do_profile_write(P,blocknumber);
 
+          P->indexwrite=4;
+          P->indexread=0;  P->DataBlock[0]=0;  P->DataBlock[1]=0; P->DataBlock[2]=0;  P->DataBlock[3]=0;
 
-         #endif
+          P->BSYLine=0;  DEBUG_LOG(0,"<!BSY") //2006.05.17 was 1
+          P->StateMachineStep=SEND_STATUS_BYTES_STATE;
+          SET_PROFILE_LOOP_TIMEOUT(HALF_OF_A_SECOND);
 
-         do_profile_write(P,blocknumber);
+          return;
 
-         P->indexwrite=4;
-         P->indexread=0;
+    case  WID_MULTI_READ_SEND_DATA_AND_TAGS_STATE:     //10    // Let Lisa read the status/data
+          #ifdef DEBUG
+          if (!(EVENT_WRITE_NUL)) DEBUG_LOG(0,"State 100, Multiblock allow Lisa to read the status and data  - pointer:0x%x (%d)",P->indexread,P->indexread);
+          #endif
 
-         P->DataBlock[0]=0;
-         P->DataBlock[1]=0;
-         P->DataBlock[2]=0;
-         P->DataBlock[3]=0;
+          P->BSYLine=0; DEBUG_LOG(0,"<!BSY")
 
-         P->BSYLine=0;  DEBUG_LOG(0,"<!BSY") //2006.05.17 was 1
-         P->StateMachineStep=SEND_STATUS_BYTES_STATE;
-         SET_PROFILE_LOOP_TIMEOUT(HALF_OF_A_SECOND);
+          CHECK_PROFILE_LOOP_TIMEOUT;
+          if (EVENT_WRITE_NUL) return;
 
-         return;
-
-    case WID_MULTI_READ_SEND_DATA_AND_TAGS_STATE:     //10    // Let Lisa read the status/data
-         #ifdef DEBUG
-         if (!(EVENT_WRITE_NUL))
-         DEBUG_LOG(0,"State 100, Multiblock allow Lisa to read the status and data  - pointer:0x%x (%d)",P->indexread,P->indexread);
-         #endif
-
-         P->BSYLine=0; DEBUG_LOG(0,"<!BSY")
-
-         CHECK_PROFILE_LOOP_TIMEOUT;
-         if (EVENT_WRITE_NUL) return;
-
-         if ( P->CMDLine) /// this might be different for Widget - was !
-         {
-
+          if ( P->CMDLine) /// this might be different for Widget - was !
+          {
             P->BSYLine=0; DEBUG_LOG(0,"<!BSY")           //2006.05.15
+
             if (EVENT_READ_IRA)
             {
              //P->BSYLine=0;        //2006.05.15
-             P->VIA_PA=P->DataBlock[P->indexread++];
-             if (P->indexread>542)
-                    {
-                        DEBUG_LOG(0,"IndexRead went over 542, resetting to 0");
-                        P->indexread=0;
-                    }
+              P->VIA_PA=P->DataBlock[P->indexread++];
+              if (P->indexread>542) {   DEBUG_LOG(0,"IndexRead went over 542, resetting to 0");  P->indexread=0; }
 
-             P->last_a_accs=0;
-             SET_PROFILE_LOOP_TIMEOUT(HALF_OF_A_SECOND);   // reset timeout  // was FIFTH_OF_A_SECOND
-             DEBUG_LOG(0,"Returning Profile Read buffer %02x from index:0x%x(%d)",P->VIA_PA,P->indexread-1,P->indexread-1);
+              P->last_a_accs=0;
+              SET_PROFILE_LOOP_TIMEOUT(HALF_OF_A_SECOND);   // reset timeout  // was FIFTH_OF_A_SECOND
+              DEBUG_LOG(0,"Returning Profile Read buffer %02x from index:0x%x(%d)",P->VIA_PA,P->indexread-1,P->indexread-1);
             }
-         }
-         else
-         {
-             #ifdef DEBUG
-             if (P->indexread != 536)
-             {
-                 blocknumber=(P->DataBlock[5]<<16) | (P->DataBlock[6]<< 8) |    (P->DataBlock[7]    );
-                 DEBUG_LOG(0,"Warning: read %d bytes instead of 536 for block read of sector #%08x (%x)",P->indexread,blocknumber,blocknumber);
-             }
-             #endif
 
-             if (EVENT_READ_IRA)             // oops we fell out of sync - recover please!
-             {
-               P->VIA_PA=1;   P->last_a_accs=0;
-               P->StateMachineStep=WAIT_1st_0x55_STATE;
-               SET_PROFILE_LOOP_TIMEOUT(TENTH_OF_A_SECOND);
-               P->BSYLine=1;           // flip BSY
-               return;
-             }
+          }
+          else
+          {
+              #ifdef DEBUG
+                if  (P->indexread != 536)
+                    {   blocknumber=(P->DataBlock[5]<<16) | (P->DataBlock[6]<< 8) |    (P->DataBlock[7]    );
+                        DEBUG_LOG(0,"Warning: read %d bytes instead of 536 for block read of sector #%08x (%x)",P->indexread,blocknumber,blocknumber); }
+              #endif
 
-             P->BSYLine=1; DEBUG_LOG(0,"<+BSY")
-             P->StateMachineStep=FINAL_FLIP_TO_IDLE_STATE; SET_PROFILE_LOOP_TIMEOUT(TEN_THOUSANDTH_OF_A_SEC);
-         }
+            if  (EVENT_READ_IRA)             // oops we fell out of sync - recover please!
+                {
+                    P->VIA_PA=1;   P->last_a_accs=0;
+                    P->StateMachineStep=WAIT_1st_0x55_STATE;
+                    SET_PROFILE_LOOP_TIMEOUT(TENTH_OF_A_SECOND);
+                    P->BSYLine=1;           // flip BSY
+                    return;
+                }
 
-         return;
+            P->BSYLine=1; DEBUG_LOG(0,"<+BSY")
+            P->StateMachineStep=FINAL_FLIP_TO_IDLE_STATE; SET_PROFILE_LOOP_TIMEOUT(TEN_THOUSANDTH_OF_A_SEC);
+          }
+
+          return;
 
 
 // Normal ProFile protocol or cmd 0
-    case SEND_DATA_AND_TAGS_STATE:     //10    // Let Lisa read the status/data
-         #ifdef DEBUG
-         if (!(EVENT_WRITE_NUL))
-         DEBUG_LOG(0,"State 10, allow Lisa to read the status and data  - pointer:0x%x (%d)",P->indexread,P->indexread);
-         #endif
+    case  SEND_DATA_AND_TAGS_STATE:     //10    // Let Lisa read the status/data
+          #ifdef DEBUG
+            if (!(EVENT_WRITE_NUL)) DEBUG_LOG(0,"State 10, allow Lisa to read the status and data  - pointer:0x%x (%d)",P->indexread,P->indexread);
+          #endif
 
-         P->BSYLine=0; DEBUG_LOG(0,"<!BSY")
+          P->BSYLine=0; DEBUG_LOG(0,"<!BSY")
 
-         CHECK_PROFILE_LOOP_TIMEOUT;
-         if (EVENT_WRITE_NUL) return;
+          CHECK_PROFILE_LOOP_TIMEOUT;
+          if (EVENT_WRITE_NUL) return;
 
-         if (!P->CMDLine)
-         {
+          if  (!P->CMDLine)
+              {
 
-            P->BSYLine=0; DEBUG_LOG(0,"<!BSY")           //2006.05.15
-            if (EVENT_READ_IRA)
-            {
-             //P->BSYLine=0;        //2006.05.15
-             P->VIA_PA=P->DataBlock[P->indexread++];
-             if (P->indexread>542)
+                P->BSYLine=0; DEBUG_LOG(0,"<!BSY")           //2006.05.15
+                if  (EVENT_READ_IRA)
                     {
-                        DEBUG_LOG(0,"IndexRead went over 542, resetting to 0");
-                        P->indexread=0;
+                        //P->BSYLine=0;        //2006.05.15
+                        P->VIA_PA=P->DataBlock[P->indexread++];
+                        if (P->indexread>542)
+                        {
+                            DEBUG_LOG(0,"IndexRead went over 542, resetting to 0");
+                            P->indexread=0;
+                        }
+
+                        P->last_a_accs=0;
+                        SET_PROFILE_LOOP_TIMEOUT(HALF_OF_A_SECOND);   // reset timeout  // was FIFTH_OF_A_SECOND
+                        DEBUG_LOG(0,"Returning Profile Read buffer %02x from index:0x%x(%d)",P->VIA_PA,P->indexread-1,P->indexread-1);
                     }
+              }
+          else
+              {
+                  #ifdef DEBUG
+                    if (P->indexread != 536) {blocknumber=(P->DataBlock[5]<<16) | (P->DataBlock[6]<< 8) |    (P->DataBlock[7]    );
+                          DEBUG_LOG(0,"Warning: read %d bytes instead of 536 for block read of sector #%08x (%x)",P->indexread,blocknumber,blocknumber);  }
+                  #endif
 
-             P->last_a_accs=0;
-             SET_PROFILE_LOOP_TIMEOUT(HALF_OF_A_SECOND);   // reset timeout  // was FIFTH_OF_A_SECOND
-             DEBUG_LOG(0,"Returning Profile Read buffer %02x from index:0x%x(%d)",P->VIA_PA,P->indexread-1,P->indexread-1);
-            }
-         }
-         else
-         {
-             #ifdef DEBUG
-             if (P->indexread != 536)
-             {
-                 blocknumber=(P->DataBlock[5]<<16) | (P->DataBlock[6]<< 8) |    (P->DataBlock[7]    );
-                 DEBUG_LOG(0,"Warning: read %d bytes instead of 536 for block read of sector #%08x (%x)",P->indexread,blocknumber,blocknumber);
-             }
-             #endif
+                  if  (EVENT_READ_IRA)             // oops we fell out of sync - recover please!
+                      {
+                        P->VIA_PA=1;   P->last_a_accs=0;
+                        P->StateMachineStep=WAIT_1st_0x55_STATE;
+                        SET_PROFILE_LOOP_TIMEOUT(TENTH_OF_A_SECOND);
+                        P->BSYLine=1; DEBUG_LOG(0,"<!BSY")          // flip BSY
+                        return;
+                      }
 
-             if (EVENT_READ_IRA)             // oops we fell out of sync - recover please!
-             {
-               P->VIA_PA=1;   P->last_a_accs=0;
-               P->StateMachineStep=WAIT_1st_0x55_STATE;
-               SET_PROFILE_LOOP_TIMEOUT(TENTH_OF_A_SECOND);
-               P->BSYLine=1; DEBUG_LOG(0,"<!BSY")          // flip BSY
-               return;
-             }
+                  P->BSYLine=1;DEBUG_LOG(0,"<+BSY")
+                  P->StateMachineStep=FINAL_FLIP_TO_IDLE_STATE; SET_PROFILE_LOOP_TIMEOUT(TEN_THOUSANDTH_OF_A_SEC);
+                  P->VIA_PA=0x22; 
+              } // end of if  (!P->CMDLine) else
 
-             P->BSYLine=1;DEBUG_LOG(0,"<+BSY")
-             P->StateMachineStep=FINAL_FLIP_TO_IDLE_STATE; SET_PROFILE_LOOP_TIMEOUT(TEN_THOUSANDTH_OF_A_SEC);
-             P->VIA_PA=0x22; 
-         }
-
-         return;
+          return;
 
 
 
-    case FINAL_FLIP_TO_IDLE_STATE:        // 11
+    case  FINAL_FLIP_TO_IDLE_STATE:        // 11
+          // let ProFile see BSY strobe for a short period, this speeds up LisaTest immensely.  returns to state 0 via timeout
+          CHECK_PROFILE_LOOP_TIMEOUT;
+          if  (EVENT_READ_IRA)                 // oops we fell out of sync - recover please!
+              {
+                P->VIA_PA=1;   P->last_a_accs=0;
+                P->StateMachineStep=WAIT_1st_0x55_STATE;
+                SET_PROFILE_LOOP_TIMEOUT(TENTH_OF_A_SECOND);
+                P->BSYLine=1;           // flip BSY
+                return;
+              }
 
-         // let ProFile see BSY strobe for a short period, this speeds up LisaTest immensely.  returns to state 0 via timeout
-         CHECK_PROFILE_LOOP_TIMEOUT;
+          P->BSYLine=1; DEBUG_LOG(0,"<+BSY")
+          return;
 
-         if (EVENT_READ_IRA)                 // oops we fell out of sync - recover please!
-         {
-           P->VIA_PA=1;   P->last_a_accs=0;
-           P->StateMachineStep=WAIT_1st_0x55_STATE;
-           SET_PROFILE_LOOP_TIMEOUT(TENTH_OF_A_SECOND);
-           P->BSYLine=1;           // flip BSY
-           return;
-         }
+    case  SEND_STATUS_BYTES_STATE:              //12              // Let Lisa read the status/data
 
-         P->BSYLine=1; DEBUG_LOG(0,"<+BSY")
-         return;
+          #ifdef DEBUG
+            if (!(EVENT_WRITE_NUL)) DEBUG_LOG(0,"State 12, post write - allow Lisa to read the status and data  - pointer:%d",P->indexread);
+          #endif
+ 
+          CHECK_PROFILE_LOOP_TIMEOUT;
+          P->BSYLine=0; DEBUG_LOG(0,"<+BSY")
+          if (EVENT_WRITE_NUL || EVENT_READ_IRB) return;
 
-
-    case SEND_STATUS_BYTES_STATE:              //12              // Let Lisa read the status/data
-
-         #ifdef DEBUG
-         if (!(EVENT_WRITE_NUL))
-          DEBUG_LOG(0,"State 12, post write - allow Lisa to read the status and data  - pointer:%d",P->indexread);
-         #endif
-
-
-         CHECK_PROFILE_LOOP_TIMEOUT;
-
-         P->BSYLine=0; DEBUG_LOG(0,"<+BSY")
-
-         if (EVENT_WRITE_NUL || EVENT_READ_IRB) return;
-
-         if (!P->CMDLine)
-         {
-
-            if (EVENT_READ_IRA)
-            {
-             P->VIA_PA=P->DataBlock[P->indexread++]; if (P->indexread>3) P->indexread=0;
-             P->last_a_accs=0;
-             SET_PROFILE_LOOP_TIMEOUT(HALF_OF_A_SECOND);   // reset timeout  // was FIFTH_OF_A_SECOND
-             ALERT_LOG(0,"profile.c:widget.c:Returning %02x from index:%d   pc24:%08x",P->VIA_PA,P->indexread-1,  pc24);
-            }
-         }
-         else
-         {
-             P->StateMachineStep=IDLE_STATE;
-         }
+          if  (!P->CMDLine)
+              {
+                if  (EVENT_READ_IRA)
+                    {
+                      P->VIA_PA=P->DataBlock[P->indexread++]; if (P->indexread>3) P->indexread=0;
+                      P->last_a_accs=0;
+                      SET_PROFILE_LOOP_TIMEOUT(HALF_OF_A_SECOND);   // reset timeout  // was FIFTH_OF_A_SECOND
+                      ALERT_LOG(0,"profile.c:widget.c:Returning %02x from index:%d   pc24:%08x",P->VIA_PA,P->indexread-1,  pc24);
+                    }
+              }
+              else  P->StateMachineStep=IDLE_STATE;
 
 
-         return;
+          return;
 
-    default:
-           ALERT_LOG(0,"profile.c:widget.c:Unknown ProFile state %d, returning to idle.   pc24:%08x",P->StateMachineStep, pc24);
-           P->StateMachineStep=IDLE_STATE;
-           return;
+    default:  ALERT_LOG(0,"profile.c:widget.c:Unknown ProFile state %d, returning to idle.   pc24:%08x",P->StateMachineStep, pc24);
+              P->StateMachineStep=IDLE_STATE;
+              return;
     }
 
 }

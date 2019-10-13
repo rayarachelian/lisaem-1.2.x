@@ -99,34 +99,37 @@ int irq_on_next_rx_char[2];
 
 
 
-#define TX_BUFF_EMPTY(port)     { if (scc_w[port].s.wr1.r.txintenable)                                                         \
-                                  {                                                                                            \
-                                   if (port) {scc_r[0].r[3] = (scc_r[0].r[3]&0xf0) | RR3_IP_B_TX;    z8530_last_irq_status_bits=8;}  \
-                                   else      {scc_r[0].r[3] = (scc_r[0].r[3]&0x0f) | RR3_IP_A_TX;    z8530_last_irq_status_bits=128;}\
-                                                                                                                               \
-                                  }                                                                                            \
-                                }
+#define TX_BUFF_EMPTY(port)                                                                                      \
+      { if  (scc_w[port].s.wr1.r.txintenable)                                                                    \
+            {                                                                                                    \
+              if (port) {scc_r[0].r[3] = (scc_r[0].r[3]&0xf0) | RR3_IP_B_TX;    z8530_last_irq_status_bits=8;}   \
+              else      {scc_r[0].r[3] = (scc_r[0].r[3]&0x0f) | RR3_IP_A_TX;    z8530_last_irq_status_bits=128;} \
+            }                                                                                                    \
+      }
 
-#define EXT_STATUS_CHANGE(port) { if (scc_w[port].s.wr1.r.extintenable)                                                        \
-                                  {                                                                                            \
-                                    if (port) {scc_r[0].r[3] = (scc_r[0].r[3]&0xf0) | RR3_IP_B_STAT; z8530_last_irq_status_bits=10;} \
-                                    else      {scc_r[0].r[3] = (scc_r[0].r[3]&0x0f) | RR3_IP_A_STAT; z8530_last_irq_status_bits=2;}  \
-                                  }                                                                                            \
-                                }
+#define EXT_STATUS_CHANGE(port)                                                                                  \
+      { if  (scc_w[port].s.wr1.r.extintenable)                                                                   \
+            {                                                                                                    \
+              if (port) {scc_r[0].r[3] = (scc_r[0].r[3]&0xf0) | RR3_IP_B_STAT; z8530_last_irq_status_bits=10;}   \
+              else      {scc_r[0].r[3] = (scc_r[0].r[3]&0x0f) | RR3_IP_A_STAT; z8530_last_irq_status_bits=2;}    \
+            }                                                                                                    \
+      }
 
-#define RX_CHAR_AVAILABLE(port) {if (scc_w[port].s.wr1.r.rxintmode && scc_w[port].s.wr1.r.rxintmode!=3)                        \
-                                 {                                                                                             \
-                                   if (port) {scc_r[0].r[3] = (scc_r[0].r[3]&0xf0) | RR3_IP_B_RX;    z8530_last_irq_status_bits=12;} \
-                                   else      {scc_r[0].r[3] = (scc_r[0].r[3]&0x0f) | RR3_IP_A_RX;    z8530_last_irq_status_bits=4;}  \
-                                 }                                                                                             \
-                                }
+#define RX_CHAR_AVAILABLE(port)                                                                                  \
+      { if  (scc_w[port].s.wr1.r.rxintmode && scc_w[port].s.wr1.r.rxintmode!=3)                                  \
+            {                                                                                                    \
+              if (port) {scc_r[0].r[3] = (scc_r[0].r[3]&0xf0) | RR3_IP_B_RX;    z8530_last_irq_status_bits=12;}  \
+              else      {scc_r[0].r[3] = (scc_r[0].r[3]&0x0f) | RR3_IP_A_RX;    z8530_last_irq_status_bits=4;}   \
+            }                                                                                                    \
+      }
 
-#define SPECIAL_RECV_COND(port) {if (scc_w[port].s.wr1.r.rxintmode==3)                                                         \
-                                 {                                                                                             \
-                                   if (port) {scc_r[0].r[3] = (scc_r[0].r[3]&0xf0) | RR3_IP_B_STAT;  z8530_last_irq_status_bits=14;} \
-                                   else      {scc_r[0].r[3] = (scc_r[0].r[3]&0x0f) | RR3_IP_A_STAT;  z8530_last_irq_status_bits=6;}  \
-                                 }                                                                                             \
-                                }
+#define SPECIAL_RECV_COND(port)                                                                                  \
+      { if  (scc_w[port].s.wr1.r.rxintmode==3)                                                                   \
+            {                                                                                                    \
+              if (port) {scc_r[0].r[3] = (scc_r[0].r[3]&0xf0) | RR3_IP_B_STAT;  z8530_last_irq_status_bits=14;}  \
+              else      {scc_r[0].r[3] = (scc_r[0].r[3]&0x0f) | RR3_IP_A_STAT;  z8530_last_irq_status_bits=6;}   \
+            }                                                                                                    \
+      }
 
 // Protos for link to host devices - or emulation of ports
 
@@ -1445,95 +1448,90 @@ return 0;
 
 // interface functions to host machine -- need to fill these in!
 
-void send_break(uint8 port)           {DEBUG_LOG(0,"generic Send Break on port %d",        port);                  return  ;}
-void set_dtr(uint8 port, uint8 value) {DEBUG_LOG(0,"generic Set DTR on port %d to %d",     port,value);            return  ;}
-void set_rts(uint8 port, uint8 value) {DEBUG_LOG(0,"generic Set RTS on port %d to %d",     port,value);            return  ;}
+void send_break(uint8 port)           {DEBUG_LOG(0,"generic Send Break on port %d",        port);        UNUSED(port);                return  ;}
+void set_dtr(uint8 port, uint8 value) {DEBUG_LOG(0,"generic Set DTR on port %d to %d",     port,value);  UNUSED(port); UNUSED(value); return  ;}
+void set_rts(uint8 port, uint8 value) {DEBUG_LOG(0,"generic Set RTS on port %d to %d",     port,value);  UNUSED(port); UNUSED(value); return  ;}
 
-int get_dcd(uint8 port)               {DEBUG_LOG(0,"generic Get Carrier Detect on port %d is %d",port,
-                                              scc_r[port].s.rr0.r.dcd);
-                                              scc_r[port].s.rr0.r.dcd=1;
+int get_dcd(uint8 port)
+{
+    DEBUG_LOG(0,"generic Get Carrier Detect on port %d is %d",port, scc_r[port].s.rr0.r.dcd);
+    scc_r[port].s.rr0.r.dcd=1;
+    if ((port && scc_a_IW!=-1) || (!port && scc_b_IW!=-1)) return 1;  //0,0  1,1 no good
+    return scc_r[port].s.rr0.r.dcd;
+}
 
-                                       if ((port && scc_a_IW!=-1) || (!port && scc_b_IW!=-1)) return 1;  //0,0  1,1 no good
+int get_cts(uint8 port) 
+{
+    DEBUG_LOG(0,"generic Get Clear to send on port %d is %d", port, scc_r[port].s.rr0.r.cts);
+    if ((port && scc_a_IW!=-1) || (!port && scc_b_IW!=-1)) return 0;
+    //return scc_r[port].s.rr0.r.cts;
+    return 1;  /*2006.07.11*/
+}
 
-                                       return scc_r[port].s.rr0.r.dcd;                                              ;}
+int get_break(uint8 port) 
+{
+    UNUSED(port);
+    DEBUG_LOG(0,"generic Get brk status on port %d",    port);
+    // if break - also set this::: use this code when enabling break support
+    // if (scc_w[port].wr15.s.break_abort_interrupt_enable) scc_r[1].s.rr3.ch_b_ext_status_irq_pending=1;
+    return 0;
+}
 
-int get_cts(uint8 port)               {DEBUG_LOG(0,"generic Get Clear to send on port %d is %d", port,
-                                              scc_r[port].s.rr0.r.cts);
+void signal_parity_error(uint8 port)  {DEBUG_LOG(0,"generic Signal parity error port %d",  port);  UNUSED(port); return  ;}
+void signal_crc_error(uint8 port)     {DEBUG_LOG(0,"generic Signal CRC error on port %d",  port);  UNUSED(port); return  ;}
 
-                                       if ((port && scc_a_IW!=-1) || (!port && scc_b_IW!=-1)) return 0;
-
-
-                                       //return scc_r[port].s.rr0.r.cts;
-                                       return 1;  /*2006.07.11*/                                                   ;}
-
-int get_break(uint8 port)             {DEBUG_LOG(0,"generic Get brk status on port %d",    port);
-
-                                      // if break - also set this::: use this code when enabling break support
-                                      // if (scc_w[port].wr15.s.break_abort_interrupt_enable) scc_r[1].s.rr3.ch_b_ext_status_irq_pending=1;
-
-
-                                       return 0;}
-void signal_parity_error(uint8 port)  {DEBUG_LOG(0,"generic Signal parity error port %d",  port);                  return  ;}
-void signal_crc_error(uint8 port)     {DEBUG_LOG(0,"generic Signal CRC error on port %d",  port);                  return  ;}
-
-void set_even_parity(uint8 port)      {DEBUG_LOG(0,"generic Set even parity  on port %d",  port);                  return  ;}
-void set_odd_parity(uint8 port)       {DEBUG_LOG(0,"generic Set  odd parity  on port %d",  port);                  return  ;}
-void set_no_parity(uint8 port)        {DEBUG_LOG(0,"generic Set   no parity  on port %d",  port);                  return  ;}
-
+void set_even_parity(uint8 port)      {DEBUG_LOG(0,"generic Set even parity  on port %d",  port);  UNUSED(port); return  ;}
+void set_odd_parity(uint8 port)       {DEBUG_LOG(0,"generic Set  odd parity  on port %d",  port);  UNUSED(port); return  ;}
+void set_no_parity(uint8 port)        {DEBUG_LOG(0,"generic Set   no parity  on port %d",  port);  UNUSED(port); return  ;}
 
 void set_dtr_loopbackplug(uint8 port, uint8 value)
-                                      { scc_r[port].s.rr0.r.dcd=value;
-                                        DEBUG_LOG(0,"Set loopback DTR on port %d to %d",     port,value);          return  ;}
+{ 
+  scc_r[port].s.rr0.r.dcd=value;
+  DEBUG_LOG(0,"Set loopback DTR on port %d to %d", port,value); 
+  return;
+}
 
 void set_rts_loopbackplug(uint8 port, uint8 value)
-                                      { scc_r[port].s.rr0.r.cts=value;
+{ 
+  scc_r[port].s.rr0.r.cts=value;
+  // weird loopback test cable
+  if (0==port && value==0) scc_r[port].s.rr0.r.cts=1;
+  if (0==port && 0==scc_w[port].s.wr5.r.RTS && 0!=scc_w[port].s.wr5.r.DTR)
+  scc_r[port].s.rr0.r.cts=0;
+  DEBUG_LOG(0,"Set loopback RTS on port %d to %d",     port,value);          
+  return;
+}
 
-                                        // weird loopback test cable
-                                        if (0==port && value==0) scc_r[port].s.rr0.r.cts=1;
-                                        if (0==port && 0==scc_w[port].s.wr5.r.RTS && 0!=scc_w[port].s.wr5.r.DTR)
-                                                                 scc_r[port].s.rr0.r.cts=0;
-
-                                        DEBUG_LOG(0,"Set loopback RTS on port %d to %d",     port,value);          return  ;}
-
-
-void set_baud_rate(int port, uint32 baud) { }  // dummy function
+void set_baud_rate(int port, uint32 baud) { UNUSED(port); UNUSED(baud);}  // dummy function
 
 void set_bits_per_char(uint8 port, uint8 bitsperchar)
 {
-        DEBUG_LOG(0,"Set bits/char on port %d to %d",     port,bitsperchar);
-        switch(bitsperchar)
+  DEBUG_LOG(0,"Set bits/char on port %d to %d",     port,bitsperchar);
+  switch(bitsperchar)
         {
-           case 5: scc_bits_per_char_mask[port]= 31;return;
-           case 6: scc_bits_per_char_mask[port]= 63;return;
-           case 7: scc_bits_per_char_mask[port]=127;return;
-           case 8: scc_bits_per_char_mask[port]=255;return;
-           default: DEBUG_LOG(0,"*BUG* bits/char was set to %d",bitsperchar);
+          case 5: scc_bits_per_char_mask[port]= 31;return;
+          case 6: scc_bits_per_char_mask[port]= 63;return;
+          case 7: scc_bits_per_char_mask[port]=127;return;
+          case 8: scc_bits_per_char_mask[port]=255;return;
+          default: DEBUG_LOG(0,"*BUG* bits/char was set to %d",bitsperchar);
                     scc_bits_per_char_mask[port]=255;return;
         }
 }
 
-void set_stop_bits(uint8 port,uint8 stopbits) {return;} //0=0 no stop bits,1=1 stop bit,2=1.5 stop bits,3=2 stop bits
+void set_stop_bits(uint8 port,uint8 stopbits) {UNUSED(port); UNUSED(stopbits);return;} //0=0 no stop bits,1=1 stop bit,2=1.5 stop bits,3=2 stop bits
 
-
-
-char read_serial_port_nothing(int8 port)      {return 0; }
-char read_serial_port_imagewriter(int8 port)  {return 0; }
-char read_serial_port_loopbackplug(int8 port) {return -1;}  // this should never be called!
+char read_serial_port_nothing(int8 port)      {UNUSED(port);return 0; }
+char read_serial_port_imagewriter(int8 port)  {UNUSED(port);return 0; }
+char read_serial_port_loopbackplug(int8 port) {UNUSED(port);return -1;}  // this should never be called!
 char read_serial_port_localport(int8 port)
 {
- if (port)
- {  if (scc_a_port_F) return fgetc(scc_a_port_F); else return 0;  }
- else
- {  if (scc_b_port_F) return fgetc(scc_b_port_F); else return 0;  }
-
-return 0;
+  if (port) {  if (scc_a_port_F) return fgetc(scc_a_port_F); else return 0;  }
+  else      {  if (scc_b_port_F) return fgetc(scc_b_port_F); else return 0;  }
+  return 0;
 }
-
-
 
 char read_serial_port(int8 port)                            // generic handler
 {
-
     DEBUG_LOG(0,"r %p %p w %p %p",SCC_READ[0].buffer,&SCC_READ[1].buffer,SCC_WRITE[0].buffer,SCC_WRITE[1].buffer);
     DEBUG_LOG(0,"SRC:port:%d",port);
     if (port)
@@ -1545,39 +1543,37 @@ char read_serial_port(int8 port)                            // generic handler
     }
     else
     {
-
         if (serial_b==SCC_NOTHING)     return 0;
         if (serial_b==SCC_IMAGEWRITER) return 0;
         if (serial_b==SCC_LOCALPORT)
         {if (scc_b_port_F) return fgetc(scc_b_port_F);}
     }
-
     return 0;
 }
 
 
-
-void write_serial_port_nothing(int8 port, char data)      {DEBUG_LOG(0,"wrote %02x to port %d",data,port);return;}
+void write_serial_port_nothing(int8 port, char data)      {UNUSED(port); UNUSED(data);DEBUG_LOG(0,"wrote %02x to port %d",data,port);return;}
 void write_serial_port_loopbackplug(int8 port, char data) {DEBUG_LOG(0,"wrote %02x to port %d",data,port); fliflo_buff_add(&SCC_READ[(!port)&1],data & scc_bits_per_char_mask[(!port)&1]);}
 
 void write_serial_port_imagewriter(int8 port, char data)
-{   if (port)      {  DEBUG_LOG(0,"wrote %02x to port %d",data,port);
-                      if (scc_a_IW!=-1)
-                         {DEBUG_LOG(0,"Write %02x to imagewriter",data); ImageWriterLoop(scc_a_IW,data);} }
-
-    else           {  DEBUG_LOG(0,"wrote %02x to port %d",data,port);
-                      if (scc_b_IW!=-1)
-                         {DEBUG_LOG(0,"Write %02x to imagewriter",data); ImageWriterLoop(scc_b_IW,data);} }
+{   if (port) { DEBUG_LOG(0,"wrote %02x to port %d",data,port);
+                if  (scc_a_IW!=-1)
+                    {DEBUG_LOG(0,"Write %02x to imagewriter",data); ImageWriterLoop(scc_a_IW,data);} 
+              }
+    else
+              { DEBUG_LOG(0,"wrote %02x to port %d",data,port);
+                if  (scc_b_IW!=-1)
+                    {DEBUG_LOG(0,"Write %02x to imagewriter",data); ImageWriterLoop(scc_b_IW,data);} 
+              }
 }
 
 void write_serial_port_localport(int8 port, char data)
-{   if (port)      {  DEBUG_LOG(0,"wrote %02x to port %d",data,port);if (serial_a==SCC_LOCALPORT) {if (scc_a_port_F) fputc(data,scc_a_port_F);  }}
-    else           {  DEBUG_LOG(0,"wrote %02x to port %d",data,port);if (serial_b==SCC_LOCALPORT) {if (scc_b_port_F) fputc(data,scc_b_port_F);  }}
+{   if (port)   {  DEBUG_LOG(0,"wrote %02x to port %d",data,port);if (serial_a==SCC_LOCALPORT) {if (scc_a_port_F) fputc(data,scc_a_port_F);  }}
+    else        {  DEBUG_LOG(0,"wrote %02x to port %d",data,port);if (serial_b==SCC_LOCALPORT) {if (scc_b_port_F) fputc(data,scc_b_port_F);  }}
 }
 
 void write_serial_port(int8 port, char data)
 {
-
     DEBUG_LOG(0,"r %p %p w %p %p",SCC_READ[0].buffer,&SCC_READ[1].buffer,SCC_WRITE[0].buffer,SCC_WRITE[1].buffer);
     DEBUG_LOG(0,"SRC:port:%d",port);
     if (port)
@@ -1612,10 +1608,7 @@ void write_serial_port(int8 port, char data)
 
 
 
-
-
 ////////////////////////////// Telnet Server hookups - rewrite this code so it works for two ports ////////////////////////////
-
 
 #define MAX_SERIAL_PORTS 2
 #define MAXPENDING 1 /*Max connection requests*/
@@ -1624,10 +1617,7 @@ void write_serial_port(int8 port, char data)
 #define MAX_SERIAL_PORTS 2              // 14 is maximum with a 4 port serial port card in each expansion port slot,
                                         // but need details on this (ROM+schematics+mem map) before we can implement them.
 
-
-
 int       port_state[MAX_SERIAL_PORTS];                // 0=waiting for connection, 1=connected, -1=telnetd not used.
-
 
 ///// telnetd code - unix only ////////////////////////////////////////////////////////////////////////////////////////////////
 #ifndef __MSVCRT__
@@ -1650,7 +1640,6 @@ char read_serial_port_telnetd(int8 port)
     int c=poll_telnet_serial_read(port);
     return (c>-1) ? (char) c : 0;
 }
-
 
 void write_serial_port_telnetd(int8 port, char c)
 {

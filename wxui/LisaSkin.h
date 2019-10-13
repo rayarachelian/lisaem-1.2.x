@@ -1,5 +1,5 @@
 #ifndef __LISASKINH__
-#define __LISASKINIGH__
+#define __LISASKINH__
 
 #include <wx/wx.h>
 #include <wx/fileconf.h>

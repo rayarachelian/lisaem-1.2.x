@@ -493,7 +493,7 @@ void dumpvia(void)
 {
     char filename[1024];
     FILE *out;
-     return;
+    return; //disabled
 
     //debug_log_enabled=1;
     sprintf(filename,"./lisaem-output-%08x.%016llx.vias.txt",pc24,cpu68k_clocks);
@@ -508,29 +508,26 @@ void dumpvia(void)
 void print_via_profile_state(char *s, uint8 data, viatype *V)
 {
 #ifdef DEBUG
-  if (!debug_log_enabled || !buglog) return;
-
-  fprintf(buglog,"%s(%02x) via#:%d ProFileState#:%d widx:%d, ridx:%d,block#:%ld pb1<!BSY:%d pb2!DEN:%d pb3!RRW:%d pb4>!CMD:%d :: VIA:: ",s,data,
-         V->vianum,
-         V->ProFile->StateMachineStep,V->ProFile->indexwrite,V->ProFile->indexread,(long)V->ProFile->blocktowrite,
-         V->ProFile->BSYLine,
-         V->ProFile->DENLine,
-         V->ProFile->RRWLine,
-         V->ProFile->CMDLine);
-
-  if (OCDLine_BIT   &  V->via[DDRB]) fprintf(buglog," !OCDLine:%02x ",    data & OCDLine_BIT);
-  if (BSYLine_BIT   &  V->via[DDRB]) fprintf(buglog,"<!BSYLine:%02x ",    data & BSYLine_BIT);
-  if (DENLine_BIT   &  V->via[DDRB]) fprintf(buglog," !DENLine:%02x ",    data & DENLine_BIT);
-  if (RRWLine_BIT   &  V->via[DDRB]) fprintf(buglog," !R/RWLine:%02x ",   data & RRWLine_BIT);
-  if (CMDLine_BIT   &  V->via[DDRB]) fprintf(buglog,">!CMDLine :%02x ",   data & CMDLine_BIT);
-  if (PARITY_BIT    &  V->via[DDRB]) fprintf(buglog," !ParityReset:%02x ",data & PARITY_BIT);
-  if (DSK_DIAG_BIT  &  V->via[DDRB]) fprintf(buglog," Floppy_wait:%02x ", data & DSK_DIAG_BIT);
-  if (CTRL_RES_BIT  &  V->via[DDRB]) fprintf(buglog," !ProFileReset:%02x",data & CTRL_RES_BIT);
-
-  fprintf(buglog,"\n");
-  fflush(buglog);
-
+    if (!debug_log_enabled || !buglog) return;
+    fprintf(buglog,"%s(%02x) via#:%d ProFileState#:%d widx:%d, ridx:%d,block#:%ld pb1<!BSY:%d pb2!DEN:%d pb3!RRW:%d pb4>!CMD:%d :: VIA:: ",s,data,
+            V->vianum,
+            V->ProFile->StateMachineStep,V->ProFile->indexwrite,V->ProFile->indexread,(long)V->ProFile->blocktowrite,
+            V->ProFile->BSYLine,
+            V->ProFile->DENLine,
+            V->ProFile->RRWLine,
+            V->ProFile->CMDLine);
+    if (OCDLine_BIT   &  V->via[DDRB]) fprintf(buglog," !OCDLine:%02x ",    data & OCDLine_BIT);
+    if (BSYLine_BIT   &  V->via[DDRB]) fprintf(buglog,"<!BSYLine:%02x ",    data & BSYLine_BIT);
+    if (DENLine_BIT   &  V->via[DDRB]) fprintf(buglog," !DENLine:%02x ",    data & DENLine_BIT);
+    if (RRWLine_BIT   &  V->via[DDRB]) fprintf(buglog," !R/RWLine:%02x ",   data & RRWLine_BIT);
+    if (CMDLine_BIT   &  V->via[DDRB]) fprintf(buglog,">!CMDLine :%02x ",   data & CMDLine_BIT);
+    if (PARITY_BIT    &  V->via[DDRB]) fprintf(buglog," !ParityReset:%02x ",data & PARITY_BIT);
+    if (DSK_DIAG_BIT  &  V->via[DDRB]) fprintf(buglog," Floppy_wait:%02x ", data & DSK_DIAG_BIT);
+    if (CTRL_RES_BIT  &  V->via[DDRB]) fprintf(buglog," !ProFileReset:%02x",data & CTRL_RES_BIT);
+    fprintf(buglog,"\n"); fflush(buglog);
   //if (   (9 & via[2].via[DDRB])==9) {if ((data & OCDLine_BIT)==0) {debug_log_enabled=1; debug_on("");} }
+#else
+UNUSED(s); UNUSED(data); UNUSED(V);
 #endif
 }
 
@@ -545,18 +542,16 @@ int check_contrast_set(void)
 //        DEBUG_LOG(0,"Setting Contrast:%02x",contrast);
         if ( contrast==0xff) disable_vidram(); else enable_vidram();
 
-
         contrastchange();  // force UI to adjust display
-
         return 1;
     }
 
     return 0;
 }
 
-
 uint8 via2_ira(uint8 regnum)
 {
+    UNUSED(regnum);
     VIA_CLEAR_IRQ_PORT_A(2); // clear CA1/CA2 on ORA/IRA access
 
     if (via[2].via[ORBB] & via[2].via[DDRB] & 4) {DEBUG_LOG(0,"Returning Contrast"); return contrast;}
@@ -573,18 +568,15 @@ uint8 via2_ira(uint8 regnum)
     return 0; // nothing attached, ignore.
 }
 
-
 //lisa_rb_Oxd800_par_via2(uint32 addr)
 void  via2_ora(uint8 data, uint8 regnum)
 {
+    UNUSED(regnum);
     VIA_CLEAR_IRQ_PORT_A(2); // clear CA1/CA2 on ORA/IRA access
-
     via[2].last_pa_write=cpu68k_clocks;
-
     DEBUG_LOG(0,"ORA:%02x DDRA:%02x   ORB:%02x DDRB:%0x",via[2].via[ORA],via[2].via[DDRA],via[2].via[ORB],via[2].via[DDRB]);
     if (via[2].via[DDRA]==0) return;    // can't write just yet, ignore.
     if ( check_contrast_set()) return;
-
 
     if (via[2].via[ORBB] & via[2].via[DDRB] & 4) return;    // driver enable is off, don't process ADMP/Profile data output.
     via[2].orapending=0;
@@ -603,7 +595,6 @@ void  via2_ora(uint8 data, uint8 regnum)
 
     if (via[2].ADMP) {via[2].via[ORA]=data; ImageWriterLoop(via[2].ADMP,data); return;}
 }
-
 
 
 void via2_orb(uint8 data)
@@ -763,17 +754,12 @@ uint8 via2_irb(void) //this is good
 uint8 via1_irb(uint8 reg)
 {
     uint8 data=0;
-
-
+    UNUSED(reg);
     data=via[1].via[ORB] & via[1].via[DDRB];  // allow Lisa to read back the outputs?
-
     DEBUG_LOG(0,"SRC: VIA1/COPS: reading reg %d port B",reg);
-
     VIA_CLEAR_IRQ_PORT_B(1); // clear Cb1/Cb2 on ORb/IRb access
-
     data |=((volume & 0x07)<<1);            // PB1-3 is volume
     //data=via[1].via[IRB] & (255-16-64); // get whatever's in the register, except for stuff we set:FDIR,CRDY
-
     // If lisa is reading this, it might be waiting on FDIR - so speed it up
     if (floppy_ram[0])   {floppy_go6504();}
 
@@ -782,45 +768,35 @@ uint8 via1_irb(uint8 reg)
     if ( floppy_FDIR) {data |=16;  DEBUG_LOG(0,"FDIR=1 returned via1_irb\n");/*floppy_FDIR=0;*/}      // was just 4, 16 didn't work, now I'm trying 16|4
     else DEBUG_LOG(0,"FDIR=0 returned via1_irb\n");
 
-
    // Is there a ProFile on VIA2? - yes, some lines are crossed between VIA1 and VIA2 - likely a legacy design bug before ProFiles
-   if (via[2].ProFile)
-   {
-
-      data &=~32;
-      data |=(eparity[via[2].ProFile->VIA_PA] ? 32:0);  // was via[2].via[ORA]
-
-      if (data & 128) data |=32;                        // when PB7=1 means ProFile is being reset, LisaTest expects PB5=1 too
-
-      DEBUG_LOG(0,"Last ORA:%02x - Parity:%02x, DDRB:%d returning:%d",
-                   via[2].via[ORA],
-                   !eparity[via[2].via[ORA]],
-                   (via[1].via[DDRB] & 32),
-                   data & 32);
-
+    if (via[2].ProFile)
+    {
+        data &=~32;
+        data |=(eparity[via[2].ProFile->VIA_PA] ? 32:0);  // was via[2].via[ORA]
+        if (data & 128) data |=32;                        // when PB7=1 means ProFile is being reset, LisaTest expects PB5=1 too
+        DEBUG_LOG(0,"Last ORA:%02x - Parity:%02x, DDRB:%d returning:%d",
+                    via[2].via[ORA],
+                    !eparity[via[2].via[ORA]],
+                    (via[1].via[DDRB] & 32),
+                    data & 32);
       //if ((via[2].via[DDRB] & PARITY_BIT)==0) data|=(eparity[via[2].via[ORA]] ? PARITY_BIT:0);
-   }
-   else DEBUG_LOG(0,"No Profile attached to Parallel Port!");
+    }
+    else DEBUG_LOG(0,"No Profile attached to Parallel Port!");
 
    // if ((via[2].via[DDRB] & PARITY_BIT)==0) data|=(eparity[via[2].via[ORA]] ? PARITY_BIT:0);
 
-
-
     // toggle ready on and off all the time to stimulate handshaking process - when data is ready on the COPS?
 
-   crdy_toggle=(crdy_toggle+1) & 3;
-   // crdy_toggle = !crdy_toggle; //pb6 goes to D3 on COPS CA1,CA2 goes to S0,S1 on COPS. L0-L7=PA0-PA7.
+    crdy_toggle=(crdy_toggle+1) & 3;
+    // crdy_toggle = !crdy_toggle; //pb6 goes to D3 on COPS CA1,CA2 goes to S0,S1 on COPS. L0-L7=PA0-PA7.
     if (  crdy_toggle )  {data= data | 0x40;  DEBUG_LOG(0,"via1_irb: COPS: CRDY is on");}  // PB6 //
     else                 {data= data & (0xff - 0x40); DEBUG_LOG(0,"via1_irb: COPS: CRDY is off");}
 
     //20060609-1750//if (copsqueuelen>0 || mousequeuelen>0)   data |= 0x40;
     //20060609-1750//else                                     data &=~0x40;
 
-
-
     DEBUG_LOG(0,"SRC: COPS: copsqueuelen=%d",copsqueuelen);
     DEBUG_LOG(0,"SRC: COPS: returning data: %02x & %02x = %02x",data,via[1].via[DDRB]^0xff,   data & (~via[1].via[DDRB]) );
-
 
     DEBUG_LOG(0,"via1_irb: pb1-3volume:%d  pb4:%s pb6:%s pb0:%s pb5:%s pb7:%s\n",
             ((data>>1) & 7),
@@ -830,7 +806,6 @@ uint8 via1_irb(uint8 reg)
             ((data & 32)  ? "Parity=On":"Parity=Off"),
             ((data & 128) ? "Parallel_Controller_Reset=On":"Parallel_Controller_Reset=Off")
             );
-
 
     return data & (~via[1].via[DDRB]);
 }
@@ -1998,14 +1973,12 @@ uint8 viaX_ira(viatype *V,uint8 regnum)
 // this is the one that's actually used!
 void  viaX_ora(viatype *V,uint8 data, uint8 regnum)
 {
+    UNUSED(regnum);
     VIA_CLEAR_IRQ_PORT_A(V->vianum); // clear CA1/CA2 on ORA/IRA access
-
     V->last_pa_write=cpu68k_clocks;
-
     DEBUG_LOG(0,"VIA:%D ORA:%02x DDRA:%02x   ORB:%02x DDRB:%0x",V->vianum,V->via[ORA],V->via[DDRA],V->via[ORB],V->via[DDRB]);
     if (V->via[DDRA]==0) return;    // can't write just yet, ignore.
     if (V->vianum==2) {if ( check_contrast_set()) return;}
-
 
     if (V->via[ORBB] & V->via[DDRB] & 4) return;    // driver enable is off, don't process ADMP/Profile data output.
     V->orapending=0;
@@ -2023,23 +1996,21 @@ void  viaX_ora(viatype *V,uint8 data, uint8 regnum)
         return;
     }
 
-    if (V->ADMP) {
-                   V->via[ORA]=data;
-                   DEBUG_LOG(0,"ADMP ORA: Sending %02x to ADMP on VIA #%d",data,V->vianum);
-                   ImageWriterLoop(V->ADMP,data);
-                   V->via[IRB]=BSYLine_BIT;
-                   V->via[IFR]|=VIA_IRQ_BIT_CA1;
-                   return;
-                 }
+    if (V->ADMP)    {
+                        V->via[ORA]=data;
+                        DEBUG_LOG(0,"ADMP ORA: Sending %02x to ADMP on VIA #%d",data,V->vianum);
+                        ImageWriterLoop(V->ADMP,data);
+                        V->via[IRB]=BSYLine_BIT;
+                        V->via[IFR]|=VIA_IRQ_BIT_CA1;
+                        return;
+                    }
 ALERT_LOG(0,"Unhandled ORA: Sending %02x to nowhere on VIA #%d",data,V->vianum);
 }
-
-
 
 void viaX_orb(ViaType *V, uint8 data)
 {
     #ifdef DEBUG
-     uint8 flipped=((data^V->via[ORBB]) & (V->via[DDRB]) );
+        uint8 flipped=((data^V->via[ORBB]) & (V->via[DDRB]) );
     #endif
 
     VIA_CLEAR_IRQ_PORT_B(V->vianum); // clear Cb1/Cb2 on ORb/IRb access

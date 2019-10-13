@@ -78,22 +78,22 @@ uint8 IRQRingGet(void)
         if (irql==2 && !copsqueuelen && !mouse_pending_x && !mouse_pending_y) return 0;
 
 
-        if (irql) {DEBUG_LOG(0,"irc.c:: firing IRQ:%d",irql);
-                   reg68k_external_autovector(irql); }
+        if (irql)  {DEBUG_LOG(0,"irc.c:: firing IRQ:%d",irql);
+                    reg68k_external_autovector(irql); }
     }
     else // no, then we need special handling (FDIR)
     {
-       if (  (floppy_irq_top && floppy_ram[DRIVE]==0x80) || (floppy_irq_bottom && floppy_ram[DRIVE]==00)  )
-       {
-        // FDIR may have been suppressed by 68k code clearing the IRQ, so don't fire if FDIR=0!
-        if (floppy_FDIR && (floppy_ram[0x2c] & floppy_ram[DRIVE]))
+        if (  (floppy_irq_top && floppy_ram[DRIVE]==0x80) || (floppy_irq_bottom && floppy_ram[DRIVE]==00)  )
+        {
+          // FDIR may have been suppressed by 68k code clearing the IRQ, so don't fire if FDIR=0!
+          if (floppy_FDIR && (floppy_ram[0x2c] & floppy_ram[DRIVE]))
                 {
                     DEBUG_LOG(0,"firing floppy_FDIR:%d ram[2c]=%2x, [drive]=%02x\n",floppy_FDIR,floppy_ram[0x2c],
                             floppy_ram[DRIVE]);
                     reg68k_external_autovector(IRQ_FLOPPY);
                     DEBUG_LOG(0,"irq.c:: fired IRQ floppy\n");
                 }
-       }
+        }
     }
     return irql;
 }
@@ -102,6 +102,7 @@ uint8 IRQRingGet(void)
 
 int8 IRQRingBufferAdd(uint8 irql, uint32 address)
 {
+    UNUSED(address);
     DEBUG_LOG(0,"About to set next IRQ level to:%d address was:%08x\n",irql);
     if (myirq<irql)  myirq=irql;
     return 0;
@@ -127,10 +128,8 @@ int8 IRQRingBufferAdd(uint8 irql, uint32 address)
 
 
 
-
 // note these are identical to the ones in via6522 - they're static inline
 // for speed, but remember to copy them here.  Could turn them into macros, but...
-
 // pass it the via[?].t?_e, get back the timer value (used to read t1/t2)
 inline static XTIMER get_via_timer_left_from_te(XTIMER t_e)
 {

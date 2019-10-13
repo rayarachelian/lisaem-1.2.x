@@ -664,44 +664,44 @@ void init_clock(void)
     uint8 dd_hun, dd_ten, dd_one;
     uint16 yday;
     
-        clktime=time(&clktime);
-        timev=(struct tm *)localtime(&clktime);
+    clktime=time(&clktime);
+    timev=(struct tm *)localtime(&clktime);
 
-        yday=timev->tm_yday;
-     dd_hun=(uint8) (yday/100);
-     dd_ten=(uint8)((yday/10)%10);
-     dd_one=(uint8) (yday%10);
+    yday=timev->tm_yday;
+    dd_hun=(uint8) (yday/100);
+    dd_ten=(uint8)((yday/10)%10);
+    dd_one=(uint8) (yday%10);
 
     // It hasn't yet been initialized, so do that.
     if ((lisa_clock.year & 0xf0)!=0xe0)
-     {
+    {
 //       ALERT_LOG(0,"date not set, setting now from system time.\n");
-       //tenth_sec_cycles =cpu68k_clocks+500000;
-       lisa_clock.year=   0xe7; //;|(timev->tm_year & 0x0f);
-       if (lisa_clock.year<0xe3) lisa_clock.year=0xe0|0x07;
-       lisa_clock.days_h= (dd_hun<<4) | dd_ten;
+        //tenth_sec_cycles =cpu68k_clocks+500000;
+        lisa_clock.year=   0xe7; //;|(timev->tm_year & 0x0f);
+        if (lisa_clock.year<0xe3) lisa_clock.year=0xe0|0x07;
+        lisa_clock.days_h= (dd_hun<<4) | dd_ten;
 
-       lisa_clock.days_l= (dd_one);
-       lisa_clock.hours_h=(timev->tm_hour/10);
+        lisa_clock.days_l= (dd_one);
+        lisa_clock.hours_h=(timev->tm_hour/10);
 
-       lisa_clock.hours_l=(timev->tm_hour%10);
-       lisa_clock.mins_h= (timev->tm_min/10);
+        lisa_clock.hours_l=(timev->tm_hour%10);
+        lisa_clock.mins_h= (timev->tm_min/10);
 
-       lisa_clock.mins_l= (timev->tm_min%10);
+        lisa_clock.mins_l= (timev->tm_min%10);
 
-       if (timev->tm_sec>59) timev->tm_sec=0;
+        if (timev->tm_sec>59) timev->tm_sec=0;
 
-       lisa_clock.secs_h= (timev->tm_sec/10);
+        lisa_clock.secs_h= (timev->tm_sec/10);
 
-       lisa_clock.secs_l= (timev->tm_sec % 10);
-       lisa_clock.tenths= 0;
+        lisa_clock.secs_l= (timev->tm_sec % 10);
+        lisa_clock.tenths= 0;
 
        // hacks to do a test:
        //lisa_clock.days_l=2;
        //lisa_clock.days_h=0;
        //lisa_clock.hours_l=11;
        //lisa_clock.hours_h=0;
-     }
+    }
     
 }
 
@@ -1081,17 +1081,16 @@ void via1_ora(uint8 data,uint8 regnum)
 uint8 via1_ira(uint8 regnum)
 {
     uint8 data;
-    register int16 i;
+    register int16 i=regnum;
     copsqueuefull=0;  // since the Lisa is reading the queue, assume it's alive,
                       // clear the copsqueuefull watchdog.
-    DEBUG_LOG(0,"IRA1 copsqueuelen:%d, mousequeuelen:%d cops_mouse:%d",copsqueuelen,mousequeuelen,cops_mouse);
+    DEBUG_LOG(0,"IRA1 copsqueuelen:%d, mousequeuelen:%d cops_mouse:%d, regnum:%d",copsqueuelen,mousequeuelen,cops_mouse,regnum);
 
     #ifdef DEBUG
-
       if (debug_log_enabled && buglog!=NULL)
-      {  fprintf(buglog,"IRA1 COPS Queue:");
-         for(i=0; i<MAXCOPSQUEUE; i++) fprintf(buglog,"%02x ",copsqueue[i]);
-         fprintf(buglog,"\n");
+      {   fprintf(buglog,"IRA1 COPS Queue:");
+          for(i=0; i<MAXCOPSQUEUE; i++) fprintf(buglog,"%02x ",copsqueue[i]);
+          fprintf(buglog,"\n");
       }
     #endif
 
@@ -1102,7 +1101,6 @@ uint8 via1_ira(uint8 regnum)
     {
         DEBUG_LOG(0,"copsqueuelen=%d so sending mouse events.",copsqueuelen);
         copsqueuelen=0;
-
 
         DEBUG_LOG(0,"IRA1: since COPS queue<=0 (%d), will send mouse delta X,Y:[0x00],%d,%d",copsqueuelen,mouse_pending_x,mouse_pending_y);
 
@@ -1118,7 +1116,6 @@ uint8 via1_ira(uint8 regnum)
 
         DEBUG_LOG(0,"Sending mouse 00, x,y to follow.")
         return 0x00; // this one is 1st, then dx, then dy to indicate mouse motion data. ie: 00,dx,dy
-
     }
 
     data=copsqueue[0];

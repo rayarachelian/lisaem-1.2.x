@@ -227,7 +227,7 @@ void generate(FILE *output, int topnibble)
 
         OUT("\n");
         OUT("  if (srcdata == 0) {\n");
-        OUT(            "    ALERT_LOG(0,\"DIVIDE_BY_ZERO @ %08x src:%08x dest:%08x\",PC,srcdata,dstdata);\n" );
+        OUT(            "    ALERT_LOG(0,\"DIVIDE_BY_ZERO @ %08lx src:%08lx dest:%08lx\",(long)PC,(long)srcdata,(long)dstdata);\n" );
         OUT(            "    ZFLAG=0; NFLAG=0;");
         fprintf(output, "    reg68k_internal_vector(V_ZERO, PC+%d,0);\n",
                 (iib->wordlen)*2);
@@ -475,7 +475,7 @@ void generate(FILE *output, int topnibble)
 
 
         //2006.03.18// LSL bug bw Intel+SPARC vs M68K+PPC
-        OUT(" if ((count&63)>=bits && outdata!=0) {outdata=0; ALERT_LOG(0,\"ERROR IN LSL\");}\n");
+        OUT(" if ((count&63)>=bits && outdata!=0) {outdata=0; ALERT_LOG(0,\"ERROR IN LSL count>=bits\");}\n");
 
         // LSL 0>bit 0, 31->c/x
 
@@ -1449,7 +1449,7 @@ void generate(FILE *output, int topnibble)
           OUT("  VFLAG = ((precalc & 1<<7) == 0) && (outdata & 1<<7);\n");
         #endif
 
-        OUT("  ALERT_LOG(0,\"BCD  @ %x\", PC);\n");  // 2018.03.10 RA
+        OUT("  ALERT_LOG(0,\"BCD  @ %lx\", (long)PC);\n");  // 2018.03.10 RA
 
         generate_eastore(output, iib, tp_dst);
 
@@ -1517,7 +1517,7 @@ void generate(FILE *output, int topnibble)
           OUT("NFLAG=nflagcpy;\n");
         #endif
 
-        OUT("  ALERT_LOG(0,\"BCD  @ %x\", PC);\n");  // 2018.03.10 RA
+        OUT("  ALERT_LOG(0,\"BCD  @ %lx\", (long)PC);\n");  // 2018.03.10 RA
    
 
         break;
@@ -1560,7 +1560,7 @@ void generate(FILE *output, int topnibble)
     #endif
     generate_eastore(output, iib, tp_src);
 
-    OUT("  ALERT_LOG(0,\"BCD  @ %x\", PC);\n");  // 2018.03.10 RA
+    OUT("  ALERT_LOG(0,\"BCD  @ %lx\", (long)PC);\n");  // 2018.03.10 RA
 
     //nbcd
 
@@ -1795,7 +1795,7 @@ void generate(FILE *output, int topnibble)
                 case i_RESET:
                     OUT("  /* printf(\"RESET opcode executed @ %x\\n\", PC);*/ \n");
                     OUT("  if (!SFLAG)\n");
-                    OUT("  {ALERT_LOG(0,\"RESET opcode executed @ %x WITHOUT SUPERVISOR ON! Entering V_PRIVILEGE exception\\n\", PC);\n");
+                    OUT("  {ALERT_LOG(0,\"RESET opcode executed @ %lx WITHOUT SUPERVISOR ON! Entering V_PRIVILEGE exception\\n\", (long)PC);\n");
                     fprintf(output, "    reg68k_internal_vector(V_PRIVILEGE, PC+%d,0);return;}\n",
                         (iib->wordlen)*2);
                     OUT("\n");
@@ -2083,7 +2083,7 @@ void generate(FILE *output, int topnibble)
                     C_ABRT_CHK(output);
                     OUT("\n");
                     OUT("  if (srcdata == 0) {\n");
-                    OUT(            "    ALERT_LOG(0,\"DIVIDE_BY_ZERO @ %08x src:%08x dest:%08x\",PC,srcdata,dstdata);\n" );
+                    OUT(            "    ALERT_LOG(0,\"DIVIDE_BY_ZERO @ %08lx src:%08lx dest:%08lx\",(long)PC,(long)srcdata,(long)dstdata);\n" );
                     OUT(            "    ZFLAG=0; NFLAG=0;");
                     fprintf(output, "    reg68k_internal_vector(V_ZERO, PC+%d,0);\n",
                         (iib->wordlen)*2);
