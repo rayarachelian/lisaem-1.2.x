@@ -1,2 +1,10 @@
 This dir is to allow uninstalled copies of LisaEm
 to find their resources on Linux and *BSD systems.
+
+It should contain two links like so (incase git
+strips them out)
+lrwxrwxrwx  1 ray ray  12 Aug 30  2015 lisaem -> ../resources/
+lrwxrwxrwx  1 ray ray  12 Jan 17  2018 LisaEm -> ../resources/
+
+they are made like so:
+ln -sf ../resources lisaem; ln -sf ../resources/ LisaEm

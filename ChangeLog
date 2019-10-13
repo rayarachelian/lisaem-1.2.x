@@ -3,6 +3,35 @@ Lisa Emulator Change History                         http://lisaem.sunder.net/
 ------------------------------------------------------------------------------
 --- 1.2.7    Released on (TBA) (Major release for all platforms)
 
+------------------------------------------------------------------------------
+Lisa Emulator Change History                         http://lisaem.sunder.net/
+------------------------------------------------------------------------------
+--- 1.2.7    Released on (TBA) (Major release for all platforms)
+
+2019.10.13 - get it working on macos X with some work, had to compile wxWidgets
+             and LisaEm with -stdlib=libc++, and LisaEm with -lstdc++.6 to get
+             it working. There's still quite a lot of bugs left to fix but it's
+             starting to work again on modern macos X, but at least both can
+             be built with clang rather than gcc7, but at least now it builds
+             and doesn't segfault immediately on startup.
+
+2019.10.08 - hqx3.5 renderer work cont'd
+           - clang compiled Lisaem on x86_64 macosx segfaults at unknown
+             location while initializing data from config files, couldn't find
+             it yet via llldb, will try again, possibly switching to gcc and
+             gdb via brew.sh
+
+2019.10.07 - build sucessful on x86_64 macosx10.9.5 in 64 bits
+
+2019.10.06 - build sucessful on ppc32 macosx10.5.8
+
+2019.10.05 - added a skin selector dialog box
+
+2019.10.01 - encountered stdc++11 issues on OSX with clang/llvm and wxWidgets
+             as well as a different set of warnings and errors that I didn't
+             see on g++/gcc 7.4, cleaned up most of them so it can compile on
+             macOSX 10.9.5
+
 2019.09.28 - fixed to 2x3y video mode
 
 2019.09.25 - cleaning up source code and formatting
@@ -44,7 +73,7 @@ to   08.27 - moved skin settings to their own class
 2019.06.01 - fixed MMU bug caused by mmu_trans array not being auto-zero filled
 2019.05.30 - removing some of the unused insetjumpland code/if statements
 
-             { break; // - too busy with work, LisaList2, etc. }
+             { break; /* - too busy with work, LisaList2, etc. */ }
 
 2018.11.28 - added region grab in debug mode
            - removed File -> Run menu item to remove confusion between pause

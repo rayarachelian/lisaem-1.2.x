@@ -1,6 +1,16 @@
 ------------------------------------------------------------------------------
 Lisa Emulator Source Build README                    http://lisaem.sunder.net/
 ------------------------------------------------------------------------------
+
+2019.10.13 Finally got it working on macos X 10.11+ but had to recompile
+both wxWidgets and LisaEm with -stdlib=libc++, and LisaEm with -lstdc++.6,
+there are still lots of bugs, there are stubs for HQX but this feature is
+incomplete so not yet included in the code. I've added a scripts directory
+to help the end user be able to build wxWidgets properly. Much more testing
+is needed on macos X, and certainly I need to rewrite all the Windows building
+code.
+
+
 2019.09.29 This is a developer grade preview, you can expect tons of bugs and
 incomplete features, likely it will turn into a release in a month or two
 depending on free time, etc.

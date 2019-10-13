@@ -631,9 +631,10 @@ int parity_check(uint32 address)
     mem_parity_bits2[address>>3] &= (0xff^(1<<(address & 7)));  // clear the bad bit, it was already read
 
     //-----can we free the parity array yet?--------------------------------------------------------------------------------------
-    parity32=(uint32 *)(mem_parity_bits2);               // do these 32 bits wide at a time, es muy rapido!
-    size=(maxlisaram>>5);                                // div by 8 ,for 8 bits/byte, div by 4 for 4 bytes/uint32
-    for (sum=0,i=0; i<size && !sum; sum|=parity32[i++]); // check the bits - if any are set, we keep the mem_parity array
+    parity32=(uint32 *)(mem_parity_bits2);                   // do these 32 bits wide at a time, es muy rapido!
+    size=(maxlisaram>>5);                                    // div by 8 ,for 8 bits/byte, div by 4 for 4 bytes/uint32
+    for (sum=0,i=0; i<size && !sum; sum|=parity32[i++])
+        ; // check the bits - if any are set, we keep the mem_parity array
 
     DEBUG_LOG(100,"binary or sum of parity set bits is:%d, if zero, releasing parity memory",sum);
 
@@ -726,17 +727,17 @@ uint32 lisa_rl_OxERROR(uint32 addr)
 
 void   lisa_wb_OxERROR(uint32 addr, uint8 data)
 {
-    EXIT(321,0,"Something's wrong with the MMU - bad mapping at %8x****\n", addr);
+    UNUSED(data); EXIT(321,0,"Something's wrong with the MMU - bad mapping at %8x****\n", addr);
 }
 
 void   lisa_ww_OxERROR(uint32 addr, uint16 data)
 {
-    EXIT(321,0,"Something's wrong with the MMU - bad mapping at %8x****\n", addr);
+    UNUSED(data);EXIT(321,0,"Something's wrong with the MMU - bad mapping at %8x****\n", addr);
 }
 
 void   lisa_wl_OxERROR(uint32 addr, uint32 data)
 {
-    EXIT(321,0,"Something's wrong with the MMU - bad mapping at %8x****\n", addr);
+    UNUSED(data);EXIT(321,0,"Something's wrong with the MMU - bad mapping at %8x****\n", addr);
 }
 
 
@@ -763,23 +764,23 @@ uint32 lisa_rl_OxUnused(uint32 addr)
 
 void   lisa_wb_OxUnused(uint32 addr, uint8 data)
 {
-    EXIT(322,0,"Something's wrong with the MMU - bad mapping at %d/%08x**** %s\n", context,addr, memspaces[ mmu_trans[((addr) & MMUEPAGEFL)>>9].readfn ]);
+    UNUSED(data) ;EXIT(322,0,"Something's wrong with the MMU - bad mapping at %d/%08x**** %s\n", context,addr, memspaces[ mmu_trans[((addr) & MMUEPAGEFL)>>9].readfn ]);
 }
 
 void   lisa_ww_OxUnused(uint32 addr, uint16 data)
 {
-    EXIT(322,0,"Something's wrong with the MMU - bad mapping at %d/%08x**** %s\n", context,addr, memspaces[ mmu_trans[((addr) & MMUEPAGEFL)>>9].readfn ]);
+    UNUSED(data); EXIT(322,0,"Something's wrong with the MMU - bad mapping at %d/%08x**** %s\n", context,addr, memspaces[ mmu_trans[((addr) & MMUEPAGEFL)>>9].readfn ]);
 }
 
 void   lisa_wl_OxUnused(uint32 addr, uint32 data)
 {
-    EXIT(322,0,"Something's wrong with the MMU - bad mapping at %d/%08x**** %s\n", context,addr, memspaces[ mmu_trans[((addr) & MMUEPAGEFL)>>9].readfn ]);
+    UNUSED(data); EXIT(322,0,"Something's wrong with the MMU - bad mapping at %d/%08x**** %s\n", context,addr, memspaces[ mmu_trans[((addr) & MMUEPAGEFL)>>9].readfn ]);
 }
 
 
-/* For now we're not using the expansion port slots.  When we do, these stub
-   functions will be replaced by use of pointers with those that emulate the
-   hardware cards such as parallel cards, etc. */
+/*  For now we're not using the expansion port slots.  When we do, these stub
+    functions will be replaced by use of pointers with those that emulate the
+    hardware cards such as parallel cards, etc. */
 
 uint8  *lisa_mptr_Ox0000_slot1(uint32 addr)
 {
@@ -818,7 +819,7 @@ uint32 lisa_rl_Ox0000_slot1(uint32 addr)
 }
 
 void   lisa_wb_Ox0000_slot1(uint32 addr, uint8 data)
-{
+{   UNUSED(data);
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot1l) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -828,7 +829,7 @@ void   lisa_wb_Ox0000_slot1(uint32 addr, uint8 data)
 }
 
 void   lisa_ww_Ox0000_slot1(uint32 addr, uint16 data)
-{
+{   UNUSED(data);
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot1l) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -838,7 +839,7 @@ void   lisa_ww_Ox0000_slot1(uint32 addr, uint16 data)
 }
 
 void   lisa_wl_Ox0000_slot1(uint32 addr, uint32 data)
-{
+{   UNUSED(data);
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot1l) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -850,7 +851,7 @@ void   lisa_wl_Ox0000_slot1(uint32 addr, uint32 data)
 
 
 uint8  *lisa_mptr_Ox2000_slot1(uint32 addr)
-{
+{   
     //ui_log_verbose("****lisa_mptr_Ox2000_slot1h got called!****");
     if (!slot1h) {bustimeout=1; CPU_READ_MODE=1; lisa_buserror(addr);}
     else ALERT_LOG(0,"Unused access @%08x",addr);
@@ -884,7 +885,7 @@ uint32 lisa_rl_Ox2000_slot1(uint32 addr)
 }
 
 void   lisa_wb_Ox2000_slot1(uint32 addr, uint8 data)
-{
+{   UNUSED(addr); UNUSED(data);
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot1h) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -894,7 +895,7 @@ void   lisa_wb_Ox2000_slot1(uint32 addr, uint8 data)
 }
 
 void   lisa_ww_Ox2000_slot1(uint32 addr, uint16 data)
-{
+{   UNUSED(addr); UNUSED(data);
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot1h) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -904,7 +905,7 @@ void   lisa_ww_Ox2000_slot1(uint32 addr, uint16 data)
 }
 
 void   lisa_wl_Ox2000_slot1(uint32 addr, uint32 data)
-{
+{   UNUSED(addr); UNUSED(data);
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot1h) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -912,7 +913,6 @@ void   lisa_wl_Ox2000_slot1(uint32 addr, uint32 data)
     #endif
     return;
 }
-
 
 
 uint8  *lisa_mptr_Ox4000_slot2(uint32 addr)
@@ -950,7 +950,7 @@ uint32 lisa_rl_Ox4000_slot2(uint32 addr)
 }
 
 void   lisa_wb_Ox4000_slot2(uint32 addr, uint8 data)
-{
+{   UNUSED(addr); UNUSED(data);
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  ALERT_LOG(0,"@%08x",addr);
     //ui_log_verbose("lisa_mptr_Ox2000_slot2l got called!");
@@ -961,7 +961,7 @@ void   lisa_wb_Ox4000_slot2(uint32 addr, uint8 data)
 }
 
 void   lisa_ww_Ox4000_slot2(uint32 addr, uint16 data)
-{
+{   UNUSED(addr); UNUSED(data);
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot2l) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -971,7 +971,7 @@ void   lisa_ww_Ox4000_slot2(uint32 addr, uint16 data)
 }
 
 void   lisa_wl_Ox4000_slot2(uint32 addr, uint32 data)
-{
+{   UNUSED(addr); UNUSED(data);
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot2l) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -1016,7 +1016,7 @@ uint32 lisa_rl_Ox6000_slot2(uint32 addr)
 }
 
 void   lisa_wb_Ox6000_slot2(uint32 addr, uint8 data)
-{
+{   UNUSED(addr); UNUSED(data);
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot2h) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -1026,7 +1026,7 @@ void   lisa_wb_Ox6000_slot2(uint32 addr, uint8 data)
 }
 
 void   lisa_ww_Ox6000_slot2(uint32 addr, uint16 data)
-{
+{   UNUSED(addr); UNUSED(data);
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot2h) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -1036,7 +1036,7 @@ void   lisa_ww_Ox6000_slot2(uint32 addr, uint16 data)
 }
 
 void   lisa_wl_Ox6000_slot2(uint32 addr, uint32 data)
-{
+{   UNUSED(addr); UNUSED(data);
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot2h) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -1049,66 +1049,64 @@ void   lisa_wl_Ox6000_slot2(uint32 addr, uint32 data)
 
 uint8  *lisa_mptr_2x_parallel_l(uint32 addr)
 {
-  //0xFC0001 slot 1
-  //0xFC4001 slot 2
-  //0xFC8001 slot 3  // every VIA register is 8 bytes from the other - exactly the same as on the motherboard parallel port
+    //0xFC0001 slot 1
+    //0xFC4001 slot 2
+    //0xFC8001 slot 3  // every VIA register is 8 bytes from the other - exactly the same as on the motherboard parallel port
 
-  addr &=0x00003fff;
+    addr &=0x00003fff;
 
-  if (addr<0x1fff)                {addr=addr>>1;  return &(dualparallelrom[addr & 0x0fff]);}
-  return NULL;
+    if (addr<0x1fff)                {addr=addr>>1;  return &(dualparallelrom[addr & 0x0fff]);}
+    return NULL;
 }
 
 
 
 uint8  lisa_rb_2x_parallel_l(uint32 addr)
 {
-  #ifdef DEBUG
-  uint32 oa=addr;
-  #endif
+    #ifdef DEBUG
+    uint32 oa=addr;
+    #endif
 
-  int vianum=(  (((addr>>0xe)&3)<<1) | (((addr>>0xb)&1)^1)  )+ 3;
- 
-  addr &=0x00000fff;
-  addr=addr>>1;
+    int vianum=(  (((addr>>0xe)&3)<<1) | (((addr>>0xb)&1)^1)  )+ 3;
 
-  if ( addr<0x1000)
-     {
+    addr &=0x00000fff;
+    addr=addr>>1;
+
+    if  ( addr<0x1000)
+        {
        // if we're not boot-ROMless, but the dual parallel card is romless, and the Lisa POST is probing, lie so
        // that no garbage icons show  up.  Later will need to zap the memory address for the slots before booting.
-       if (!romless && dualparallelrom[0x30]==0xff && dualparallelrom[0x31]==0xff)
-          {
-            if ((pc24 & 0x00ff0000)==0x00fe0000 && addr==0) return 0; // lie to the ROM and hide the dual parallel card
-          }
-       return (dualparallelrom[addr & 0x0fff]);
-     }
-  return 0xff;
+        if  (!romless && dualparallelrom[0x30]==0xff && dualparallelrom[0x31]==0xff)
+            {
+                if ((pc24 & 0x00ff0000)==0x00fe0000 && addr==0) return 0; // lie to the ROM and hide the dual parallel card
+            }
+            return (dualparallelrom[addr & 0x0fff]);
+        }
+    return 0xff;
 }
 
 
 uint16 lisa_rw_2x_parallel_l(uint32 addr)
-{
-    return (uint16)(lisa_rb_2x_parallel_l(addr)<<8) + (uint16)(lisa_rb_2x_parallel_l(addr+1)); }
+{ return (uint16)(lisa_rb_2x_parallel_l(addr)<<8) + (uint16)(lisa_rb_2x_parallel_l(addr+1)); }
 
 
 uint32 lisa_rl_2x_parallel_l(uint32 addr)
-{   return (uint32)(  (uint32)(lisa_rb_2x_parallel_l(addr+0)<<24) + (uint32)(lisa_rb_2x_parallel_l(addr+1)<<16) +
-                      (uint32)(lisa_rb_2x_parallel_l(addr+2)<<8 ) + (uint32)(lisa_rb_2x_parallel_l(addr+3)    )    );
+{   return (uint32)(    (uint32)(lisa_rb_2x_parallel_l(addr+0)<<24) + (uint32)(lisa_rb_2x_parallel_l(addr+1)<<16) +
+                        (uint32)(lisa_rb_2x_parallel_l(addr+2)<<8 ) + (uint32)(lisa_rb_2x_parallel_l(addr+3)    )    );
 }
 
 
 void   lisa_wb_2x_parallel_l(uint32 addr, uint8 data)
 {
-  uint32 oa=addr;
+    uint32 oa=addr;
+    int vianum=(  (((addr>>0xe)&3)<<1) | (((addr>>0xb)&1)^1)  )+ 3;
+    addr &=0x00003fff;
 
-  int vianum=(  (((addr>>0xe)&3)<<1) | (((addr>>0xb)&1)^1)  )+ 3;
-  addr &=0x00003fff;
+    DEBUG_LOG(100,"Access to VIA #%d or %d",vianum,vianum+1);
 
-  DEBUG_LOG(100,"Access to VIA #%d or %d",vianum,vianum+1);
+    if (addr<0x1fff)                 {DEBUG_LOG(100,"Attempt to write to Parallel Port ROM offset %08x",addr); return;}
 
-  if (addr<0x1fff)                 {DEBUG_LOG(100,"Attempt to write to Parallel Port ROM offset %08x",addr); return;}
-
-  ALERT_LOG(0,"Weird extport access to %08x for VIA #%d slot %d",oa,vianum,vianum>>1);
+    ALERT_LOG(0,"Weird extport write value %08x to address %08x for VIA #%d slot %d",data,oa,vianum,vianum>>1);
 }
 
 
@@ -1207,31 +1205,31 @@ void   lisa_wl_2x_parallel_h(uint32 addr, uint32 data)
 
 
 
-uint8  *lisa_mptr_Oxd000_ff_space(uint32 addr)  {return NULL;}
-uint8   lisa_rb_Oxd000_ff_space(uint32 addr)    {return 0xff;}
-uint16  lisa_rw_Oxd000_ff_space(uint32 addr)    {return 0xffff;}
-uint32  lisa_rl_Oxd000_ff_space(uint32 addr)    {return 0xffffffff;}
-void    lisa_wb_Oxd000_ff_space(uint32 addr, uint8  data)    {return;}
-void    lisa_ww_Oxd000_ff_space(uint32 addr, uint16 data)    {return;}
-void    lisa_wl_Oxd000_ff_space(uint32 addr, uint32 data)    {return;}
+uint8  *lisa_mptr_Oxd000_ff_space(uint32 addr)               { UNUSED(addr);               return NULL;      }
+uint8   lisa_rb_Oxd000_ff_space(uint32 addr)                 { UNUSED(addr);               return 0xff;      }
+uint16  lisa_rw_Oxd000_ff_space(uint32 addr)                 { UNUSED(addr);               return 0xffff;    }
+uint32  lisa_rl_Oxd000_ff_space(uint32 addr)                 { UNUSED(addr);               return 0xffffffff;}
+void    lisa_wb_Oxd000_ff_space(uint32 addr, uint8  data)    { UNUSED(addr); UNUSED(data); return;           }
+void    lisa_ww_Oxd000_ff_space(uint32 addr, uint16 data)    { UNUSED(addr); UNUSED(data); return;           }
+void    lisa_wl_Oxd000_ff_space(uint32 addr, uint32 data)    { UNUSED(addr); UNUSED(data); return;           }
 
 // not implemented - for future AMD9512 FPU's
-uint8  *lisa_mptr_Oxd400_amd9512(uint32 addr)   {return NULL;}
-uint8   lisa_rb_Oxd400_amd9512(uint32 addr)     {return 0xff;}
-uint16  lisa_rw_Oxd400_amd9512(uint32 addr)     {return 0xffff;}
-uint32  lisa_rl_Oxd400_amd9512(uint32 addr)     {return 0xffffffff;}
-void    lisa_wb_Oxd400_amd9512(uint32 addr, uint8  data)     {return;}
-void    lisa_ww_Oxd400_amd9512(uint32 addr, uint16 data)     {return;}
-void    lisa_wl_Oxd400_amd9512(uint32 addr, uint32 data)     {return;}
+uint8  *lisa_mptr_Oxd400_amd9512(uint32 addr)                { UNUSED(addr);               return NULL;      }
+uint8   lisa_rb_Oxd400_amd9512(uint32 addr)                  { UNUSED(addr);               return 0xff;      }
+uint16  lisa_rw_Oxd400_amd9512(uint32 addr)                  { UNUSED(addr);               return 0xffff;    }
+uint32  lisa_rl_Oxd400_amd9512(uint32 addr)                  { UNUSED(addr);               return 0xffffffff;}
+void    lisa_wb_Oxd400_amd9512(uint32 addr, uint8  data)     { UNUSED(addr); UNUSED(data); return;           }
+void    lisa_ww_Oxd400_amd9512(uint32 addr, uint16 data)     { UNUSED(addr); UNUSED(data); return;           }
+void    lisa_wl_Oxd400_amd9512(uint32 addr, uint32 data)     { UNUSED(addr); UNUSED(data); return;           }
 
 // reserved memory access for mmu pages out of scope that should not cause mmu_exception
-uint8  *lisa_mptr_OxVoid(uint32 addr)           {return NULL;}
-uint8   lisa_rb_OxVoid(uint32 addr)             {return 0x13;}
-uint16  lisa_rw_OxVoid(uint32 addr)             {return 0x1313;}
-uint32  lisa_rl_OxVoid(uint32 addr)             {return 0x13131313;}
-void    lisa_wb_OxVoid(uint32 addr, uint8  data)             {return;}
-void    lisa_ww_OxVoid(uint32 addr, uint16 data)             {return;}
-void    lisa_wl_OxVoid(uint32 addr, uint32 data)             {return;}
+uint8  *lisa_mptr_OxVoid(uint32 addr)                        { UNUSED(addr);               return NULL;}
+uint8   lisa_rb_OxVoid(uint32 addr)                          { UNUSED(addr);               return 0x13;}
+uint16  lisa_rw_OxVoid(uint32 addr)                          { UNUSED(addr);               return 0x1313;}
+uint32  lisa_rl_OxVoid(uint32 addr)                          { UNUSED(addr);               return 0x13131313;}
+void    lisa_wb_OxVoid(uint32 addr, uint8  data)             { UNUSED(addr); UNUSED(data); return;           }
+void    lisa_ww_OxVoid(uint32 addr, uint16 data)             { UNUSED(addr); UNUSED(data); return;           }
+void    lisa_wl_OxVoid(uint32 addr, uint32 data)             { UNUSED(addr); UNUSED(data); return;           }
 
 
 uint8  *lisa_mptr_Ox8000_slot3(uint32 addr)
@@ -1264,7 +1262,7 @@ uint32 lisa_rl_Ox8000_slot3(uint32 addr)
 }
 
 void   lisa_wb_Ox8000_slot3(uint32 addr, uint8 data)
-{
+{  UNUSED(addr); UNUSED(data);
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot3l) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -1273,7 +1271,7 @@ void   lisa_wb_Ox8000_slot3(uint32 addr, uint8 data)
 }
 
 void   lisa_ww_Ox8000_slot3(uint32 addr, uint16 data)
-{
+{   UNUSED(addr); UNUSED(data); 
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot3l) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -1282,7 +1280,7 @@ void   lisa_ww_Ox8000_slot3(uint32 addr, uint16 data)
 }
 
 void   lisa_wl_Ox8000_slot3(uint32 addr, uint32 data)
-{
+{   UNUSED(addr); UNUSED(data); 
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot3l) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -1322,7 +1320,7 @@ uint32 lisa_rl_Oxa000_slot3(uint32 addr)
 }
 
 void   lisa_wb_Oxa000_slot3(uint32 addr, uint8 data)
-{
+{   UNUSED(addr); UNUSED(data); 
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot3h) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -1331,7 +1329,7 @@ void   lisa_wb_Oxa000_slot3(uint32 addr, uint8 data)
 }
 
 void   lisa_ww_Oxa000_slot3(uint32 addr, uint16 data)
-{
+{   UNUSED(addr); UNUSED(data); 
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot3h) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -1340,7 +1338,7 @@ void   lisa_ww_Oxa000_slot3(uint32 addr, uint16 data)
 }
 
 void   lisa_wl_Oxa000_slot3(uint32 addr, uint32 data)
-{
+{   UNUSED(addr); UNUSED(data); 
     #ifndef NO_BUS_ERR_ON_NULL_IO_WRITE
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     if (!slot3h) {bustimeout=1; CPU_READ_MODE=0; lisa_buserror(addr);}
@@ -2000,7 +1998,7 @@ uint8  *lisa_mptr_Oxe000_latches(uint32 addr)
 }
 
 void   lisa_wb_Oxe000_latches(uint32 addr, uint8 data)
-{
+{   UNUSED(data); 
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
 
     switch (addr & 0x0000001f )
@@ -2100,8 +2098,8 @@ void   lisa_wb_Oxe000_latches(uint32 addr, uint8 data)
 uint8  lisa_rb_Oxe000_latches(uint32 addr)              {lisa_wb_Oxe000_latches(addr & 0x00fffffe,0);  return 0;}
 uint16 lisa_rw_Oxe000_latches(uint32 addr)              {lisa_wb_Oxe000_latches(addr & 0x00fffffe,0);  return 0;}
 uint32 lisa_rl_Oxe000_latches(uint32 addr)              {lisa_wb_Oxe000_latches(addr & 0x00fffffe,0);  return 0;}
-void   lisa_ww_Oxe000_latches(uint32 addr, uint16 data) {lisa_wb_Oxe000_latches(addr & 0x00fffffe,0);           }
-void   lisa_wl_Oxe000_latches(uint32 addr, uint32 data) {lisa_wb_Oxe000_latches(addr & 0x00fffffe,0);           }
+void   lisa_ww_Oxe000_latches(uint32 addr, uint16 data) {lisa_wb_Oxe000_latches(addr & 0x00fffffe,0);  UNUSED(data); }
+void   lisa_wl_Oxe000_latches(uint32 addr, uint32 data) {lisa_wb_Oxe000_latches(addr & 0x00fffffe,0);  UNUSED(data); }
 
 
 
@@ -2167,13 +2165,13 @@ void   lisa_wb_Oxe800_videlatch(uint32 addr, uint8 data)
                 for (j=0; j<5; j++) for (i=0; i<32768; i++)
                     {
                      // clear existing vidram and turn it into just ram
-                     if (mmu_trans_all[j][i].writefn==vidram)  mmu_trans_all[j][i].writefn=ram;
+                        if (mmu_trans_all[j][i].writefn==vidram)  mmu_trans_all[j][i].writefn=ram;
 
-                     if (mmu_trans_all[j][i].writefn==ram)
-                        {
-                          a=( (i<<9)+mmu_trans_all[j][i].address) & TWOMEGMLIM;
-                          if (a>=videolatchaddress && a<videomax) mmu_trans_all[j][i].writefn=vidram;
-                        }
+                        if (mmu_trans_all[j][i].writefn==ram)
+                            {
+                                a=( (i<<9)+mmu_trans_all[j][i].address) & TWOMEGMLIM;
+                                if (a>=videolatchaddress && a<videomax) mmu_trans_all[j][i].writefn=vidram;
+                            }
                     }
                 videoramdirty=32768;   videoximgdirty|=9;    LisaScreenRefresh();
                 videoramdirty=32768;   videoximgdirty|=9;
@@ -2222,7 +2220,7 @@ void   lisa_wl_Oxe800_videlatch(uint32 addr, uint32 data)
 
 
 uint8  *lisa_mptr_Oxf000_memerror(uint32 addr)
-{
+{ 
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     //ui_log_verbose("****lisa_mptr_Oxf000!****"); return NULL;
     return NULL;
@@ -2247,14 +2245,14 @@ uint8  lisa_rb_Oxf000_memerror(uint32 addr)
 
 
 uint16 lisa_rw_Oxf000_memerror(uint32 addr)
-{
+{   UNUSED(addr); 
     DEBUG_LOG(100,"Memerror:Returning:%08x as a uint16:%04x",memerror,(uint16)(memerror & 0xffff) );
     bustimeout=0;
     return (memerror & 0xfffe);
 }
 
 uint32 lisa_rl_Oxf000_memerror(uint32 addr)
-{    CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
+{   CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
 
     if ((addr & 0x00000fff)==0) return (uint32)(memerror & 0xfffe);
     bustimeout=0;
@@ -2479,19 +2477,19 @@ uint32 lisa_rl_Oxf800_statreg(uint32 addr)
 
 
 void   lisa_wb_Oxf800_statreg(uint32 addr, uint8 data)
-{
+{   UNUSED(data); 
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     return; // this does nothing
 }
 
 void   lisa_ww_Oxf800_statreg(uint32 addr, uint16 data)
-{
+{   UNUSED(data); 
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     return; // this does nothing
 }
 
 void   lisa_wl_Oxf800_statreg(uint32 addr, uint32 data)
-{
+{   UNUSED(data); 
     CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);
     return; // this does nothing
 }
@@ -2923,22 +2921,22 @@ uint16 lisa_rw_ro_violn(uint32 addr)               {return lisa_rw_vidram(addr);
 uint32 lisa_rl_ro_violn(uint32 addr)               {return lisa_rl_vidram(addr);}
 
 #ifdef ROMEMCAUSESBUSERROR
- void   lisa_wb_ro_violn(uint32 addr, uint8 data)  {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);                      CPU_READ_MODE=1; lisa_mmu_exception(addr);}
+ void   lisa_wb_ro_violn(uint32 addr, uint8  data) {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);                      CPU_READ_MODE=1; lisa_mmu_exception(addr);}
  void   lisa_ww_ro_violn(uint32 addr, uint16 data) {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr); CHK_W_ODD_ADR(addr); CPU_READ_MODE=0; lisa_mmu_exception(addr);}
  void   lisa_wl_ro_violn(uint32 addr, uint32 data) {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr); CHK_W_ODD_ADR(addr); CPU_READ_MODE=0; lisa_mmu_exception(addr);}
 #else
- void   lisa_wb_ro_violn(uint32 addr, uint8 data)  {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);                      CPU_READ_MODE=1; }
- void   lisa_ww_ro_violn(uint32 addr, uint16 data) {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr); CHK_W_ODD_ADR(addr); CPU_READ_MODE=0; }
- void   lisa_wl_ro_violn(uint32 addr, uint32 data) {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr); CHK_W_ODD_ADR(addr); CPU_READ_MODE=0; }
+ void   lisa_wb_ro_violn(uint32 addr, uint8  data) {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);                      CPU_READ_MODE=1; UNUSED(data);}
+ void   lisa_ww_ro_violn(uint32 addr, uint16 data) {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr); CHK_W_ODD_ADR(addr); CPU_READ_MODE=0; UNUSED(data);}
+ void   lisa_wl_ro_violn(uint32 addr, uint32 data) {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr); CHK_W_ODD_ADR(addr); CPU_READ_MODE=0; UNUSED(data);}
 #endif
 
 uint8  *lisa_mptr_bad_page(uint32 addr)            {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr); return NULL;}
 uint8  lisa_rb_bad_page(uint32 addr)               {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);                      CPU_READ_MODE=1; lisa_mmu_exception(addr); return 0;}
 uint16 lisa_rw_bad_page(uint32 addr)               {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr); CHK_R_ODD_ADR(addr); CPU_READ_MODE=1; lisa_mmu_exception(addr); return 0;}
 uint32 lisa_rl_bad_page(uint32 addr)               {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr); CHK_R_ODD_ADR(addr); CPU_READ_MODE=1; lisa_mmu_exception(addr); return 0;}
-void   lisa_wb_bad_page(uint32 addr, uint8 data)   {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);                      CPU_READ_MODE=0; lisa_mmu_exception(addr);}
-void   lisa_ww_bad_page(uint32 addr, uint16 data)  {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr); CHK_W_ODD_ADR(addr); CPU_READ_MODE=0; lisa_mmu_exception(addr);}
-void   lisa_wl_bad_page(uint32 addr, uint32 data)  {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr); CHK_W_ODD_ADR(addr); CPU_READ_MODE=0; lisa_mmu_exception(addr);}
+void   lisa_wb_bad_page(uint32 addr, uint8 data)   {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr);                      CPU_READ_MODE=0; lisa_mmu_exception(addr); UNUSED(data); }
+void   lisa_ww_bad_page(uint32 addr, uint16 data)  {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr); CHK_W_ODD_ADR(addr); CPU_READ_MODE=0; lisa_mmu_exception(addr); UNUSED(data); }
+void   lisa_wl_bad_page(uint32 addr, uint32 data)  {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr); CHK_W_ODD_ADR(addr); CPU_READ_MODE=0; lisa_mmu_exception(addr); UNUSED(data); }
 
 // Do reads of the ROM
 uint8  *lisa_mptr_sio_rom(uint32 addr)             {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"@%08x",addr); return (uint8 *)(&lisarom[addr & 0x3fff]);}
@@ -2968,9 +2966,9 @@ uint32 lisa_rl_sio_rom(uint32 addr)
 }  //((lisarom[addr])<<24) | (lisarom[ad)dr+1]<<16) | ((lisarom[addr+2])<<8)|(lisarom[addr+3]);}
 
 // Ingore writes to ROM - log for debug only
-void   lisa_wb_sio_rom(uint32 addr, uint8 data)    {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"byte write to ROM @%08x",addr);}
-void   lisa_ww_sio_rom(uint32 addr, uint16 data)   {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"word write to ROM @%08x",addr); CHK_W_ODD_ADR(addr);}
-void   lisa_wl_sio_rom(uint32 addr, uint32 data)   {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"long write to ROM @%08x",addr); CHK_W_ODD_ADR(addr);}
+void   lisa_wb_sio_rom(uint32 addr, uint8  data)   {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"byte write to ROM @%08x",addr); UNUSED(data); }
+void   lisa_ww_sio_rom(uint32 addr, uint16 data)   {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"word write to ROM @%08x",addr); CHK_W_ODD_ADR(addr); UNUSED(data); }
+void   lisa_wl_sio_rom(uint32 addr, uint32 data)   {CHECK_DIRTY_MMU(addr);  DEBUG_LOG(100,"long write to ROM @%08x",addr); CHK_W_ODD_ADR(addr); UNUSED(data); }
 
 
 uint8  *lisa_mptr_sio_mrg(uint32 addr)

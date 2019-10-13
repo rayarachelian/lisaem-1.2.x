@@ -17,9 +17,9 @@
 // __CYGWIN__ wrapper added by Ray Arachelian for LisaEm to prevent crashes in reg68k_ext exec
 // is this still needed? looks like both do the same thing.
 #ifdef __CYGWIN__
- uint32 reg68k_pc;
- uint32 *reg68k_regs;
- t_sr reg68k_sr;
+  uint32 reg68k_pc;
+  uint32 *reg68k_regs;
+  t_sr reg68k_sr;
 #else
 #if (!(defined(PROCESSOR_ARM) || defined(PROCESSOR_SPARC) || defined(PROCESSOR_INTEL) ))
 uint32 reg68k_pc;
@@ -681,85 +681,83 @@ void extprintregs(FILE *buglog,char *tag)
 
 void dumpram(char *reason)
 {
- FILE *ramdump;
- char filename[256];
- uint32 i,j; //,k;
- uint16 slr, sor; //, mfn;
- //uint32 a9 =((pc24) & 0x00ffffff)>>9;
- //uint32 a17=((pc24) & 0x00ffffff)>>17;
- uint32 mad; //filter; mtd;
- //lisa_mem_t fn;
+  FILE *ramdump;
+  char filename[256];
+  uint32 i,j; //,k;
+  uint16 slr, sor; //, mfn;
+  //uint32 a9 =((pc24) & 0x00ffffff)>>9;
+  //uint32 a17=((pc24) & 0x00ffffff)>>17;
+  uint32 mad; //filter; mtd;
+  //lisa_mem_t fn;
 
- snprintf(filename,256,"lisaem-output-ramdump-%s-%08x.%016lx",reason,pc24,cpu68k_clocks);
- ramdump=fopen(filename,"wt"); 
- if (!ramdump)
- {
+  snprintf(filename,256,"lisaem-output-ramdump-%s-%08lx.%016llx",reason,(long)pc24,(long long)cpu68k_clocks);
+  ramdump=fopen(filename,"wt");
+  if (!ramdump)
+  {
     ALERT_LOG(0,"Could not dump ram because could not create file %s",filename);
     return;
- }
+  }
 
- fprintf(ramdump,"context:%d segment1:%d, segment2:%d, start:%d pc24:%08x\n\n",context,segment1,segment2,start,pc24);
+  fprintf(ramdump,"context:%ld segment1:%ld, segment2:%ld, start:%ld pc24:%08lx\n\n",(long)context,(long)segment1,(long)segment2,(long)start,(long)pc24);
 
 
- fprintf(ramdump,"ramsize:%08x, lastcx:%d, cx:%d seg1:%d, seg2:%d, start:%d, mmudirty:%08x,%08x,%08x,%08x,%08x\n",
-        maxlisaram,
-        lastcontext, context,
-        segment1, segment2, start,
-        mmudirty_all[0],mmudirty_all[1],mmudirty_all[2],mmudirty_all[3],mmudirty_all[4]);
+  fprintf(ramdump,"ramsize:%08lx, lastcx:%ld, cx:%ld seg1:%ld, seg2:%ld, start:%ld, mmudirty:%08lx,%08lx,%08lx,%08lx,%08lx\n",
+          (long)maxlisaram,
+          (long)lastcontext, (long)context,
+          (long)segment1, (long)segment2, (long)start,
+          (long)mmudirty_all[0],(long)mmudirty_all[1],(long)mmudirty_all[2],(long)mmudirty_all[3],(long)mmudirty_all[4]);
 
- fprintf(ramdump,"diag1:%d, diag2:%d, soft:%d, hard:%d, vert:%d, vidlatch:%02x, lastvidlatch:%02x, vidlatchaddr:%08x, lastvidlatchadr:%08x",
-        diag1, diag2,
-        softmem,
-        hardmem,
-        vertical,
-        videolatch, lastvideolatch,  videolatchaddress, lastvideolatchaddress);
+  fprintf(ramdump,"diag1:%ld, diag2:%ld, soft:%ld, hard:%ld, vert:%ld, vidlatch:%02lx, lastvidlatch:%02lx, vidlatchaddr:%08lx, lastvidlatchadr:%08lx",
+          (long) diag1, (long)diag2,
+          (long) softmem,
+          (long) hardmem,
+          (long) vertical,
+          (long) videolatch, (long)lastvideolatch,  (long)videolatchaddress, (long)lastvideolatchaddress);
 
         //videoramdirty,
         //videoximgdirty,
 
- fprintf(ramdump,"regs D 0:%08x 1:%08x 2:%08x 3:%08x 4:%08x 5:%08x 6:%08x 7:%08x SR:%02x %c%c%c%c%c%c%c irqmsk:%d  %d/%d/%d context:%d\n",
-        reg68k_regs[0], reg68k_regs[1], reg68k_regs[2], reg68k_regs[3], reg68k_regs[4],
-        reg68k_regs[5], reg68k_regs[6], reg68k_regs[7], reg68k_sr.sr_int,
-        (reg68k_sr.sr_struct.t ? 't':'.'),
-        (reg68k_sr.sr_struct.s ? 'S':'.'),
-        (reg68k_sr.sr_struct.z ? 'z':'.'),
-        (reg68k_sr.sr_struct.x ? 'x':'.'),
-        (reg68k_sr.sr_struct.n ? 'n':'.'),
-        (reg68k_sr.sr_struct.v ? 'v':'.'),
-        (reg68k_sr.sr_struct.c ? 'c':'.'),
-        ((reg68k_sr.sr_struct.i2 ? 4:0 )+(reg68k_sr.sr_struct.i1 ? 2:0 )+(reg68k_sr.sr_struct.i0 ? 1:0 )),
-        segment1,segment2,start,context );
+  fprintf(ramdump,"regs D 0:%08lx 1:%08lx 2:%08lx 3:%08lx 4:%08lx 5:%08lx 6:%08lx 7:%08lx SR:%02lx %c%c%c%c%c%c%c irqmsk:%ld  %ld/%ld/%ld context:%ld\n",
+          (long)reg68k_regs[0], (long)reg68k_regs[1], (long)reg68k_regs[2], (long)reg68k_regs[3], (long)reg68k_regs[4],
+          (long)reg68k_regs[5], (long)reg68k_regs[6], (long)reg68k_regs[7], (long)reg68k_sr.sr_int,
+          (reg68k_sr.sr_struct.t ? 't':'.'),
+          (reg68k_sr.sr_struct.s ? 'S':'.'),
+          (reg68k_sr.sr_struct.z ? 'z':'.'),
+          (reg68k_sr.sr_struct.x ? 'x':'.'),
+          (reg68k_sr.sr_struct.n ? 'n':'.'),
+          (reg68k_sr.sr_struct.v ? 'v':'.'),
+          (reg68k_sr.sr_struct.c ? 'c':'.'),
+          (long)((reg68k_sr.sr_struct.i2 ? 4:0 )+(long)(reg68k_sr.sr_struct.i1 ? 2:0 )+(long)(reg68k_sr.sr_struct.i0 ? 1:0 )),
+          (long)segment1,(long)segment2,(long)start,(long)context );
 
- fprintf(ramdump,"regs A 0:%08x 1:%08x 2:%08x 3:%08x 4:%08x 5:%08x 6:%08x 7:%08x SP:%08x PC:%08x\n\n\n",
-        reg68k_regs[8], reg68k_regs[9], reg68k_regs[10],reg68k_regs[11],reg68k_regs[12],
-        reg68k_regs[13],reg68k_regs[14],reg68k_regs[15],regs.sp,reg68k_pc);
+  fprintf(ramdump,"regs A 0:%08lx 1:%08lx 2:%08lx 3:%08lx 4:%08lx 5:%08lx 6:%08lx 7:%08lx SP:%08lx PC:%08lx\n\n\n",
+          (long)reg68k_regs[8], (long)reg68k_regs[9], (long)reg68k_regs[10],(long)reg68k_regs[11],(long)reg68k_regs[12],
+          (long)reg68k_regs[13],(long)reg68k_regs[14],(long)reg68k_regs[15],(long)regs.sp,(long)reg68k_pc);
 
 
- for (i=0; i<5; i++)
-  for ( j=0; j<128; j++)
-  {
-    slr=mmu_all[i][j].slr;
-    sor=mmu_all[i][j].sor;
+  for (i=0; i<5; i++)
+    for ( j=0; j<128; j++)
+    {
+      slr=mmu_all[i][j].slr;
+      sor=mmu_all[i][j].sor;
 
-    mad=((sor & 0x0fff)<<9) & TWOMEGMLIM;
+      mad=((sor & 0x0fff)<<9) & TWOMEGMLIM;
 
-  fprintf(ramdump,"mmu[%d][%3d].slr:%04x,sor:%04x  %08x-%08x::-->(%08x)  type::%s\n",
-        i,j,slr,sor,((uint32)j<<17),((uint32)j<<17)+((1<<17)-1),mad,
-        slrname(slr)
+    fprintf(ramdump,"mmu[%ld][%3ld].slr:%04lx,sor:%04lx  %08lx-%08lx::-->(%08lx)  type::%s\n",
+          (long)i,(long)j,(long)slr,(long)sor,(long)((uint32)j<<17),(long)((uint32)j<<17)+((1<<17)-1),(long)mad,
+          slrname(slr)
         );
- }
- fflush(ramdump);
+    }
+  fflush(ramdump);
 
-
-
- for ( i=0; i<maxlisaram; i+=16)
+  for ( i=0; i<maxlisaram; i+=16)
   {
-   if (lisaram[i+0]|lisaram[i+1]|lisaram[i+2]| lisaram[i+3]| lisaram[i+4]| lisaram[i+5]| lisaram[i+6]| lisaram[i+7]|
+    if (lisaram[i+0]|lisaram[i+1]|lisaram[i+2]| lisaram[i+3]| lisaram[i+4]| lisaram[i+5]| lisaram[i+6]| lisaram[i+7]|
         lisaram[i+8]|lisaram[i+9]|lisaram[i+10]|lisaram[i+11]|lisaram[i+12]|lisaram[i+13]|lisaram[i+14]|lisaram[i+15])
-   fprintf(ramdump,"RAM %06x: %02x %02x %02x %02x %02x %02x %02x %02x:%02x %02x %02x %02x %02x %02x %02x %02x |%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c\n",
-        i,
-        lisaram[i+0],lisaram[i+1],lisaram[i+2], lisaram[i+3], lisaram[i+4], lisaram[i+5], lisaram[i+6], lisaram[i+7],
-        lisaram[i+8],lisaram[i+9],lisaram[i+10],lisaram[i+11],lisaram[i+12],lisaram[i+13],lisaram[i+14],lisaram[i+15],
+    fprintf(ramdump,"RAM %06lx: %02lx %02lx %02lx %02lx %02lx %02lx %02lx %02lx:%02lx %02lx %02lx %02lx %02lx %02lx %02lx %02lx |%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c\n",
+        (long)i,
+        (long)lisaram[i+0],(long)lisaram[i+1],(long)lisaram[i+2], (long)lisaram[i+3], (long)lisaram[i+4], (long)lisaram[i+5], (long)lisaram[i+6], (long)lisaram[i+7],
+        (long)lisaram[i+8],(long)lisaram[i+9],(long)lisaram[i+10],(long)lisaram[i+11],(long)lisaram[i+12],(long)lisaram[i+13],(long)lisaram[i+14],(long)lisaram[i+15],
         ((lisaram[i+0 ]>' ' && lisaram[i+0 ]<127) ? lisaram[i+0 ]:'.'),
         ((lisaram[i+1 ]>' ' && lisaram[i+1 ]<127) ? lisaram[i+1 ]:'.'),
         ((lisaram[i+2 ]>' ' && lisaram[i+2 ]<127) ? lisaram[i+2 ]:'.'),
@@ -778,9 +776,8 @@ void dumpram(char *reason)
         ((lisaram[i+15]>' ' && lisaram[i+15]<127) ? lisaram[i+15]:'.')  );
   }
 
-
- fflush(ramdump);
- fclose(ramdump);
+  fflush(ramdump);
+  fclose(ramdump);
 }
 
 
@@ -797,28 +794,26 @@ extern char *gettimername(uint8 t);
         static int been_here_before=0;
 #endif
 
-   #ifdef PROCNAME_DEBUG
-   int is_valid_procname(uint8 c)
-   {
+#ifdef PROCNAME_DEBUG
+int is_valid_procname(uint8 c)
+{
     c &=0x7f;
     if (c>='A' && c<='Z') return 1;
     if (c=='_' || c==' ') return 1;
     if (c>='0' && c<='9') return 1;
     return 0;
-   }
+}
 
-   int is_valid_procname_w(uint16 w)
-   {
-     return (is_valid_procname(w>>8) && is_valid_procname(w & 0x7f) );
-   }
-   #endif
+int is_valid_procname_w(uint16 w){ return (is_valid_procname(w>>8) && is_valid_procname(w & 0x7f) ); }
+#endif
+
 #endif
 
 
 int get_address_mmu_rfn_type(uint32 addr)
 {
- addr=addr & 0x00ffffff;
- return mmu_trans[(addr>>9) & 32767].readfn;
+  addr=addr & 0x00ffffff;
+  return mmu_trans[(addr>>9) & 32767].readfn;
 }
 
 extern long get_wx_millis(void);
@@ -831,39 +826,39 @@ extern char *debug_screenshot(void);
 inline void debug_reg68k_exec_disasm_skipped(void)
 {
         if (debug_log_enabled && buglog && pc24>lastpc24 && lastpc24>0)
-         if ( (pc24-lastpc24)<128)
-         {
-          uint32 cursor=lastpc24;
-          char text[1024];
-          static t_ipc myipc;
-          static t_iib *mypiib;
+          if ( (pc24-lastpc24)<128)
+          {
+            uint32 cursor=lastpc24;
+            char text[1024];
+            static t_ipc myipc;
+            static t_iib *mypiib;
 
-          DEBUG_LOG(0,"disassembling skipped opcodes between %08x-%08x",cursor,pc24);
+            DEBUG_LOG(0,"disassembling skipped opcodes between %08lx-%08lx",(long)cursor,(long)pc24);
 
           //20180401//pc24 = reg68k_pc & 0x00ffffff;
 
 
-          while (cursor<pc24)
+            while (cursor<pc24)
             {
               abort_opcode=2;
               if (!(mypiib = cpu68k_iibtable[fetchword(cursor)]))
-                   {DEBUG_LOG(1,"Invalid instruction @ %08X\n", cursor); cursor=pc24;
+                  {DEBUG_LOG(1,"Invalid instruction @ %08lX\n", (long)cursor); cursor=pc24;
                     break;
-                   }
-               if (abort_opcode==1) cursor=pc24;
-               abort_opcode=2;
-               if (!mypiib) DEBUG_LOG(0,"About to send null IPC!");
-               cpu68k_ipc(cursor, mypiib,&myipc); if (abort_opcode==1) cursor=pc24;
+                  }
+              if (abort_opcode==1) cursor=pc24;
+              abort_opcode=2;
+              if (!mypiib) DEBUG_LOG(0,"About to send null IPC!");
+              cpu68k_ipc(cursor, mypiib,&myipc); if (abort_opcode==1) cursor=pc24;
 
-               abort_opcode=2;  diss68k_gettext(&myipc, text); if (abort_opcode==1) cursor=pc24;
+              abort_opcode=2;  diss68k_gettext(&myipc, text); if (abort_opcode==1) cursor=pc24;
 
-               fprintf(buglog,"\nx:%08x (skipped) opcode=%04x %s             +%d clks   SRC:\n",cursor,myipc.opcode,text,myipc.clks);
+              fprintf(buglog,"\nx:%08x (skipped) opcode=%04x %s             +%d clks   SRC:\n",cursor,myipc.opcode,text,myipc.clks);
 
                cursor +=myipc.wordlen*2;        if (!myipc.wordlen) {EXIT(14,0,"*** Doh! ipc.wordlen=0 **");}
             }
-           if (abort_opcode==1) DEBUG_LOG(0,"**DANGER*** GOT abort_opcode!******\n");
-           debug_log_enabled=1;
-         }
+            if (abort_opcode==1) DEBUG_LOG(0,"**DANGER*** GOT abort_opcode!******\n");
+            debug_log_enabled=1;
+          }
 }         
 #endif
 
@@ -888,48 +883,53 @@ inline void debug_reg68k_exec_lookahead(void) {
           {
             abort_opcode=2;
             if (!(mypiib = cpu68k_iibtable[fetchword(cursor)]))
-                 {DEBUG_LOG(1,"Invalid instruction @ %08X\n", cursor); cursor=pc24;
+                { DEBUG_LOG(1,"Invalid instruction @ %08lX\n", (long)cursor); cursor=pc24;
                   break;
-                 }
-             if (abort_opcode==1) cursor=LOOKENDADDR;
-             abort_opcode=2;
-             if (!mypiib) DEBUG_LOG(0,"About to send null IPC!");
-             cpu68k_ipc(cursor, mypiib,&myipc); if (abort_opcode==1) cursor=LOOKENDADDR;
+                }
+            if (abort_opcode==1) cursor=LOOKENDADDR;
+            abort_opcode=2;
+            if (!mypiib) DEBUG_LOG(0,"About to send null IPC!");
+            cpu68k_ipc(cursor, mypiib,&myipc); if (abort_opcode==1) cursor=LOOKENDADDR;
 
-             abort_opcode=2;  diss68k_gettext(&myipc, text); if (abort_opcode==1) cursor=LOOKENDADDR;
+            abort_opcode=2;  diss68k_gettext(&myipc, text); if (abort_opcode==1) cursor=LOOKENDADDR;
 
-             if (mypiib->clocks!=myipc.clks) DEBUG_LOG(0,"ERROR:iib clocks:%d != ipc clocks:%d !", mypiib->clocks , myipc.clks);
-             fprintf(buglog,"\nL:%08x  opcode=%04x   %-70s  +%d clks",cursor,myipc.opcode,text,myipc.clks);
+            if (mypiib->clocks!=myipc.clks) DEBUG_LOG(0,"ERROR:iib clocks:%ld != ipc clocks:%ld !", mypiib->clocks , myipc.clks);
+            fprintf(buglog,"\nL:%08lx  opcode=%04lx   %-70s  +%ld clks",(long)cursor,(long)myipc.opcode,text,(long)myipc.clks);
 
              cursor +=myipc.wordlen*2;        if (!myipc.wordlen) {EXIT(14,0,"*** Doh! ipc.wordlen=0 **");}
           }
-         if (abort_opcode==1) DEBUG_LOG(0,"**DANGER*** GOT abort_opcode!******\n");
-         debug_log_enabled=0; debug_off();
-       }
+
+        if (abort_opcode==1) DEBUG_LOG(0,"**DANGER*** GOT abort_opcode!******\n");
+        debug_log_enabled=0; debug_off();
+      }
 }
 #endif
 
 
 #ifdef SUPPRESS_LOOP_DISASM
-inline void reg68k_exec_suppress_loop_disasm(void) {
+inline void reg68k_exec_suppress_loop_disasm(void) 
+{
 
-       if (!suppress_printregs)
+      if  (!suppress_printregs)
+          { if (debug_log_enabled)  {printregs(buglog,"");} }
+      else
           {
-             if (debug_log_enabled)  {printregs(buglog,"");}
-          }
-       else
-          {
-             int32 i;  int32 j=(suppress_printregs & 32767); int flag=0;
-             char line[1024], buf[1024];
+            int32 i;  
+            int32 j=(suppress_printregs & 32767); 
+            int flag=0;
+            char line[1024], buf[1024];
 
-             snprintf(line,1024,"loop:: %08x: ",pc24);
+            snprintf(line,1024,"loop:: %08x: ",pc24);
 
              // might want to change j to be the previous instruction - but doesn't matter very much I suppose
-             for (i=0; i<8;  i++)  if (last_regs[j].regs[i]!=reg68k_regs[i]) {snprintf(buf,1024,"D%d:%08x ",i,reg68k_regs[i]); strncat(line,buf,1024);flag=1;}
-             for (i=8; i<16; i++)  if (last_regs[j].regs[i]!=reg68k_regs[i]) {snprintf(buf,1024,"A%d:%08x ",i-8,reg68k_regs[i]); strncat(line,buf,1024);flag=1;}
-             if (last_regs[j].sr.sr_int!=reg68k_sr.sr_int)
+            for (i=0; i<8;  i++)  
+                if (last_regs[j].regs[i]!=reg68k_regs[i]) {snprintf(buf,1024,"D%ld:%08lx ",(long)i,(long)reg68k_regs[i]);   strncat(line,buf,1024);flag=1;}
+            for (i=8; i<16; i++)  
+                if (last_regs[j].regs[i]!=reg68k_regs[i]) {snprintf(buf,1024,"A%ld:%08lx ",(long)i-8,(long)reg68k_regs[i]); strncat(line,buf,1024);flag=1;}
+
+            if (last_regs[j].sr.sr_int!=reg68k_sr.sr_int)
                 {   flag=1;
-                    snprintf(buf,1024,"%c%c%c%c%c%c%c imsk:%d ",
+                    snprintf(buf,1024,"%c%c%c%c%c%c%c imsk:%ld ",
                     (reg68k_sr.sr_struct.t ? 't':'.'),
                     (reg68k_sr.sr_struct.s ? 'S':'.'),
                     (reg68k_sr.sr_struct.z ? 'z':'.'),
@@ -937,9 +937,9 @@ inline void reg68k_exec_suppress_loop_disasm(void) {
                     (reg68k_sr.sr_struct.n ? 'n':'.'),
                     (reg68k_sr.sr_struct.v ? 'v':'.'),
                     (reg68k_sr.sr_struct.c ? 'c':'.'),
-                    ((reg68k_sr.sr_struct.i2 ? 4:0 )+(reg68k_sr.sr_struct.i1 ? 2:0 )+(reg68k_sr.sr_struct.i0 ? 1:0 )) );
+                    (long)(  (reg68k_sr.sr_struct.i2 ? 4:0 )+(reg68k_sr.sr_struct.i1 ? 2:0 )+(reg68k_sr.sr_struct.i0 ? 1:0 ) )   );
                     strncat(line,buf,1024);
-                 }
+                }
               if (flag && buglog) fprintf(buglog,"%s\n",line);
             }
 }
@@ -956,92 +956,98 @@ inline void reg68k_exec_icache_debug(void)
             abort_opcode=2;
             c=lisa_ram_safe_getbyte(context,(pc24-16+i));
 
-            if (i & 1) snprintf(tmp,1024,"%02x ",c);
-            else       snprintf(tmp,1024,"%02x",c);
+            if (i & 1) snprintf(tmp,1024,"%02lx ",(long)c);
+            else       snprintf(tmp,1024,"%02lx", (long)c);
 
             strncat(hex,tmp,1024);
             nice[i]=niceascii(c);
         }
+
         debug_log_enabled|=dbx;     // re-enable debug log only after icache fetches to prevent verbosity
-       if (buglog) fprintf(buglog,"%08x:%s|%s clk:%016lx\n",pc24-16,hex,nice,cpu68k_clocks);
-       //DEBUG_LOG(0,"icache:%04x:%04x:%04x:%04x:%04x  clk:%08x",ipc->opcode,icache2,icache4, icache6, icache8,cpu68k_clocks);
-       abort_opcode=0;
+
+        if (buglog) fprintf(buglog,"%08lx:%s|%s clk:%016llx\n",(long)pc24-16,hex,nice,(long long)cpu68k_clocks);
+        //DEBUG_LOG(0,"icache:%04x:%04x:%04x:%04x:%04x  clk:%08x",ipc->opcode,icache2,icache4, icache6, icache8,cpu68k_clocks);
+        abort_opcode=0;
     }
     else debug_log_enabled=dbx;
 } ///**** moved this insdie meh ****
 #endif
 
-#ifdef SKIP_BIGWAIT_NMI_CODE
-inline void reg68k_exec_skip_bigwait_nmi_code(void) {
-  if (lisa_os_boot_mouse_x_ptr==0xfec)
-     {/////////////////////////////////////////////////////////////////////////////////////////
 
-       if ( ipc->opcode==0x5381)
+#ifdef SKIP_BIGWAIT_NMI_CODE
+inline void reg68k_exec_skip_bigwait_nmi_code(void) 
+{
+  if  (lisa_os_boot_mouse_x_ptr==0xfec)
+      {/////////////////////////////////////////////////////////////////////////////////////////
+
+        if ( ipc->opcode==0x5381)
           {
            // hack to speed up lisatest?
-           if (pc24==0xd36e && reg68k_regs[1]==0x3d090) {reg68k_regs[1]=1; DEBUG_LOG(0,"SKIP_BIGWAIT_NMI_CODE D1=1 @d36e");}
-           if (pc24==0xdd52 && reg68k_regs[1]>1 )       {reg68k_regs[1]=1; DEBUG_LOG(0,"SKIP_BIGWAIT_NMI_CODE D1=1 @dd52");}
+            if (pc24==0xd36e && reg68k_regs[1]==0x3d090) {reg68k_regs[1]=1; DEBUG_LOG(0,"SKIP_BIGWAIT_NMI_CODE D1=1 @d36e");}
+            if (pc24==0xdd52 && reg68k_regs[1]>1 )       {reg68k_regs[1]=1; DEBUG_LOG(0,"SKIP_BIGWAIT_NMI_CODE D1=1 @dd52");}
           }
         else                                    // 2005.04.05 06:22am - Turn Debugging on LisaTest CPU ErrorLevel
           {
-             if (pc24==0x0000d2c8 && ipc->opcode==0xb3cb && reg68k_regs[6]==0x00000018 && reg68k_regs[8]<0x001ff000)
-                {
-                   debug_on("LisaTest-cpu-errorlogic"); debug_log_enabled=1; debug_log_enabled=1; last_dbe=1;
-                   reg68k_regs[8]=0x001fff00; reg68k_regs[9]=0x001fff00;
-                   memerror=0xFFF8;
-                  DEBUG_LOG(0,"LisaTest CPU Error Logic - enabling debug 2005.04.05");
-                }
-       }
+              if  (pc24==0x0000d2c8 && ipc->opcode==0xb3cb && reg68k_regs[6]==0x00000018 && reg68k_regs[8]<0x001ff000)
+                  {
+                    debug_on("LisaTest-cpu-errorlogic"); debug_log_enabled=1; debug_log_enabled=1; last_dbe=1;
+                    reg68k_regs[8]=0x001fff00; reg68k_regs[9]=0x001fff00;
+                    memerror=0xFFF8;
+                    DEBUG_LOG(0,"LisaTest CPU Error Logic - enabling debug 2005.04.05");
+                  }
+          }
 
-     }///////////////////////////////////////////////////////////////////////////////////////////
+      }///////////////////////////////////////////////////////////////////////////////////////////
 }
 #endif
 
-inline void reg68k_exec_debug_block(int32 clocks, mmu_trans_t *mt, int k, t_ipc *ipc,char *text) {
+//inline 
+void reg68k_exec_debug_block(int32 clocks, mmu_trans_t *mt, int k, t_ipc *ipc,char *text) {
 
   // keep this can use for debuggery later
   #ifdef xxxHALT_AT
   if ( (pc24==0xfe06f2 || pc24==0xfe14F2 || pc24==0xfe144a pc==0xfe) && mt->readfn==sio_rom) {
-       EXIT(398,0,"compiled in halt.");
+        EXIT(398,0,"compiled in halt.");
   }
   #endif
 
   // if the tracelog is not enabled, skip this
-  if (debug_log_enabled)
-     {
+  if  (debug_log_enabled)
+      {
          // are we using the H ROM source, if so output it
           if (mt->readfn==sio_mmu && rom_source_file && dtc_rom_fseeks && ((pc24 & 0xffff)<0x3fff))
           {   char *s; char buff[1024];
               fseek(rom_source_file,dtc_rom_fseeks[pc24 & 0x3fff],SEEK_SET);
-              s=fgets(buff,1024,rom_source_file); if (strlen(buff)>5 && buglog && s!=NULL) fprintf(buglog,"%08x: SRC: %s\n",pc24,buff);
+              s=fgets(buff,1024,rom_source_file); 
+              if (strlen(buff)>5 && buglog && s!=NULL) fprintf(buglog,"%08lx: SRC: %s\n",(long)pc24,buff);
           }
 
           // this suppresses loop disassembly instead just showing what changed between opcodes     
           #ifdef SUPPRESS_LOOP_DISASM
           {
-                     suppress_printregs=0;
+                suppress_printregs=0;
 
-                     j=last_regs_idx;
-                     do   
-                     {     j--; if (j<0) j=MAX_LOOP_REGS-1;
-                           if (pc24==last_regs[j].pc) k=1;
-                     } 
-                     while (j!=last_regs_idx && !k);
+                j=last_regs_idx;
+                do   
+                  {     j--; if (j<0) j=MAX_LOOP_REGS-1;
+                        if (pc24==last_regs[j].pc) k=1;
+                  } 
+                  while (j!=last_regs_idx && !k);
 
-                     // copy to current register
-                     j=last_regs_idx+1;  if (j>=MAX_LOOP_REGS) j=0;
+                  // copy to current register
+                  j=last_regs_idx+1;  if (j>=MAX_LOOP_REGS) j=0;
 
-                     last_regs[j].pc=pc24;
-                     last_regs[j].sp=regs.sp;
-                     last_regs[j].sr.sr_int=reg68k_sr.sr_int;
-                     for (i=0; i<16; i++)  last_regs[j].regs[i]=reg68k_regs[i];
-                     last_regs_idx=j;
+                  last_regs[j].pc=pc24;
+                  last_regs[j].sp=regs.sp;
+                  last_regs[j].sr.sr_int=reg68k_sr.sr_int;
+                  for (i=0; i<16; i++)  last_regs[j].regs[i]=reg68k_regs[i];
+                  last_regs_idx=j;
 
 
-                     if ((ipc->opcode & 0xf000)==0xa000)
+                  if ((ipc->opcode & 0xf000)==0xa000)
                       {
                         char temp[256];
-                        snprintf(temp,255,"::%08x ",fetchlong(pc24+2));
+                        snprintf(temp,255,"::%08lx ",(long)fetchlong(pc24+2));
                         strncat(text,temp,16383);
                       }
           }
@@ -1050,61 +1056,60 @@ inline void reg68k_exec_debug_block(int32 clocks, mmu_trans_t *mt, int k, t_ipc 
           #ifdef PROCNAME_DEBUG
           {  uint16 w,w1,w2,w3;
 
-               w=lisa_ram_safe_getword(context,(pc24-2));
-               //DEBUG_LOG(0,"entering procedure: got 5th word:%04x",w);
-               if (w<0x00f0)
-               {
-                 w3=lisa_ram_safe_getword(context,(pc24-10));
-                 if ( (w3 & 0x8000) && is_valid_procname_w(w3 & 0x7f7f) )
+              w=lisa_ram_safe_getword(context,(pc24-2));
+              //DEBUG_LOG(0,"entering procedure: got 5th word:%04x",w);
+              if (w<0x00f0)
+              {
+                w3=lisa_ram_safe_getword(context,(pc24-10));
+                if  ((w3 & 0x8000) && is_valid_procname_w(w3 & 0x7f7f) )
                     {
-                       w2=lisa_ram_safe_getword(context,(pc24-8));
-                       w1=lisa_ram_safe_getword(context,(pc24-6));
-                       w =lisa_ram_safe_getword(context,(pc24-4));
-                       if (is_valid_procname_w(w) && is_valid_procname_w(w1) && is_valid_procname_w(w2)  )
-                       {
-                            if (buglog) 
-                               fprintf(buglog,"\n\n====== procedure: %c%c%c%c%c%c%c%c =====\n\n",
-                                       ((w3>>8) & 0x7f),(w3 & 0x7f),
-                                       ((w2>>8) & 0x7f),(w2 & 0x7f),
-                                       ((w1>>8) & 0x7f),(w1 & 0x7f),
-                                       ((w >>8) & 0x7f),(w  & 0x7f)     );
-                         /*
-                         // 20180326
-                         if  (         ((w3>>8) & 0x7f)=='E' && (w3 & 0x7f)=='A' &&
-                                       ((w2>>8) & 0x7f)=='C' && (w2 & 0x7f)=='H' &&
-                                       ((w1>>8) & 0x7f)=='M' && (w1 & 0x7f)=='E' &&
-                                       ((w >>8) & 0x7f)=='M' && (w  & 0x7f)=='B'    ) debug_on("EACHMEMB");
+                      w2=lisa_ram_safe_getword(context,(pc24-8));
+                      w1=lisa_ram_safe_getword(context,(pc24-6));
+                      w =lisa_ram_safe_getword(context,(pc24-4));
+                      if  (is_valid_procname_w(w) && is_valid_procname_w(w1) && is_valid_procname_w(w2)  )
+                          {
+                          if (buglog) 
+                              fprintf(buglog,"\n\n====== procedure: %c%c%c%c%c%c%c%c =====\n\n",
+                                      ((w3>>8) & 0x7f),(w3 & 0x7f),
+                                      ((w2>>8) & 0x7f),(w2 & 0x7f),
+                                      ((w1>>8) & 0x7f),(w1 & 0x7f),
+                                      ((w >>8) & 0x7f),(w  & 0x7f)     );
+                        /*
+                        // 20180326
+                            if  (         ((w3>>8) & 0x7f)=='E' && (w3 & 0x7f)=='A' &&
+                                          ((w2>>8) & 0x7f)=='C' && (w2 & 0x7f)=='H' &&
+                                          ((w1>>8) & 0x7f)=='M' && (w1 & 0x7f)=='E' &&
+                                          ((w >>8) & 0x7f)=='M' && (w  & 0x7f)=='B'    ) debug_on("EACHMEMB");
 
-                         if  (         ((w3>>8) & 0x7f)=='P' && (w3 & 0x7f)=='R' &&
-                                       ((w2>>8) & 0x7f)=='T' && (w2 & 0x7f)=='E' &&
-                                       ((w1>>8) & 0x7f)=='N' && (w1 & 0x7f)=='T' &&
-                                       ((w >>8) & 0x7f)=='N' && (w  & 0x7f)=='A'    ) debug_off(); // PRTENTNA
+                            if  (         ((w3>>8) & 0x7f)=='P' && (w3 & 0x7f)=='R' &&
+                                          ((w2>>8) & 0x7f)=='T' && (w2 & 0x7f)=='E' &&
+                                          ((w1>>8) & 0x7f)=='N' && (w1 & 0x7f)=='T' &&
+                                          ((w >>8) & 0x7f)=='N' && (w  & 0x7f)=='A'    ) debug_off(); // PRTENTNA
                          */
-                       }
+                          }
                     }
-               }
-          } // PROCNAME DEBUG b
+                }
+           } // PROCNAME DEBUG b
           #endif       // end of PROCNAME_DEBUG
 
 
-         if (!k)
-            { char dumpline[1024];
-
-                 if (ipc->opcode!=0xe350) abort_opcode=2;  
-                 diss68k_getdumpline(pc24,dumpline);
-                 diss68k_gettext(ipc, text);
+          if (!k)
+            {   char dumpline[1024];
+                if (ipc->opcode!=0xe350) abort_opcode=2;  
+                diss68k_getdumpline(pc24,dumpline);
+                diss68k_gettext(ipc, text);
                  //fprintf(buglog,"%d/%08x (cx %d %d/%d/%d) opcode=%04x %s    SRC:clk:%016lx +%ld clks\n%s",context,pc24,
                  //       (segment1|segment2),segment1,segment2,start,ipc->opcode,text,cpu68k_clocks, ipc->clks,dumpline);
-                 if (buglog)
-                    fprintf(buglog,"%d/%08lx (%d %d/%d/%d) %s  SRC:clk:%016lx +%ld clks\n",context,(long)pc24,
-                        (segment1|segment2),segment1,segment2,start,dumpline,(long)cpu68k_clocks, (long)ipc->clks);
+                if (buglog)
+                    fprintf(buglog,"%ld/%08lx (%ld %ld/%ld/%ld) %s  SRC:clk:%016llx +%ld clks\n",(long)context,(long)pc24,
+                        (long)(segment1|segment2),(long)segment1,(long)segment2,(long)start,dumpline,(long long)cpu68k_clocks, (long)ipc->clks);
 
             }
             #ifdef SUPPRESS_LOOP_DISASM
             else suppress_printregs=32768|j;
             #endif
 
-     } // if debug_log_enabled at top of reg68k_exec_debug_block
+      } // if debug_log_enabled at top of reg68k_exec_debug_block
 
 }
 //} // end of reg68k_exec_debug_block fn
@@ -1114,100 +1119,84 @@ inline void reg68k_exec_debug_block(int32 clocks, mmu_trans_t *mt, int k, t_ipc 
 void reg68k_ext_exec_various_dbug(void) 
 {
 /*
-               if ((pc24 & 0x00ff0000)!=0x00fe0000 && (reg68k_pc & 0x00ff0000)==0x00fe0000)
-                  ALERT_LOG(0,"Entering ROM from operating system at %08x from %08x %s\n"
-                              "D 0:%08x 1:%08x 2:%08x 3:%08x 4:%08x 5:%08x 6:%08x 7:%08x\n"
-                              "A 0:%08x 1:%08x 2:%08x 3:%08x 4:%08x 5:%08x 6:%08x 7:%08x\n",
-                               reg68k_pc,pc24,get_rom_label(reg68k_pc),
-                               reg68k_regs[0], reg68k_regs[1], reg68k_regs[2], reg68k_regs[3], reg68k_regs[4], reg68k_regs[5], reg68k_regs[6], reg68k_regs[7],
-                               reg68k_regs[8], reg68k_regs[9], reg68k_regs[10],reg68k_regs[11],reg68k_regs[12],reg68k_regs[13],reg68k_regs[14],reg68k_regs[15]
-                          );
+          if ((pc24 & 0x00ff0000)!=0x00fe0000 && (reg68k_pc & 0x00ff0000)==0x00fe0000)
+              ALERT_LOG(0,"Entering ROM from operating system at %08x from %08x %s\n"
+                          "D 0:%08lx 1:%08lx 2:%08lx 3:%08lx 4:%08lx 5:%08lx 6:%08lx 7:%08lx\n"
+                          "A 0:%08lx 1:%08lx 2:%08lx 3:%08lx 4:%08lx 5:%08lx 6:%08lx 7:%08lx\n",
+                          (long)reg68k_pc,(long)pc24,(long)get_rom_label(reg68k_pc),
+                          (long)reg68k_regs[0], (long)reg68k_regs[1], (long)reg68k_regs[2], (long)reg68k_regs[3], (long)reg68k_regs[4], (long)reg68k_regs[5], (long)reg68k_regs[6], (long)reg68k_regs[7],
+                          (long)reg68k_regs[8], (long)reg68k_regs[9], (long)reg68k_regs[10],(long)reg68k_regs[11],(long)reg68k_regs[12],(long)reg68k_regs[13],(long)reg68k_regs[14],(long)reg68k_regs[15]
+                        );
 */
-                if (reg68k_pc==0x00fe0090 || pc24==0x00fe0090)
-                {
+          if  (reg68k_pc==0x00fe0090 || pc24==0x00fe0090)
+              {
                   ALERT_LOG(0,"ENT Entering ROM profile read.  ROMLESS")    
                   int i;
                   uint8 b;
                 
                   b=fetchbyte(0x1b3);
                 
-                  ALERT_LOG(0,"ENT Booting up reg68k_pc:%08x from pc24:%08x %s. reg68k_sr.sr_int=%04x regs.sp=%08x 1b3:%02x   ROMLESS\n"
-                              "ENT D 0:%08x 1:%08x 2:%08x 3:%08x 4:%08x 5:%08x 6:%08x 7:%08x ROMLESS\n"
-                              "ENT A 0:%08x 1:%08x 2:%08x 3:%08x 4:%08x 5:%08x 6:%08x 7:%08x ROMLESS\n",
-                               reg68k_pc,pc24,get_rom_label(reg68k_pc),reg68k_sr.sr_int,regs.sp,b,
-                               reg68k_regs[0], reg68k_regs[1], reg68k_regs[2], reg68k_regs[3], reg68k_regs[4], reg68k_regs[5], reg68k_regs[6], reg68k_regs[7],
-                               reg68k_regs[8], reg68k_regs[9], reg68k_regs[10],reg68k_regs[11],reg68k_regs[12],reg68k_regs[13],reg68k_regs[14],reg68k_regs[15]
+                  ALERT_LOG(0,"ENT Booting up reg68k_pc:%08lx from pc24:%08lx %s. reg68k_sr.sr_int=%04lx regs.sp=%08lx 1b3:%02lx   ROMLESS\n"
+                              "ENT D 0:%08lx 1:%08lx 2:%08lx 3:%08lx 4:%08lx 5:%08lx 6:%08lx 7:%08lx ROMLESS\n"
+                              "ENT A 0:%08lx 1:%08lx 2:%08lx 3:%08lx 4:%08lx 5:%08lx 6:%08lx 7:%08lx ROMLESS\n",
+                              (long) reg68k_pc,(long)pc24,get_rom_label(reg68k_pc),(long)reg68k_sr.sr_int,(long)regs.sp,(long)b,
+                              (long) reg68k_regs[0], (long)reg68k_regs[1], (long)reg68k_regs[2], (long)reg68k_regs[3], (long)reg68k_regs[4], (long)reg68k_regs[5], (long)reg68k_regs[6], (long)reg68k_regs[7],
+                              (long) reg68k_regs[8], (long)reg68k_regs[9], (long)reg68k_regs[10],(long)reg68k_regs[11],(long)reg68k_regs[12],(long)reg68k_regs[13],(long)reg68k_regs[14],(long)reg68k_regs[15]
                           );
                 
                 }
 
 
-//                  if (reg68k_pc==0x00fe1fee)
-//                  {
+//        if (reg68k_pc==0x00fe1fee)
+//           {
 //
-//                    ALERT_LOG(0,"RET Return from ROM profile read.  ROMLESS")    
-//                    int i;
-//                    uint8 b;
+//               ALERT_LOG(0,"RET Return from ROM profile read.  ROMLESS")    
+//               int i;
+//               uint8 b;
 //                    
-//                    b=fetchbyte(0x1b3);
+//               b=fetchbyte(0x1b3);
 //                   
-//                    ALERT_LOG(0,"RET Booting up reg68k_pc:%08x from pc24:%08x %s. reg68k_sr.sr_int=%04x regs.sp=%08x 1b3:%02x ROMLESS\n"
-//                                "RET D 0:%08x 1:%08x 2:%08x 3:%08x 4:%08x 5:%08x 6:%08x 7:%08x ROMLESS\n"
-//                                "RET A 0:%08x 1:%08x 2:%08x 3:%08x 4:%08x 5:%08x 6:%08x 7:%08x ROMLESS\n",
-//                                 reg68k_pc,pc24,get_rom_label(reg68k_pc),reg68k_sr.sr_int,regs.sp,b,
-//                                 reg68k_regs[0], reg68k_regs[1], reg68k_regs[2], reg68k_regs[3], reg68k_regs[4], reg68k_regs[5], reg68k_regs[6], reg68k_regs[7],
-//                                 reg68k_regs[8], reg68k_regs[9], reg68k_regs[10],reg68k_regs[11],reg68k_regs[12],reg68k_regs[13],reg68k_regs[14],reg68k_regs[15]
-//                            );
+//               ALERT_LOG(0,"RET Booting up reg68k_pc:%08lx from pc24:%08lx %s. reg68k_sr.sr_int=%04lx regs.sp=%08lx 1b3:%02lx ROMLESS\n"
+//                           "RET D 0:%08lx 1:%08lx 2:%08lx 3:%08lx 4:%08lx 5:%08lx 6:%08lx 7:%08lx ROMLESS\n"
+//                           "RET A 0:%08lx 1:%08lx 2:%08lx 3:%08lx 4:%08lx 5:%08lx 6:%08lx 7:%08lx ROMLESS\n",
+//                           (long)reg68k_pc,pc24,get_rom_label(reg68k_pc),(long)reg68k_sr.sr_int,regs.sp,(long)b,
+//                           (long)reg68k_regs[0], (long)reg68k_regs[1], (long)reg68k_regs[2], (long)reg68k_regs[3], (long)reg68k_regs[4], (long)reg68k_regs[5], (long)reg68k_regs[6], (long)reg68k_regs[7],
+//                           (long)reg68k_regs[8], (long)reg68k_regs[9], (long)reg68k_regs[10],(long)reg68k_regs[11],(long)reg68k_regs[12],(long)reg68k_regs[13],(long)reg68k_regs[14],(long)reg68k_regs[15]
+//                        );
 //                   
 //                  }
 
-                  if (reg68k_pc==0x00020000)
-                  {
-                      int i;
-                      uint8 b;
-                     
-                      b=fetchbyte(0x1b3);
-                    
-                      ALERT_LOG(0,"INT Booting up reg68k_pc:%08x from pc24:%08x %s. reg68k_sr.sr_int=%04x regs.sp=%08x 1b3:%02x  ROMLESS\n"
-                                  "INT D 0:%08x 1:%08x 2:%08x 3:%08x 4:%08x 5:%08x 6:%08x 7:%08x  ROMLESS\n"
-                                  "INT A 0:%08x 1:%08x 2:%08x 3:%08x 4:%08x 5:%08x 6:%08x 7:%08x  ROMLESS\n",
-                                   reg68k_pc,pc24,get_rom_label(reg68k_pc),reg68k_sr.sr_int,regs.sp,b,
-                                   reg68k_regs[0], reg68k_regs[1], reg68k_regs[2], reg68k_regs[3], reg68k_regs[4], reg68k_regs[5], reg68k_regs[6], reg68k_regs[7],
-                                   reg68k_regs[8], reg68k_regs[9], reg68k_regs[10],reg68k_regs[11],reg68k_regs[12],reg68k_regs[13],reg68k_regs[14],reg68k_regs[15]
-                              );
-                   }            
+          if  (reg68k_pc==0x00020000)
+              {
+                  int i;
+                  uint8 b;
+                  b=fetchbyte(0x1b3);
+                  ALERT_LOG(0,"INT Booting up reg68k_pc:%08lx from pc24:%08lx %s. reg68k_sr.sr_int=%04lx regs.sp=%08lx 1b3:%02lx  ROMLESS\n"
+                              "INT D 0:%08lx 1:%08lx 2:%08lx 3:%08lx 4:%08lx 5:%08lx 6:%08lx 7:%08lx  ROMLESS\n"
+                              "INT A 0:%08lx 1:%08lx 2:%08lx 3:%08lx 4:%08lx 5:%08lx 6:%08lx 7:%08lx  ROMLESS\n",
+                              (long)reg68k_pc,(long)pc24,get_rom_label(reg68k_pc),(long)reg68k_sr.sr_int,(long)regs.sp,(long)b,
+                              (long)reg68k_regs[0], (long)reg68k_regs[1], (long)reg68k_regs[2], (long)reg68k_regs[3], (long)reg68k_regs[4], (long)reg68k_regs[5], (long)reg68k_regs[6], (long)reg68k_regs[7],
+                              (long)reg68k_regs[8], (long)reg68k_regs[9], (long)reg68k_regs[10],(long)reg68k_regs[11],(long)reg68k_regs[12],(long)reg68k_regs[13],(long)reg68k_regs[14],(long)reg68k_regs[15]
+                            );
+              }            
 }
 #endif  /// end of ifdef XXXDEBUG disabled code
 
 #ifdef CPU_CORE_TESTER
 void reg68k_ext_core_tester(void)
 {
- char texttext[1024];
- 
- abort_opcode=2;  diss68k_gettext(ipc, text);
- snprintf(texttext,1024,"opcode:%s (%04x) @%d/%08x icache:%02x%02x %02x%02x  %02x%02x %02x%02x  %02x%02x %02x%02x  %02x%02x %02x%02x\n",
-             text,ipc->opcode,context,reg68k_pc,
-               lisa_ram_safe_getbyte(context,pc24+0),
-               lisa_ram_safe_getbyte(context,pc24+1),
-               lisa_ram_safe_getbyte(context,pc24+2),
-               lisa_ram_safe_getbyte(context,pc24+3),
+  char texttext[1024];
 
-               lisa_ram_safe_getbyte(context,pc24+4),
-               lisa_ram_safe_getbyte(context,pc24+5),
-               lisa_ram_safe_getbyte(context,pc24+6),
-               lisa_ram_safe_getbyte(context,pc24+7),
-
-               lisa_ram_safe_getbyte(context,pc24+8),
-               lisa_ram_safe_getbyte(context,pc24+9),
-               lisa_ram_safe_getbyte(context,pc24+10),
-               lisa_ram_safe_getbyte(context,pc24+11),
-
-               lisa_ram_safe_getbyte(context,pc24+12),
-               lisa_ram_safe_getbyte(context,pc24+13),
-               lisa_ram_safe_getbyte(context,pc24+14),
-               lisa_ram_safe_getbyte(context,pc24+15) );
- 
-               corecpu_start_opcode(texttext, context);
+  abort_opcode=2;  diss68k_gettext(ipc, text);
+  snprintf(texttext,1024,"opcode:%s (%04x) @%ld/%08lx icache:%02lx%02lx %02lx%02lx  %02lx%02lx %02lx%02lx  %02lx%02lx %02lx%02lx  %02lx%02lx %02lx%02lx\n",
+            text,(long)ipc->opcode,(long)context,(long)reg68k_pc,
+              (long)lisa_ram_safe_getbyte(context,pc24+0),    (long)lisa_ram_safe_getbyte(context,pc24+1),    (long)lisa_ram_safe_getbyte(context,pc24+2),
+              (long)lisa_ram_safe_getbyte(context,pc24+3),    (long)lisa_ram_safe_getbyte(context,pc24+4),    (long)lisa_ram_safe_getbyte(context,pc24+5),
+              (long)lisa_ram_safe_getbyte(context,pc24+6),    (long)lisa_ram_safe_getbyte(context,pc24+7),    (long)lisa_ram_safe_getbyte(context,pc24+8),
+              (long)lisa_ram_safe_getbyte(context,pc24+9),    (long)lisa_ram_safe_getbyte(context,pc24+10),   (long)lisa_ram_safe_getbyte(context,pc24+11),
+              (long)lisa_ram_safe_getbyte(context,pc24+12),   (long)lisa_ram_safe_getbyte(context,pc24+13),   (long)lisa_ram_safe_getbyte(context,pc24+14),
+              (long)lisa_ram_safe_getbyte(context,pc24+15) );
+              corecpu_start_opcode(texttext, context);
 
 }
 #endif
@@ -1219,23 +1208,23 @@ void reg68k_ext_core_tester(void)
 
 int32 reg68k_external_execute(int32 clocks)
 {
- XTIMER entry=cpu68k_clocks;
- XTIMER entry_stop=cpu68k_clocks+clocks;
- XTIMER clks_stop=cpu68k_clocks+clocks;
+  XTIMER entry=cpu68k_clocks;
+  XTIMER entry_stop=cpu68k_clocks+clocks;
+  XTIMER clks_stop=cpu68k_clocks+clocks;
 
  // remove these.
  // XTIMER entrystop=cpu68k_clocks_stop;
 
- int i,j,k=0;
+  int i,j,k=0;
 
 
 #ifdef DEBUG
-   static char text[16384];
-   #ifdef SUPPRESS_LOOP_DISASM
+    static char text[16384];
+    #ifdef SUPPRESS_LOOP_DISASM
       int32 suppress_printregs=0;
       int32 last_regs_idx=0;
       t_regs last_regs[MAX_LOOP_REGS];               // last opcode register values
-   #endif
+    #endif
 #endif
 
 
@@ -1246,14 +1235,14 @@ static mmu_trans_t *mt;
 static uint32 last_pc;
 
 #ifdef DEBUG
-  if ( !atexitset)
-     {
+  if  ( !atexitset)
+      {
       //atexit(dump_scc);
       //atexit(dumpallmmu);
       //atexit(xdumpram);
       //atexit(dumpvia);
         atexitset=1;
-    }
+      }
 #endif
 
 {
@@ -1277,9 +1266,8 @@ static uint32 last_pc;
     lastpc24=pc24;
     clks_stop=MIN(clks_stop,cpu68k_clocks_stop);
 
-    DEBUG_LOG(0,"\n\ncpu68k_clocks is:%016lx before entering do-while loop\nwill expire at %016lx",cpu68k_clocks,
-                clks_stop);
-
+    DEBUG_LOG(0,"\n\ncpu68k_clocks is:%016llx before entering do-while loop\nwill expire at %016llx",(long long)cpu68k_clocks,
+                (long long)clks_stop);
     do {
             abort_opcode=0;
             SET_CPU_FNC_CODE();
@@ -1306,68 +1294,66 @@ static uint32 last_pc;
 
             ////////////////////////////////////////////////////////////////////////////////////////////////////////////
             mt=&mmu_trans[(pc24>>9) & 32767];
-            if (mt->readfn==bad_page)
-               {
-                 //ALERT_LOG(0,"****************\nCurrent opcode lives inside a bad_page, throwing lisa_mmu_exception @ %d/%08x. Previous IR=%04x",
-                 //     context,pc24,InstructionRegister);
-                 //ALERT_LOG(0,"mmu_trans[%04x] segment #%d\n\n",(pc24>>9) & 32767,(pc24>>17));
-                 //fflush(buglog);dumpmmupage(context, (pc24>>17), buglog); fflush(buglog);
-                 lisa_mmu_exception(pc24);
-                 break;           // this break here causes the "fucked timing" danger warning - it can be ignored
-               }
+            if  (mt->readfn==bad_page)
+                {
+                    //ALERT_LOG(0,"****************\nCurrent opcode lives inside a bad_page, throwing lisa_mmu_exception @ %ld/%08lx. Previous IR=%04lx",
+                    //     (long)context,(long)pc24,(long)InstructionRegister);
+                    //ALERT_LOG(0,"mmu_trans[%04lx] segment #%ld\n\n",(long)(pc24>>9) & 32767,(long)(pc24>>17));
+                    //fflush(buglog);dumpmmupage(context, (pc24>>17), buglog); fflush(buglog);
+                    lisa_mmu_exception(pc24);
+                    break;           // this break here causes the "fucked timing" danger warning - it can be ignored
+                }
 
-             lastsflag=reg68k_sr.sr_struct.s;
+            lastsflag=reg68k_sr.sr_struct.s;
 
             #ifdef DEBUG
-               #ifdef SUPPRESS_LOOP_DISASM
-               reg68k_exec_suppress_loop_disasm();
-               #else
-               if (debug_log_enabled)  {printregs(buglog,"");} // printlisatime(buglog);}
-               #endif
+              #ifdef SUPPRESS_LOOP_DISASM
+              reg68k_exec_suppress_loop_disasm();
+              #else
+                if (debug_log_enabled)  {printregs(buglog,"");} // printlisatime(buglog);}
+              #endif
             #endif
-            
             // get the page and the mmu_translation table entry for this pc24
             page=(pc24 & 0x00ffffff)>>9;     mt=&mmu_trans[page];
 
             // Is this page table allocated?  If not allocate it as needed.
             if (mt!=NULL && mt->table!=NULL)
             {
-               ipc=&(mt->table->ipc[(pc24 & 0x1ff)>>1]);
+                ipc=&(mt->table->ipc[(pc24 & 0x1ff)>>1]);
 
-               // we have an IPC, now check it to see that it matches what's in there
-               // this is a sanity check against moved pages, but not against self
-               // modifying code which only changes operands - that would be too slow
-               // to check.
+                // we have an IPC, now check it to see that it matches what's in there
+                // this is a sanity check against moved pages, but not against self
+                // modifying code which only changes operands - that would be too slow
+                // to check.
+                abort_opcode=2;
+                // this all evaluates to a single if statement, which if the define is set is skipped
+                #ifndef EVALUATE_EACH_IPC
+                 // these are a bit weird because I don't want the compiler through optimization
+                 // to reorder the tests and cause a segfault.
+                  volatile static int flag;
+                  flag=(ipc==NULL);
+                  if  (!flag) flag=(ipc->function==NULL);
 
-               abort_opcode=2;
+                  if  (!flag) 
+                      {   uint16 myword=fetchword(pc24 & 0x00ffffff);
+                          if (ipc->opcode!=myword) flag=1;
+                      }
 
-               // this all evaluates to a single if statement, which if the define is set is skipped
-               #ifndef EVALUATE_EACH_IPC
-               // these are a bit weird because I don't want the compiler through optimization
-               // to reorder the tests and cause a segfault.
-               volatile static int flag;
-               flag=(ipc==NULL);
-               if (!flag) flag=(ipc->function==NULL);
-               if (!flag) 
-                  {  uint16 myword=fetchword(pc24 & 0x00ffffff);
-                     if (ipc->opcode!=myword) flag=1;
-                  }
-
-               if (flag) //==13256== Conditional jump or move depends on uninitialised value(s)
-               #endif
+                  if (flag) //==13256== Conditional jump or move depends on uninitialised value(s)
+                #endif
                 {
                     if (abort_opcode==1) break;
                     if (!mt->table) {abort_opcode=2; mt->table=get_ipct();}  //we can skip free_ipct
                     abort_opcode=2; cpu68k_makeipclist(pc24 & 0x00ffffff); if (abort_opcode==1) break; //==24726== Conditional jump or move depends on uninitialised value(s)
                     ipc=&(mt->table->ipc[(pc24 & 0x1ff)>>1]);
                 }
-               abort_opcode=0;
+                abort_opcode=0;
 
-                 
+
                 #if defined(DEBUG) && defined(ICACHE_DEBUG)
-                reg68k_exec_icache_debug();
+                  reg68k_exec_icache_debug();
                 #else
-                       debug_log_enabled|=dbx;
+                  debug_log_enabled|=dbx;
                 #endif
             } // end of if (mt!=NULL && mt->table!=NULL)
             else // need to make this IPC table
@@ -1380,54 +1366,54 @@ static uint32 last_pc;
                 if (abort_opcode==1) break;
 
                 #ifdef DEBUG
-                       if ( !mt->table)  {DEBUG_LOG(-1,"reg68k_extern_exec: got a null mt->table from makeipclist!");}
+                    if ( !mt->table)  {DEBUG_LOG(-1,"reg68k_extern_exec: got a null mt->table from makeipclist!");}
                 #endif
 
                 ipc=&(mt->table->ipc[(pc24 & 0x1ff)>>1]);
-             }
+            }
 
             // If the page isn't RAM or ROM, then we can't execute it.
             // I can get rid of this check to speed things up... but...
 
-#ifdef DEBUG
-             if (mt->readfn!=ram && mt->readfn!=sio_rom && mt->readfn!=sio_mmu)
-             {
-                EXITR(397,0,"Woot! Trying to execute from non-ram/rom! Living dangerously!"
-                           "Bye Bye! PC24= %08x  ipc# %d mt->readfn=%d %s\n",pc24,(pc24 & 0x1ff)>>1,mt->readfn,mspace(mt->readfn));
-             }
-             else
-#endif
-             {
+            #ifdef DEBUG
+              if (mt->readfn!=ram && mt->readfn!=sio_rom && mt->readfn!=sio_mmu)
+              {
+                  EXITR(397,0,"Woot! Trying to execute from non-ram/rom! Living dangerously!"
+                            "Bye Bye! PC24= %08lx  ipc# %ld mt->readfn=%ld %s\n",(long)pc24,(long)(pc24 & 0x1ff)>>1,(long)mt->readfn,mspace(mt->readfn));
+              }
+              else
+            #endif
+              {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-               #ifdef DEBUG
-               reg68k_exec_debug_block(clocks,mt,k,ipc,text);
-               #endif
+                #ifdef DEBUG
+                  reg68k_exec_debug_block(clocks,mt,k,ipc,text);
+                #endif
                //this guy 20190630}
-               last_cpu68k_clocks=cpu68k_clocks;
+                last_cpu68k_clocks=cpu68k_clocks;
 
                // Cheat to skip over big wait loop in NMI code
-               #ifdef SKIP_BIGWAIT_NMI_CODE
-               reg68k_exec_skip_bigwait_nmi_code();
-               #endif
+                #ifdef SKIP_BIGWAIT_NMI_CODE
+                  reg68k_exec_skip_bigwait_nmi_code();
+                #endif
 
-               if (abort_opcode==1) {EXITR(476,0,"MMU/BUS/Address exception occured on opcode fetch!\n");}
-               abort_opcode=0;          // clear any addr/bus errors/traps/etc that may have occured.
+                if (abort_opcode==1) {EXITR(476,0,"MMU/BUS/Address exception occured on opcode fetch!\n");}
+                abort_opcode=0;          // clear any addr/bus errors/traps/etc that may have occured.
 
-               InstructionRegister=ipc->opcode;
+                InstructionRegister=ipc->opcode;
 
-               #if defined(DEBUG) && defined(CPU_CORE_TESTER)
-               reg68k_ext_core_tester();
-               #endif
+                #if defined(DEBUG) && defined(CPU_CORE_TESTER)
+                  reg68k_ext_core_tester();
+                #endif
                 
                 if   (ipc->function)                               // if the IPC is valid, and loaded            // valgrind:==24726== Conditional jump or move depends on uninitialised value(s)
                      {SET_CPU_FNC_DATA(); ipc->function(ipc);}     // execute the function, else rebuild the IPC //==24726==    by 0x300669: init_ipct_allocator (cpu68k.c:813)
-                else {                                             //                                            // Uninitialised value was created by a heap allocation
+                else  {                                             //                                            // Uninitialised value was created by a heap allocation
                         static t_iib *piib;
 
                         PAUSE_DEBUG_MESSAGES();
                         if (!(piib = cpu68k_iibtable[fetchword(reg68k_pc)]))
-                            ALERT_LOG(1,"Invalid instruction @ %08X\n", reg68k_pc); // RA
+                            ALERT_LOG(1,"Invalid instruction @ %08lX\n", (long)reg68k_pc); // RA
                         RESUME_DEBUG_MESSAGES();
 
                         SET_CPU_FNC_CODE();
@@ -1437,15 +1423,12 @@ static uint32 last_pc;
                         #endif
 
                         cpu68k_ipc(reg68k_pc,piib,ipc);
-                        
 
                         #ifdef DEBUG
-                        if (piib->clocks!=ipc->clks)
-                            DEBUG_LOG(0,"ERROR:iib clocks:%d != ipc clocks:%d !", piib->clocks , ipc->clks);
-
-                        DEBUG_LOG(0,"Got an IPC without a function at %08x, opcode is:%04x doing it manually - like it's just 0000 OR ",reg68k_pc,ipc->opcode);
+                          if (piib->clocks!=ipc->clks)
+                              DEBUG_LOG(0,"ERROR:iib clocks:%ld != ipc clocks:%ld !", (long)piib->clocks , (long)ipc->clks);
+                          DEBUG_LOG(0,"Got an IPC without a function at %08lx, opcode is:%04lx doing it manually - like it's just 0000 OR ",(long)reg68k_pc,(long)ipc->opcode);
                         #endif
-
 
                         if (abort_opcode==1) break;
 
@@ -1454,65 +1437,65 @@ static uint32 last_pc;
                         PAUSE_DEBUG_MESSAGES();
 
                         SET_CPU_FNC_DATA();
-                        if   (abort_opcode==1) 
-                             {
-                               DEBUG_LOG(0,"MMU/BUS/Address exception occured on opcode fetch!\n"); 
-                               fflush(buglog); 
-                               break;
-                             }
+                        if  (abort_opcode==1) 
+                            {
+                              DEBUG_LOG(0,"MMU/BUS/Address exception occured on opcode fetch!\n"); 
+                              fflush(buglog); 
+                              break;
+                            }
                         else {
-                               InstructionRegister=ipc->opcode;
-                               abort_opcode=0;
-                               if (ipc->function) ipc->function(ipc);
-                               else {   EXITR(277,0,"No ipc function at %d/%08x, even after attempting to get one!\n",context,pc24);}
-                             }
-                     }
+                              InstructionRegister=ipc->opcode;
+                              abort_opcode=0;
+                              if (ipc->function) ipc->function(ipc);
+                              else {   EXITR(277,0,"No ipc function at %ld/%08lx, even after attempting to get one!\n",(long)context,(long)pc24);}
+                            }
+                      }
                   
-                     #if defined(DEBUG) && defined(CPU_CORE_TESTER)
-                     corecpu_complete_opcode(context);
-                     #endif
+                    #if defined(DEBUG) && defined(CPU_CORE_TESTER)
+                      corecpu_complete_opcode(context);
+                    #endif
 
-                     #if defined(DEBUG) && defined(XXXDEBUG)
-                     reg68k_ext_exec_various_dug();
-                     #endif
+                    #if defined(DEBUG) && defined(XXXDEBUG)
+                      reg68k_ext_exec_various_dug();
+                    #endif
 
-                     pc24 = reg68k_pc; //20060321// & 0x00ffffff;
-                     abort_opcode=0;
-                     cpu68k_clocks+=ipc->clks;
-        } // if execute from ram/rom else statement
+                    pc24 = reg68k_pc; //20060321// & 0x00ffffff;
+                    abort_opcode=0;
+                    cpu68k_clocks+=ipc->clks;
+              } // if execute from ram/rom else statement
 
     #ifdef DEBUG
-    if (0==reg68k_pc) { DEBUG_LOG(0,"pc=0 LastPC24=%08x pc24=%08x abort_opcode:%d",lastpc24,pc24,abort_opcode);}
+      if (0==reg68k_pc) { DEBUG_LOG(0,"pc=0 LastPC24=%08lx pc24=%08lx abort_opcode:%ld",(long)lastpc24,(long)pc24,(long)abort_opcode);}
     #endif
 
     clks_stop=(MIN(clks_stop,cpu68k_clocks_stop));
 
-   } while (clks_stop>cpu68k_clocks && !regs.stop);
+  } while (clks_stop>cpu68k_clocks && !regs.stop);
 
 
 #ifdef DEBUG
-    DEBUG_LOG(0,"pc=%08x cpu68k_clocks is:%016lx stop is :%016lx diff:%016lx  regs.stop is %d event:%d %s after exiting do-while loop",
-            reg68k_pc, cpu68k_clocks,cpu68k_clocks_stop,
-            cpu68k_clocks_stop-cpu68k_clocks, regs.stop,
+    DEBUG_LOG(0,"pc=%08lx cpu68k_clocks is:%016llx stop is :%016llx diff:%016llx  regs.stop is %ld event:%d %s after exiting do-while loop",
+            (long)reg68k_pc, (long long)cpu68k_clocks, (long long)cpu68k_clocks_stop,
+            (long long)cpu68k_clocks_stop-cpu68k_clocks, (long)regs.stop,
             next_timer_id(),gettimername(next_timer_id() ) );
 
-    printregs(buglog,"");
+    printregs(buglog,""); 
 #endif
 
-   last_pc=reg68k_pc;
-   regs.pc = reg68k_pc;  regs.sr.sr_int = reg68k_sr.sr_int;
+    last_pc=reg68k_pc;
+    regs.pc = reg68k_pc;  regs.sr.sr_int = reg68k_sr.sr_int;
 
 
    // handle NMI - NMI unlike Bus Error occurs AFTER the current opcode completes. ////////////////////////////////////////////
-   if (nmi_clk && nmi_pc)
-   {  // regs.stop=nmi_stop;                                    // NMI can only occur on memory access resulting in soft parity error, not while cpu is stopped
-         regs.stop=0;
-         reg68k_internal_vector(0x1f, reg68k_pc,nmi_addr_err);  // 7 is wrong for vector, right for autovector.
-         nmi_addr_err=0;  nmi_clk=0; nmi_pc=0; nmi_stop=0;      // clear flags
-         regs.stop=0;
-   }
+    if (nmi_clk && nmi_pc)
+    {  // regs.stop=nmi_stop;                                    // NMI can only occur on memory access resulting in soft parity error, not while cpu is stopped
+        regs.stop=0;
+        reg68k_internal_vector(0x1f, reg68k_pc,nmi_addr_err);  // 7 is wrong for vector, right for autovector.
+        nmi_addr_err=0;  nmi_clk=0; nmi_pc=0; nmi_stop=0;      // clear flags
+        regs.stop=0;
+    }
    else  // NMI did not occur, instead, see if there's a pending IRQ, or we're very close to one.
-   {
+    {
                               // check for the next pending IRQ's.
           if (cpu68k_clocks+10>=cpu68k_clocks_stop)
           {
@@ -1524,14 +1507,12 @@ static uint32 last_pc;
 
             //ALERT_LOG(0,"irq timings: fire_pending_int_auto:%ldms, check_current_timer_irq:%ldms, total:%ldms",y-x,z-y,z-x);
           }
-   }
+    }
 
-   if (regs.stop)  cpu68k_clocks=cpu68k_clocks_stop;
-
+    if (regs.stop)  cpu68k_clocks=cpu68k_clocks_stop;
    ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   //insetjmpland=0; //2019601
- }
-
+  }
 
  return entry_stop-cpu68k_clocks;           // how many cycles left over if positive, negative if did too many.
 }
@@ -1541,59 +1522,52 @@ static uint32 last_pc;
 
 void reg68k_external_autovector(int avno)
 {
-      {
     /* move PC and register block into global processor register variables */
 //20190601        reg68k_pc = regs.pc;
 //20190601        reg68k_regs = regs.regs;
 //20190601        reg68k_sr.sr_int = regs.sr.sr_int;
-        DEBUG_LOG(0,"Inside setjmp land, about to call internal_autovector:%d reg68k_pc:%08x reg68k_sr:%08x",avno,reg68k_pc,reg68k_sr.sr_int);
+        DEBUG_LOG(0,"Inside setjmp land, about to call internal_autovector:%ld reg68k_pc:%08lx reg68k_sr:%08lx",(long)avno,(long)reg68k_pc,(long)reg68k_sr.sr_int);
         //insetjmpland=1;
 
         reg68k_internal_autovector(avno);
 
-        DEBUG_LOG(0,"Autovector:%d reg68k_pc:%08x reg68k_sr:%08x regs.pc:%08x regs.sr:%08x, exiting setjmp land",avno,reg68k_pc,reg68k_sr.sr_int,regs.pc,regs.sr.sr_int);
-    /* restore global registers back to permanent storage */
+        DEBUG_LOG(0,"Autovector:%ld reg68k_pc:%08lx reg68k_sr:%08lx regs.pc:%08lx regs.sr:%08lx, exiting setjmp land",(long)avno,(long)reg68k_pc,(long)reg68k_sr.sr_int,
+                  (long)regs.pc,(long)regs.sr.sr_int);
+        /* restore global registers back to permanent storage */
         regs.pc = reg68k_pc;
         regs.sr.sr_int = reg68k_sr.sr_int;
-
         //insetjmpland=1; //20190601
-    }
 }
 
 
 void reg68k_external_vector(int vector, uint32 oldpc,uint32 addr_error)
 {
-    DEBUG_LOG(0,"VECTOR: %d, OLDPC:%08x memerr@:%08x",vector,oldpc,addr_error);
-       if (insetjmpland)
-       {
-        reg68k_internal_vector(vector,oldpc,addr_error);
-        return;
-       }
+    DEBUG_LOG(0,"VECTOR: %ld, OLDPC:%08lx memerr@:%08lx",(long)vector,(long)oldpc,(long)addr_error);
+    if  (insetjmpland)
+        {
+          reg68k_internal_vector(vector,oldpc,addr_error);
+          return;
+        }
 
-     {
-    /* move PC and register block into global processor register variables */
-
-        DEBUG_LOG(0,"In setjmp land vector:%d oldpc:%08x regs.pc:%08x regs.sr:%x",vector,oldpc,regs.pc,regs.sr.sr_int);
+        DEBUG_LOG(0,"In setjmp land vector:%ld oldpc:%08lx regs.pc:%08lx regs.sr:%lx",(long)vector,(long)oldpc,(long)regs.pc,(long)regs.sr.sr_int);
 
 //20190601        reg68k_pc = regs.pc;
 //20190601        reg68k_regs = regs.regs;
 //20190601        reg68k_sr.sr_int = regs.sr.sr_int;
 ////20190601      insetjmpland=1;
 
-        DEBUG_LOG(0,"Calling internal_vector from external reg68k_pc:%08x reg68k_sr:%x",reg68k_pc,reg68k_sr.sr_int);
+        DEBUG_LOG(0,"Calling internal_vector from external reg68k_pc:%08lx reg68k_sr:%lx",(long)reg68k_pc,(long)reg68k_sr.sr_int);
         reg68k_internal_vector(vector,oldpc,addr_error);
-        DEBUG_LOG(0,"Done with internal_vector vector:%d reg68k_pc:%08x reg68k_sr:%08x regs.pc:%08x regs.sr:%08x, exiting setjmp land",
-                vector,
-                reg68k_pc,
-                reg68k_sr.sr_int,regs.pc,regs.sr.sr_int);
-
+        DEBUG_LOG(0,"Done with internal_vector vector:%ld reg68k_pc:%08lx reg68k_sr:%08lx regs.pc:%08lx regs.sr:%08lx, exiting setjmp land",
+                  (long)vector,
+                  (long)reg68k_pc,
+                  (long)reg68k_sr.sr_int,(long)regs.pc,(long)regs.sr.sr_int);
 
     /* restore global registers back to permanent storage */
         regs.pc = reg68k_pc;
         regs.sr.sr_int = reg68k_sr.sr_int;
 
         //insetjmpland=1; //20190601
-    }
 }
 
 
@@ -1612,145 +1586,28 @@ void reg68k_update_supervisor_external(void)  {lastsflag=regs.sr.sr_struct.s;}
 #define SETSUPERVISOR(x)  {reg68k_sr.sr_struct.s = (x);}
 #define GETSUPERVISOR()   (reg68k_sr.sr_struct.s)
 
-/* reg68k_internal_autovector - go to autovector - this call assumes global
-     registers are already setup
-interrupts must not occur during cpu68k_frozen, as this flag indicates
-that we are catching up events due to a dma transfer.  Since the dma
-transfer is triggered by a memory write at which stage the current value
-of the PC is not written anywhere (due to being in the middle of a 68k
-    block and it's in a local register), we MUST NOT use regs.pc - this
-routine uses reg68k_pc but this is loaded by reg68k_external_autovector,
-which is called by event_nextevent() and therefore will be a *WRONG*
-    reg68k_pc!
-*/
-
-
-
-void reg68k_internal_autovector(int avno)
-{
-
-    reg68k_internal_vector(V_AUTO + avno - 1,reg68k_pc,0);  //-1
-
-
-    #ifdef DISABLED_2005_02_02
-    int curlevel = (reg68k_sr.sr_int >> 8) & 7;
-    uint32 tmpaddr;
-    uint16 saved_sr=reg68k_sr.sr_int;
-
-       if (!insetjmpland)
-       {if (buglog) fprintf(buglog,"*** DANGER Entering %s:%s:%d from %s setjmpland*****\n",__FILE__,__FUNCTION__,__LINE__,(insetjmpland ? "inside" : "outside")); fflush(buglog);
-       reg68k_external_autovector(avno);
-       return;
-       }
-
-    DEBUG_LOG(0,"curlevel:%d avno:%d cpufrozen: %ld",curlevel,avno,cpu68k_frozen);
-    fflush(buglog); fflush(stdout);
-
-    if ((curlevel < avno || avno == 7) && !cpu68k_frozen)
-    {
-      #ifdef DEBUG
-       if (avno==1 && floppy_FDIR) append_floppy_log("reg68k_int_av_ ***Firing IRQ1 because FDIR is set***\n");
-      #endif
-
-       if (regs.stop && nmi_clk && nmi_pc) {regs.stop=0; nmi_addr_err=0;  nmi_clk=0; nmi_pc=0; nmi_stop=0;}      // clear flags
-       else  if (regs.stop)
-        {
-            DEBUG_LOG(0,"exiting from STOP opcode @%08x - will continue at %08x after ISR handles IRQ:%d.",reg68k_pc,reg68k_pc+4,vno);
-            reg68k_pc += 4;  /* autovector whilst in a STOP instruction */
-            regs.stop = 0;
-            regs.pc = reg68k_pc; regs.sr = reg68k_sr;
-        }
-
-
-        if (!GETSUPERVISOR()) {
-            SWAPA7withSSP();
-            SETSUPERVISOR(1);
-
-            DEBUG_LOG(0,"S mode change SP:%08x/A7:%08x swapped.",reg68k_regs[15],regs.sp);
-
-           // if (segment1|segment2)
-              {
-               //lastsflag=reg68k_sr.sr_struct.s;
-               regs.pc = reg68k_pc; regs.sr = reg68k_sr;
-               SET_MMU_DIRTY(0xdec0de);
-               mmuflush(0x3000);
-               if (buglog) fprintf(buglog,"post mmuflush context=%d s1/s2=%d/%d start=%d\n",context,segment1,segment2,start);
-              }
-           // Supervisor flag set causes context change
-        }
-        lastsflag=reg68k_sr.sr_struct.s;
-
-        A7PUSH_LONG(reg68k_pc); if (abort_opcode==1) {EXIT(779,0,"Doh! got abort_opcode=%d on storeword of SR!\n",abort_opcode); }
-        A7PUSH_WORD(saved_sr);  if (abort_opcode==1) {EXIT(780,0,"Doh! got abort_opcode=1 on storeword of SR!\n");}
-
-        // insert format/vector here    // RA for 68010+ disable for 68000/68008.
-        //   FV=0x1000 | ((V_AUTO + avno - 1) * 4);
-        //or FV=0x0000 | ((V_AUTO + avno - 1) * 4);
-        //reg68k_regs[15] -= 2;
-        //storeword(reg68k_regs[15], FV);
-        ////////////////////////////////
-
-        reg68k_sr.sr_struct.t = 0;
-        reg68k_sr.sr_int &= ~0x0700;
-        reg68k_sr.sr_int |= avno << 8;
-        tmpaddr = reg68k_pc;
-
-        DEBUG_LOG(0,"autovector#%d V_AUTO:%08x Vector address: %d * 4 = %08x",avno,V_AUTO,(V_AUTO + avno - 1),((V_AUTO + avno - 1)*4));
-
-        abort_opcode=0;
-        reg68k_pc = fetchlong((V_AUTO + avno - 1) * 4);
-        if (abort_opcode==1) {EXIT(781,0,"Doh! got abort_opcode=1 while fetching vector for IRQ!\n"); }
-
-        DEBUG_LOG(0,"INTERNAL AUTOVECTOR %d: oldpc %x -> newpc is %x\n", avno, tmpaddr, reg68k_pc);
-
-      //  if (avno<7 && avno) pending_vector_bitmap &= ~(1<<(avno-1));
-
-      //  regs.pending = get_pending_vector();
-        // restore regs to extern
-        regs.pc = reg68k_pc;
-        regs.sr.sr_int = reg68k_sr.sr_int;
-
-    }
-    else
-    {
-
-//      if (avno<7 && avno) pending_vector_bitmap |= (1<<(avno-1));
-//      regs.pending = get_pending_vector();
-//     if (!regs.pending || regs.pending < avno)
-//     {
-//        printregs(buglog,"");
-//        DEBUG_LOG(0,"INTERNAL AUTOVECTOR %d: was not taken because IRQ level:%d filtered it. set pending to it...SR:%04x:%04x %s\n\n",avno,curlevel,regs.sr.sr_int,reg68k_sr.sr_int,
-//                ((regs.sr.sr_int!=reg68k_sr.sr_int) ? "DANGER":"ok"));
-//
-//        regs.pending = avno;
-//      }
-//        //regs.pending = 0;
-
-    }
-    #endif
-}
+void reg68k_internal_autovector(int avno)   { reg68k_internal_vector(V_AUTO + avno - 1,reg68k_pc,0); }
 
 void reg68k_internal_vector(int vno, uint32 oldpc, uint32 addr_error)
 {
-   static uint32 lastoldpc;
-   static int32  lastclk;
-   static int lastvno;
-   uint16 saved_sr=reg68k_sr.sr_int;
+    static uint32 lastoldpc;
+    static int32  lastclk;
+    static int lastvno;
+    uint16 saved_sr=reg68k_sr.sr_int;
 
-   int avno=(vno-V_AUTO+1);
-   int curlevel = (reg68k_sr.sr_int >> 8) & 7;
-   //unused//static uint32 tmpaddr;
-   uint16 busfunctioncode;
-   uint8 old_supervisor=reg68k_sr.sr_struct.s;
+    int avno=(vno-V_AUTO+1);
+    int curlevel = (reg68k_sr.sr_int >> 8) & 7;
+    //unused//static uint32 tmpaddr;
+    uint16 busfunctioncode;
+    uint8 old_supervisor=reg68k_sr.sr_struct.s;
 
-   if (vno==V_LINE15)
-   { 
+    if (vno==V_LINE15)
+    { 
       uint16 opcode,fn;
-
 
       if (romless && (reg68k_pc & 0x00ff0000)==0x00fe0000)
       {
-       if (romless_entry()) return;
+        if (romless_entry()) return;
       }
 
       abort_opcode=2; opcode=fetchword(reg68k_pc);          //if (abort_opcode==1) fn=0xffff;
@@ -1759,7 +1616,7 @@ void reg68k_internal_vector(int vno, uint32 oldpc, uint32 addr_error)
 
       if (opcode == 0xfeed)
       {
-        ALERT_LOG(0,"F-Line-Wormhole %04x",fn);
+        ALERT_LOG(0,"F-Line-Wormhole %04lx",(long)fn);
         switch(fn)
         {
           #ifdef DEBUG
@@ -1781,15 +1638,14 @@ void reg68k_internal_vector(int vno, uint32 oldpc, uint32 addr_error)
         }
       }
       if (opcode==0xfeef) {
-                           ALERT_LOG(0,"Executing blank IPC @ %08lx",(long)reg68k_pc);
-                           EXIT(99,0,"EEEK! Trying to execute blank IPC at %08lx - something is horribly wrong!",(long)reg68k_pc);
-                         }
+                              ALERT_LOG(0,"Executing blank IPC @ %08lx",(long)reg68k_pc);
+                              EXIT(99,0,"EEEK! Trying to execute blank IPC at %08lx - something is horribly wrong!",(long)reg68k_pc);
+                          }
       ALERT_LOG(0,"Unhandled F-Line %04lx at %08lx",(long)opcode,(long)reg68k_pc);
-   }
+    }
 
     /*-----------------12/8/2003 9:56PM-----------------
      * needs to do this: RA
-     *
      * SSP-2 ->SSP                      // push FV -- 680010+ only
      * Format/Vector Offset -> (SSP)
      * SSP-4->4->SSP                    // push PC
@@ -1797,104 +1653,99 @@ void reg68k_internal_vector(int vno, uint32 oldpc, uint32 addr_error)
      * SSP-2 ->SSP                      // push SR
      * SR->(SSP)
      * Vector Address->PC               // PC=Vector
-     *
      * --------------------------------------------------*/
-
 
    // #ifdef DEBUG
    //     validate_mmu_segments("reg68k internal_vector");
    //  #endif
 
    // avoid bus/addr error repeats on multi-operand opcodes...
-   if (lastclk==cpu68k_clocks && lastvno==vno)
-      {
-        DEBUG_LOG(0,"Suppressing internal_vector - VECTOR:%d, oldpc:%08x clk:%016lx",vno,oldpc,cpu68k_clocks);
-        return;
-      }
+    if  (lastclk==cpu68k_clocks && lastvno==vno)
+        {
+          DEBUG_LOG(0,"Suppressing internal_vector - VECTOR:%ld, oldpc:%08lx clk:%016llx",(long)vno,(long)oldpc,(long long)cpu68k_clocks);
+          return;
+        }
 
-   lastclk =cpu68k_clocks;   lastvno =vno;   lastoldpc =oldpc;
+    lastclk =cpu68k_clocks;   lastvno =vno;   lastoldpc =oldpc;
 
+    #ifdef DEBUG
 
-   #ifdef DEBUG
+      DEBUG_LOG(0,"Entering: internal_vector - VECTOR:%ld (%s), addr_err:%08lx oldpc:%08lx, pc24:%08lx, reg68k_pc:%08lx",
+                  (long)vno,getvector(vno), (long)addr_error,(long)oldpc,(long)pc24,(long)reg68k_pc);
 
-    DEBUG_LOG(0,"Entering: internal_vector - VECTOR:%d (%s), addr_err:%08x oldpc:%08x, pc24:%08x, reg68k_pc:%08x",
-                 vno,getvector(vno), addr_error,oldpc,pc24,reg68k_pc);
+      if (oldpc!=reg68k_pc && vno<32)
+      ALERT_LOG(0,"DANGER DANGER DANGER oldpc:%08lx is not reg68k_pc:%08lx, pc24:%08lx oldpc24:%08lx vector:%ld",(long)oldpc, (long)reg68k_pc,(long)pc24,(long)lastpc24,(long)vno);
 
-    if (oldpc!=reg68k_pc && vno<32)
-    ALERT_LOG(0,"DANGER DANGER DANGER oldpc:%08x is not reg68k_pc:%08x, pc24:%08x oldpc24:%08x vector:%d",oldpc, reg68k_pc,pc24,lastpc24,vno);
+      if (vno==37) lisaos_trap5();        // log LisaOS trap #5 calls by name
+      printregs(buglog,"irqdone");
 
-    if (vno==37) lisaos_trap5();        // log LisaOS trap #5 calls by name
-    printregs(buglog,"irqdone");
-
-   #endif
+    #endif
 
    if (avno>0 && avno<8)                // If it's an autovector, check the IRQ mask before allowing it to occur.
       {
-        DEBUG_LOG(0,"PC:%08x AutoVector is:%d vector:%d curlevel is %d cpu stop status is:%d",reg68k_pc,avno,vno,curlevel,regs.stop);
+        DEBUG_LOG(0,"PC:%08lx AutoVector is:%ld vector:%ld curlevel is %ld cpu stop status is:%ld",(long)reg68k_pc,(long)avno,(long)vno,(long)curlevel,(long)regs.stop);
         if (! (IS_VECTOR_AVAILABLE_INT(avno))) {DEBUG_LOG(0,"Vector requested is not available (INTMASK too low)");return;}
       }
    else avno=0;                         // clear avno since it wasn't an autovector - this saves time later on the avno check.
 
 
-   if (!GETSUPERVISOR()) {
+    if (!GETSUPERVISOR()) {
+        SWAPA7withSSP();
+        SETSUPERVISOR(1);
+        // 2005.02.01 - removed if statement to force flush here on switch from user to supervisor mode
+        //if (segment1|segment2)                 // if we're not in supervisor space already, flush the mmu
+        { DEBUG_LOG(0,"Turning Supervisor flag on while in internal_vector flushing mmu context=%ld s1/s2=%ld/%ld start=%ld\n",(long)context,(long)segment1,(long)segment2,(long)start);
+          SET_MMU_DIRTY(0xdec0de);  mmuflush(0x3000);
+          DEBUG_LOG(0,"post mmuflush context=%d s1/s2=%d/%d start=%d\n",context,segment1,segment2,start);
+        }
 
-       SWAPA7withSSP();
-       SETSUPERVISOR(1);
-     // 2005.02.01 - removed if statement to force flush here on switch from user to supervisor mode
-     //if (segment1|segment2)                 // if we're not in supervisor space already, flush the mmu
-       {DEBUG_LOG(0,"Turning Supervisor flag on while in internal_vector flushing mmu context=%d s1/s2=%d/%d start=%d\n",context,segment1,segment2,start);
-        SET_MMU_DIRTY(0xdec0de);  mmuflush(0x3000);
-        DEBUG_LOG(0,"post mmuflush context=%d s1/s2=%d/%d start=%d\n",context,segment1,segment2,start);
-       }
-
-       DEBUG_LOG(5,"S mode change SP:%08x/A7:%08x swapped.",reg68k_regs[15],regs.sp);
-       lastsflag=reg68k_sr.sr_struct.s;  regs.pc = reg68k_pc; regs.sr.sr_int = reg68k_sr.sr_int;
+        DEBUG_LOG(5,"S mode change SP:%08lx/A7:%08lx swapped.",(long)reg68k_regs[15],(long)regs.sp);
+        lastsflag=reg68k_sr.sr_struct.s;  regs.pc = reg68k_pc; regs.sr.sr_int = reg68k_sr.sr_int;
     }
 
    // might be a retake of the same addr/bus error on same opcode.  doh!  ie: when btst is done (read, write) two bus errors can occur
    // this is here because the previous run would have set Supervisor, and if it was already set before that, that's fine too
    // the problem is the following fetchlong can't be done until mmu context is set, and mmu is flushed, else gremlins
 
+    {
+      abort_opcode=2;
+      uint32 x=GETVECTOR(vno);
+      uint32 y=lisa_ram_safe_getlong(1, vno*4);
 
-   {
-    abort_opcode=2;
-    uint32 x=GETVECTOR(vno);
-    uint32 y=lisa_ram_safe_getlong(1, vno*4);
+      if (x & 0xff000000) {ALERT_LOG(0,"OOPS! Vector address has bits24-31 set via GETVECTOR(%ld)=%ld/%08lx - safeget_long is 1/%08lx",(long)vno,(long)CXSASEL,(long)x,(long)y);}
 
-    if (x & 0xff000000) {ALERT_LOG(0,"OOPS! Vector address has bits24-31 set via GETVECTOR(%d)=%d/%08x - safeget_long is 1/%08x",vno,CXSASEL,x,y);}
+      if (x==0xaf) {
+                      ALERT_LOG(0,"OOPS! Got bus error whilst trying to fetch vector:%ld - PC:%ld/%08lx",(long)vno,(long)context,(long)oldpc);
+                      SET_MMU_DIRTY(0xdec0de);  mmuflush(0x3000);
+                      x=GETVECTOR(vno);
+                      if (x==0xaf) ALERT_LOG(0,"Failed again after trying to flush mmu! Something is very wrong!");
+                      ALERT_LOG(0,"Attempting the old fetchlong method, if you don't see the result, we're recursive");
+                      abort_opcode=2;
+//                    x=fetchlong(vno*4);
+                      x=lisa_ram_safe_getlong(1, vno*4);
 
-    if (x==0xaf) {
-                   ALERT_LOG(0,"OOPS! Got bus error whilst trying to fetch vector:%d - PC:%d/%08x",vno,context,oldpc);
-                   SET_MMU_DIRTY(0xdec0de);  mmuflush(0x3000);
-                   x=GETVECTOR(vno);
-                   if (x==0xaf) ALERT_LOG(0,"Failed again after trying to flush mmu! Something is very wrong!");
-                   ALERT_LOG(0,"Attempting the old fetchlong method, if you don't see the result, we're recursive");
-                   abort_opcode=2;
-//                   x=fetchlong(vno*4);
-                   x=lisa_ram_safe_getlong(1, vno*4);
+                      ALERT_LOG(0,"Got back from fetchlong:%08lx",(long)x);
+                    }
 
-                   ALERT_LOG(0,"Got back from fetchlong:%08x",x);
-                 }
+      if (x==0xaf || x==oldpc)  {loopy_vector--; abort_opcode=0;  DEBUG_LOG(0,"retake of same vector"); return;}
+    }
 
-    if (x==0xaf || x==oldpc)  {loopy_vector--; abort_opcode=0;  DEBUG_LOG(0,"retake of same vector");
-                                return;}
-   }
-   if (abort_opcode==1)        {EXIT(782,0,"Doh! got abort_opcode=1 on vector fetch in %s!\n",__FUNCTION__); }
-   abort_opcode=0;
+    if (abort_opcode==1)        {EXIT(782,0,"Doh! got abort_opcode=1 on vector fetch in %s!\n",__FUNCTION__); }
+    abort_opcode=0;
 
-   if (regs.stop && nmi_clk && nmi_pc) {regs.stop=0; nmi_addr_err=0;  nmi_clk=0; nmi_pc=0; nmi_stop=0;}      // clear flags
-   else if (regs.stop)
-   {
-       DEBUG_LOG(0,"exiting from STOP opcode @%08x - will continue at %08x after ISR handles IRQ:%d.",reg68k_pc,reg68k_pc+4,vno);
-       oldpc+=4;
-       regs.stop = 0;
-       reg68k_pc=oldpc;
-       pc24=oldpc;
-       regs.pc = oldpc; regs.sr = reg68k_sr;
-   }
+    if (regs.stop && nmi_clk && nmi_pc) {regs.stop=0; nmi_addr_err=0;  nmi_clk=0; nmi_pc=0; nmi_stop=0;}      // clear flags
+    else if (regs.stop)
+    {
+        DEBUG_LOG(0,"exiting from STOP opcode @%08lx - will continue at %08lx after ISR handles IRQ:%ld.",(long)reg68k_pc,(long)reg68k_pc+4,(long)vno);
+        oldpc+=4;
+        regs.stop = 0;
+        reg68k_pc=oldpc;
+        pc24=oldpc;
+        regs.pc = oldpc; regs.sr = reg68k_sr;
+    }
 
-         if (vno==2 || vno==3)
-         {
+    if  (vno==2 || vno==3)
+        {
             if        ((InstructionRegister & 0xff00)==0x4a00) {oldpc+=2;}
             else if   ((InstructionRegister & 0xff00)==0x4e00)
             {
@@ -1906,75 +1757,76 @@ void reg68k_internal_vector(int vno, uint32 oldpc, uint32 addr_error)
               else if ((InstructionRegister & 0x00ff)==0x00a8) {oldpc+=4;}
               else if ((InstructionRegister & 0x00ff)==0x0090) {oldpc+=2;}
               else    {
-                        ALERT_LOG(0,"\n\n\7*** DANGER *** Unhandled opcode in buserror:%04x\n\n\7",InstructionRegister);
+                        ALERT_LOG(0,"\n\n\7*** DANGER *** Unhandled opcode in buserror:%04lx\n\n\7",(long)InstructionRegister);
                         oldpc+=(cpu68k_iibtable[InstructionRegister]->wordlen<<1);
                       }
             }
-         }
+        }
 
-         DEBUG_LOG(0,"PUSH PC %08x context:%d",oldpc,context);  
-         A7PUSH_LONG(oldpc); //   ? (oldpc+(cpu68k_iibtable[InstructionRegister]->wordlen<<1)) : oldpc);
-         if (abort_opcode==1) {EXIT(783,0,"Doh! got abort_opcode=1 on push pc %s!\n",__FUNCTION__); }
-         DEBUG_LOG(0,"PUSH SR %04x context:%d",saved_sr,context);  
-         A7PUSH_WORD(saved_sr); 
-         if (abort_opcode==1) {EXIT(784,0,"Doh! got abort_opcode=1 on push sr in %s!\n",__FUNCTION__); }
+        DEBUG_LOG(0,"PUSH PC %08lx context:%ld",(long)oldpc,(long)context);  
+        A7PUSH_LONG(oldpc); //   ? (oldpc+(cpu68k_iibtable[InstructionRegister]->wordlen<<1)) : oldpc);
+        if (abort_opcode==1) {EXIT(783,0,"Doh! got abort_opcode=1 on push pc %s!\n",__FUNCTION__); }
+        DEBUG_LOG(0,"PUSH SR %04x context:%d",saved_sr,context);  
+        A7PUSH_WORD(saved_sr); 
+        if (abort_opcode==1) {EXIT(784,0,"Doh! got abort_opcode=1 on push sr in %s!\n",__FUNCTION__); }
     // "Short format 0 only four words are to be removed from the top of the stack. SR and PC are loaded from the stack frame."
     abort_opcode=0;
 
-   ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-   if (vno==2 || vno==3)               // PUSH IS IN THIS ORDER: ---> PC,SR,IR,ADDR,BUSFN
-   {  // memerror=(uint16)(( CHK_MMU_TRANS(addr_error) )>>5);
+    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+    if (vno==2 || vno==3)               // PUSH IS IN THIS ORDER: ---> PC,SR,IR,ADDR,BUSFN
+    {  // memerror=(uint16)(( CHK_MMU_TRANS(addr_error) )>>5);
 
-       memerror=(uint16)((               addr_error  )>>5);
+        memerror=(uint16)((               addr_error  )>>5);
 
-       busfunctioncode=CPU_function_code | (CPU_READ_MODE<<4) |1;
+        busfunctioncode=CPU_function_code | (CPU_READ_MODE<<4) |1;
 
-       cpu68k_clocks+=(116*2); // Addr/Bus  // *2 2005.04.13.18:43
+        cpu68k_clocks+=(116*2); // Addr/Bus  // *2 2005.04.13.18:43
 
-       DEBUG_LOG(0,"BUS_OR_ADDR: ADDR error:%d at PC:%08x pc24:%08x addr:%08x clk:%016lx - pushing extended exception frame for 68000",
-            vno,oldpc,pc24,addr_error,cpu68k_clocks);
+        DEBUG_LOG(0,"BUS_OR_ADDR: ADDR error:%ld at PC:%08lx pc24:%08lx addr:%08lx clk:%016llx - pushing extended exception frame for 68000",
+              (long)vno,(long)oldpc,(long)pc24,(long)addr_error,(long long)cpu68k_clocks);
 
-       DEBUG_LOG(0,"PUSH IR:%04x context:%d",InstructionRegister,context); A7PUSH_WORD(InstructionRegister);  if (abort_opcode==1) {EXIT(784,0,"Doh! got abort_opcode=1 on push IR    in %s!\n",__FUNCTION__); }
-       DEBUG_LOG(0,"PUSH AE:%08x context:%d",addr_error,context);          A7PUSH_LONG(addr_error);           if (abort_opcode==1) {EXIT(784,0,"Doh! got abort_opcode=1 on push ADDRC in %s!\n",__FUNCTION__); }
-       DEBUG_LOG(0,"PUSH BF:%04x context:%d",busfunctioncode,context);     A7PUSH_WORD(busfunctioncode);      if (abort_opcode==1) {EXIT(784,0,"Doh! got abort_opcode=1 on push BUSFN in %s!\n",__FUNCTION__); }
+        DEBUG_LOG(0,"PUSH IR:%04lx context:%ld",(long)InstructionRegister,(long)context); A7PUSH_WORD(InstructionRegister);  if (abort_opcode==1) {EXIT(784,0,"Doh! got abort_opcode=1 on push IR    in %s!\n",__FUNCTION__); }
+        DEBUG_LOG(0,"PUSH AE:%08lx context:%ld",(long)addr_error,(long)context);          A7PUSH_LONG(addr_error);           if (abort_opcode==1) {EXIT(784,0,"Doh! got abort_opcode=1 on push ADDRC in %s!\n",__FUNCTION__); }
+        DEBUG_LOG(0,"PUSH BF:%04lx context:%ld",(long)busfunctioncode,(long)context);     A7PUSH_WORD(busfunctioncode);      if (abort_opcode==1) {EXIT(784,0,"Doh! got abort_opcode=1 on push BUSFN in %s!\n",__FUNCTION__); }
 
-       // prevent autovectors from interrupting BUS/ADDR exception ISR's.
-       //DEBUG_LOG(0,"Set Mask to 7 for BUS/ADDR Exception");
+        // prevent autovectors from interrupting BUS/ADDR exception ISR's.
+        //DEBUG_LOG(0,"Set Mask to 7 for BUS/ADDR Exception");
 
-       // this might not be such a good idea
-       // reg68k_sr.sr_int |=(7 << 8);      // no need for &= since we turn on all 3 bits.
-       regs.pc = reg68k_pc;  regs.sr.sr_int = reg68k_sr.sr_int;
-   }
-   else // is this an autovector? if so handle that.
-   {    if (avno)                                   //2005.02.02 - code refactoring/consolidation
+        // this might not be such a good idea
+        // reg68k_sr.sr_int |=(7 << 8);      // no need for &= since we turn on all 3 bits.
+        regs.pc = reg68k_pc;  regs.sr.sr_int = reg68k_sr.sr_int;
+    }
+    else // is this an autovector? if so handle that.
+    {
+        if (avno)                                   //2005.02.02 - code refactoring/consolidation
         {
-         #ifdef DEBUG
-          if (avno==1 && floppy_FDIR) append_floppy_log("reg68k_int_av_ ***Firing IRQ1 because FDIR is set***\n");
-         #endif
+          #ifdef DEBUG
+           if (avno==1 && floppy_FDIR) append_floppy_log("reg68k_int_av_ ***Firing IRQ1 because FDIR is set***\n");
+          #endif
 
         //reg68k_sr.sr_struct.t = 0;                // disable trace bit - no need for it - it's handled below
           reg68k_sr.sr_int &= ~0x0700;              // clear IRQ Mask
           reg68k_sr.sr_int |= (avno<<8);            // set IRQ mask to avno
         //tmpaddr = reg68k_pc;                      // not used
 
-          DEBUG_LOG(0,"autovector#%d V_AUTO:%08x Vector address: %d * 4 = %08x",vno-V_AUTO+1,V_AUTO,vno,(vno*4));
+          DEBUG_LOG(0,"autovector#%ld V_AUTO:%08lx Vector address: %ld * 4 = %08lx",(long)vno-V_AUTO+1,(long)V_AUTO,(long)vno,(long)(vno*4));
 
         //abort_opcode=2;reg68k_pc = GETVECTOR(vno);  if (abort_opcode==1) {fprintf(buglog,"Doh! got abort_opcode=1 while fetching vector for IRQ!\n"); EXIT(781);}
         }
-
        cpu68k_clocks+=87;  // IRQ1-7
-
-   }
+    }
 
 
    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     abort_opcode=2;  reg68k_pc=GETVECTOR(vno);    // should turn this into vector 15 - spurious IRQ
     if (abort_opcode==1) {EXIT(58,0,"Doh got abort_opcode=1 on vector fetch in %s - BYE BYE\n",__FUNCTION__); }
+
     abort_opcode=0;
 
-    DEBUG_LOG(0,"SRC: VECTOR IRQ: %s oldpc:%08x -> newpc:%08x A7=%08x SP=%08x Mode pre-IRQ:%s\n",
-            getvector(vno), oldpc, reg68k_pc,reg68k_regs[15],regs.sp, (old_supervisor ? "Supervisor":"User"));
+    DEBUG_LOG(0,"SRC: VECTOR IRQ: %s oldpc:%08lx -> newpc:%08lx A7=%08lx SP=%08lx Mode pre-IRQ:%s\n",
+                 getvector(vno), (long)oldpc, (long)reg68k_pc, (long)reg68k_regs[15], (long)regs.sp, 
+                (old_supervisor ? "Supervisor":"User") );
 
     regs.pending = get_pending_vector();                                           // not sure that I need this any longer - RA
 
@@ -1990,7 +1842,7 @@ void reg68k_internal_vector(int vno, uint32 oldpc, uint32 addr_error)
 
     reg68k_sr.sr_struct.t=0;                                                       // turn off trace on trap.
     regs.pc = reg68k_pc; regs.sr.sr_int = reg68k_sr.sr_int;                        // flush to external copy of regs
-    DEBUG_LOG(0,"Done with vector fn. regs.pc=%08x reg68k_pc:%08x",regs.pc,reg68k_pc);
+    DEBUG_LOG(0,"Done with vector fn. regs.pc=%08lx reg68k_pc:%08lx",(long)regs.pc,(long)reg68k_pc);
 
     abort_opcode=0;
     return;
@@ -2001,8 +1853,8 @@ void reg68k_internal_vector(int vno, uint32 oldpc, uint32 addr_error)
 void print_pc_and_regs(char *text)
 {
   if (buglog) 
-    {fprintf(buglog,"\n\n%s PC%08x\n",text, reg68k_pc);  fflush(buglog);
-    printregs(buglog,""); fflush(buglog);}
+    { fprintf(buglog,"\n\n%s PC%08lx\n",text, (long)reg68k_pc);  fflush(buglog);
+      printregs(buglog,""); fflush(buglog);}
 }
 #endif
 
@@ -2016,30 +1868,29 @@ void lisa_buserror(uint32 addr_error)
 
 void lisa_mmu_exception(uint32 addr_error)
 {
-   char temp[1024];
+    char temp[1024];
 
-   //20060105 memerror=(uint16)(( CHK_MMU_TRANS(addr_error)+(maxlisaram!=RAM1024K ? 0:RAM512K) )>>5);
-   memerror=(uint16)(( CHK_MMU_TRANS(addr_error) )>>5);
+    //20060105 memerror=(uint16)(( CHK_MMU_TRANS(addr_error)+(maxlisaram!=RAM1024K ? 0:RAM512K) )>>5);
+    memerror=(uint16)(( CHK_MMU_TRANS(addr_error) )>>5);
 /*
-   ALERT_LOG(0,"MMU BUSERROR: IR:%04x @ %d/@%08x :: buserr@addr:%08x -> phys-addr:%08x SOR:%04x SLR:%04x %s",
-         InstructionRegister,context,reg68k_pc,
-         addr_error,
-         CHK_MMU_REGST(addr_error),
-         mmu[(addr_error & MMUSEGFILT)>>17].sor,
-         mmu[(addr_error & MMUSEGFILT)>>17].slr,
-         printslr(temp,1024, mmu[(addr_error & MMUSEGFILT)>>17].slr)
-         );
+    ALERT_LOG(0,"MMU BUSERROR: IR:%04x @ %d/@%08x :: buserr@addr:%08x -> phys-addr:%08x SOR:%04x SLR:%04x %s",
+          InstructionRegister,context,reg68k_pc,
+          addr_error,
+          CHK_MMU_REGST(addr_error),
+          mmu[(addr_error & MMUSEGFILT)>>17].sor,
+          mmu[(addr_error & MMUSEGFILT)>>17].slr,
+          printslr(temp,1024, mmu[(addr_error & MMUSEGFILT)>>17].slr)
+          );
 */
-   reg68k_internal_vector(2,reg68k_pc,addr_error);
-   abort_opcode=1;
+    reg68k_internal_vector(2,reg68k_pc,addr_error);
+    abort_opcode=1;
 }
 
 
 void lisa_addrerror(uint32 addr_error)
 {
-    ALERT_LOG(0,"Odd Address Exception @%08x PC=%08x clk:%016lx ",addr_error,reg68k_pc,cpu68k_clocks);
-
-    DEBUG_LOG(0,"ADDRESS EXCEPTION @%08x PC=%08x",addr_error,reg68k_pc);
+    ALERT_LOG(0,"Odd Address Exception @%08lx PC=%08lx clk:%016llx ",(long)addr_error,(long)reg68k_pc,(long long)cpu68k_clocks);
+    DEBUG_LOG(0,"ADDRESS EXCEPTION @%08lx PC=%08lx",(long)addr_error,(long)reg68k_pc);
     reg68k_internal_vector(3,reg68k_pc,addr_error);
     abort_opcode=1;
 }
@@ -2049,42 +1900,36 @@ void lisa_addrerror(uint32 addr_error)
 void lisa_nmi_vector(uint32 addr_error)
 {
    //unused//uint32 pc_before_nmi=reg68k_pc;
-
    //20060105memerror=(uint16)(( CHK_MMU_TRANS(addr_error)+(maxlisaram!=RAM1024K ? 0:RAM512K) )>>5);
     memerror=(uint16)(( CHK_MMU_TRANS(addr_error) )>>5);
 
-//   ALERT_LOG(0,"NMI @%08x PC=%08x clk:%016lx memerr latch:%04x - resucitated memlatch:%08x",addr_error,reg68k_pc,cpu68k_clocks,memerror,(uint32)(memerror<<5));
-   DEBUG_LOG(0,"NMI Exception @%08x (phys:%08x) PC=%08x clk:%016lx ",
-                addr_error,
-                (CHK_MMU_TRANS(addr_error)),
-                reg68k_pc,
-                cpu68k_clocks);
+//  ALERT_LOG(0,"NMI @%08x PC=%08x clk:%016lx memerr latch:%04x - resucitated memlatch:%08x",addr_error,reg68k_pc,cpu68k_clocks,memerror,(uint32)(memerror<<5));
+    DEBUG_LOG(0,"NMI Exception @%08lx (phys:%08lx) PC=%08lx clk:%016llx ",
+                (long)addr_error,
+                (long)(CHK_MMU_TRANS(addr_error)),
+                (long)reg68k_pc,
+                (long long)cpu68k_clocks);
 
-   DEBUG_LOG(0,"NMI ERROR: current state: context:%d seg1:%d seg2:%d start:%d",context,segment1,segment2,start);
+    DEBUG_LOG(0,"NMI ERROR: current state: context:%ld seg1:%ld seg2:%ld start:%ld",(long)context,(long)segment1,(long)segment2,(long)start);
 
+    nmi_pc      = reg68k_pc;
+    nmi_addr_err= addr_error;
+    nmi_clk     = cpu68k_clocks;
+    nmi_stop    = regs.stop;
 
-
-
-   nmi_pc      = reg68k_pc;
-   nmi_addr_err= addr_error;
-   nmi_clk     = cpu68k_clocks;
-   nmi_stop    = regs.stop;
-
-   regs.stop=1;
-   return;
-
+    regs.stop=1;
+    return;
 }
 
 void lisa_external_nmi_vector(uint32 addr_error)
 {
-   uint32 pc_before_nmi=reg68k_pc;
+    uint32 pc_before_nmi=reg68k_pc;
 
-   DEBUG_LOG(0,"External NMI vector @%08x PC=%08x clk:%016lx ",addr_error,reg68k_pc,cpu68k_clocks);
+    DEBUG_LOG(0,"External NMI vector @%08lx PC=%08lx clk:%016llx ",(long)addr_error,(long)reg68k_pc,(long long)cpu68k_clocks);
+    DEBUG_LOG(0,"\n** NMI @%08lx pc24==%08lx\n",(long)addr_error,(long)pc24);
+    DEBUG_LOG(0,"NMI extern");
 
-   DEBUG_LOG(0,"\n** NMI @%08x pc24==%08x\n",addr_error,pc24);
-   DEBUG_LOG(0,"NMI extern ");
-
-   if (abort_opcode || last_nmi_error_pc==reg68k_pc) { if (buglog) {fprintf(buglog,"suppressing NMI - abort_opcode=1\n");} return;}
+    if (abort_opcode || last_nmi_error_pc==reg68k_pc) { if (buglog) {fprintf(buglog,"suppressing NMI - abort_opcode=1\n");} return;}
 
     //#ifdef DEBUG
       if (nmi_error_trap>3 || last_nmi_error_pc==pc24) {EXIT(786,0,"NMI on top of NMI!\n"); };
@@ -2092,22 +1937,17 @@ void lisa_external_nmi_vector(uint32 addr_error)
       nmi_error_trap++;
     //#endif
 
-    DEBUG_LOG(0,"*** SRC: Lisa NMI - likely for parity test @ %08x pc=%08x ***",addr_error,reg68k_pc);
-
-    // Be sure to change from regs68k.pc to reg68k_pc if changing this to internal!
-
-    DEBUG_LOG(0,"int VECTOR 1F (autovector 6 NMI.  mem addr:%08x, reg68k_pc:%08x pc24:%08x lastpc24:%08x",addr_error,reg68k_pc,pc24, lastpc24);
-
+    DEBUG_LOG(0,"*** SRC: Lisa NMI - likely for parity test @ %08lx pc=%08lx ***",(long)addr_error,(long)reg68k_pc);
+    DEBUG_LOG(0,"int VECTOR 1F (autovector 6 NMI.  mem addr:%08lx, reg68k_pc:%08lx pc24:%08lx lastpc24:%08lx",
+              (long)addr_error, (long)reg68k_pc,(long)pc24,(long)lastpc24);
    // reg68k_external_autovector(7);         // using 7 now    ???
     memerror=(uint16)(( CHK_MMU_TRANS(addr_error) )>>5);
     reg68k_external_vector(0x1f, reg68k_pc,addr_error);  // 7 is wrong for vector, right for autovector.  // DANGER DANGER was pc24
     abort_opcode=1;                                      /// VERY STRANGE THAT THIS NEEDS TO BE SO!!! Something odd about this???
 
-    DEBUG_LOG(0,"Done with external_vector call. reg68k_pc is now %08x, it originally was %08x",reg68k_pc,pc_before_nmi);
-    if (reg68k_pc & 1) {if (buglog) fprintf(buglog,"%s:%s:%d reg68k_pc is now odd!!!!%08x\n",__FILE__,__FUNCTION__,__LINE__,pc24);}
+    DEBUG_LOG(0,"Done with external_vector call. reg68k_pc is now %08lx, it originally was %08lx",(long)reg68k_pc,(long)pc_before_nmi);
+    if (reg68k_pc & 1) {if (buglog) fprintf(buglog,"%s:%s:%d reg68k_pc is now odd!!!!%08lx\n",__FILE__,__FUNCTION__,__LINE__,(long)pc24);}
     //#ifdef DEBUG
       nmi_error_trap--;
     //#endif
 }
-
-

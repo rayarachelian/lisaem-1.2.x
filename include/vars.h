@@ -43,6 +43,8 @@
 #define CHECKODDPOINTERS 1
 #define DEBUGLEVEL 100
 
+#define UNUSED(x) (void)(x)
+
 // If tracelog is enabled, also enable DEBUG code so that tracing can be done.
 #ifdef TRACE
 #ifndef DEBUG
@@ -712,17 +714,8 @@ ACGLOBAL(uint8,highest_bit_val_inv[],
 
 
 
-
-
-
-
-
-
-
-
-
-
-
+// How much more blue to add to simulate the blueish phosphor of the Lisa CRT
+#include <extrablue.h>
 
 
 ///////////////////////////////////////////////// Type definitions /////////////////////////////////////////////////
@@ -1538,8 +1531,10 @@ fprintf(buglog,"context:%d videoram @ %08x\n",context,videolatchaddress); fflush
                       fflush(buglog); if (!cmd) exit(x); else return cmd-1;                                                                       \
                     }
 
+//20191008 disable alert-log for production builds to save on code size + time
+#ifdef DEBUG
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-   #define ALERT_LOG( level, fmt, args... )                                                                                \
+#define ALERT_LOG( level, fmt, args... )                                                                                   \
    { if ( (level <= DEBUGLEVEL) )                                                                                          \
         {                                                                                                                  \
          fprintf(stderr,"%s:%s:%d:",__FILE__,__FUNCTION__,__LINE__); fprintf(stderr,  fmt , ## args);                      \
@@ -1560,7 +1555,9 @@ fprintf(buglog,"context:%d videoram @ %08x\n",context,videolatchaddress); fflush
          }                                                                                                                 \
    }
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
+#else
+  #define ALERT_LOG( level, fmt, args... )  {}
+#endif
 ///////// Memory access macros//////////////////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -2788,7 +2785,8 @@ GLOBAL(uint32,minlisaram,0);
         {                                                   \
          uint32 iA9=(addr & 0x00ffffff)>>9;                 \
          int32  iAD=mmu_trans[iA9].address;                 \
-         for (int iCTX=0; iCTX<5; iCTX++)                   \
+         int iCTX;                                          \
+         for (iCTX=0; iCTX<5; iCTX++)                       \
            if (mmu_trans_all[iCTX][iA9].address==iAD &&     \
                mmu_trans_all[iCTX][iA9].table!=NULL )       \
                free_ipct(mmu_trans_all[iCTX][iA9].table);   \

@@ -367,15 +367,15 @@ void append_floppy_log(char *s)
 int getmaxsector(int type, int track)
 {
 
-    if (type==SONY400KFLOPPY || SONY800KFLOPPY)
+    if (type==SONY400KFLOPPY || type==SONY800KFLOPPY)
     {
-       if (track<0) return -1;
-       if (track>-1 && track<16) return 12;  // tracks  0-15
-       if (track>15 && track<32) return 11;  // tracks 16-31
-       if (track>31 && track<48) return 10;  // tracks 32-47
-       if (track>47 && track<64) return 9;   // tracks 48-63
-       if (track>63 && track<80) return 8;   // tracks 64-79
-       return -1;
+        if (track<0) return -1;
+        if (track>-1 && track<16) return 12;  // tracks  0-15
+        if (track>15 && track<32) return 11;  // tracks 16-31
+        if (track>31 && track<48) return 10;  // tracks 32-47
+        if (track>47 && track<64) return 9;   // tracks 48-63
+        if (track>63 && track<80) return 8;   // tracks 64-79
+        return -1;
     }
 
     if (type==TWIGGYFLOPPY)
@@ -1342,18 +1342,16 @@ half=(size/2) -1;
 void floppy_return(DC42ImageType *F, uint8 boot, uint8 status)
 {
 
-    floppy_ram[TYPE]=SONY400KFLOPPY; /// HACK!!!
+   //floppy_ram[TYPE]=SONY400KFLOPPY; /// HACK!!!
+    if (!F) return;
 
-    //if ( F ) floppy_ram[TYPE]=(F->ftype<3) ? floppy_ram[TYPE]=F->ftype : SONY400KFLOPPY;
-
-//        switch(F->ftype)
-//        {// floppy type 0=twig, 1=sony400k, 2=sony800k, 3=freeform, 254/255=disabled
-//            case  TWIGGYFLOPPY:
-//            case  SONY400KFLOPPY:
-//            case  SONY800KFLOPPY: floppy_ram[TYPE]=F->ftype; break;
-//
-//            default: floppy_ram[TYPE]=1;  // lie.
-//        }
+    switch(F->ftype)
+        {// floppy type 0=twig, 1=sony400k, 2=sony800k, 3=freeform, 254/255=disabled
+            case  TWIGGYFLOPPY:   // FALLTHROUGH
+            case  SONY400KFLOPPY: // FALLTHROUGH
+            case  SONY800KFLOPPY: floppy_ram[TYPE]=F->ftype; break;
+            default: floppy_ram[TYPE]=SONY400KFLOPPY;  // lie.
+        }
 
     if ( boot )
     {
