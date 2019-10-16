@@ -8,7 +8,7 @@ Lisa Emulator Change History                         http://lisaem.sunder.net/
 ------------------------------------------------------------------------------
 --- 1.2.7    Released on (TBA) (Major release for all platforms)
 
-2019.10.13 - get it working on macos X with some work, had to compile wxWidgets
+2019.10.13 - got it working on macos X with some work, had to compile wxWidgets
              and LisaEm with -stdlib=libc++, and LisaEm with -lstdc++.6 to get
              it working. There's still quite a lot of bugs left to fix but it's
              starting to work again on modern macos X, but at least both can

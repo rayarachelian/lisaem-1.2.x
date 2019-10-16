@@ -1,9 +1,9 @@
 /**************************************************************************************\
 *                                                                                      *
-*              The Lisa Emulator Project  V1.2.6      DEV 2007.12.04                   *
+*              The Lisa Emulator Project  V1.2.7      DEV 2019.10.15                   *
 *                             http://lisaem.sunder.net                                 *
 *                                                                                      *
-*                  Copyright (C) 1998, 2007 Ray A. Arachelian                          *
+*                  Copyright (C) 1998, 2019 Ray A. Arachelian                          *
 *                                All Rights Reserved                                   *
 *                                                                                      *
 *           This program is free software; you can redistribute it and/or              *
@@ -1531,7 +1531,9 @@ fprintf(buglog,"context:%d videoram @ %08x\n",context,videolatchaddress); fflush
                       fflush(buglog); if (!cmd) exit(x); else return cmd-1;                                                                       \
                     }
 
-//20191008 disable alert-log for production builds to save on code size + time
+
+//20191008 disable alert-log for production builds to save on code size + time as *printf is expensive and it will just go
+//to /dev/null anyway in most cases.
 #ifdef DEBUG
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #define ALERT_LOG( level, fmt, args... )                                                                                   \

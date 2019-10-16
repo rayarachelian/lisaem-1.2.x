@@ -8,7 +8,8 @@ On older systems, you'll need to go through some pretty unfriendly gymanstics,
 such as first installing the XCode command line tools (brew.sh will do this for you)
 and then using the clang compiler to build gcc@4.9, then use gcc-4.9 to build gcc@5,
 brew install --cc=gcc-4.9 gcc@5 
-and so on all the way to gcc-7 (though it should be possible to build LisaEm with gcc-5).
+and so on all the way to gcc-7 (though it should be possible to build both wxWidgets
+and LisaEm with gcc-5).
 
 Then invoke the build script like so; ommit --with-debug --with-tracelog if you don't
 need them.
@@ -17,7 +18,7 @@ need them.
 export PATH=/usr/local/wx3.1.2-cocoa-x64-macOS-10.11/bin:$PATH
 CC=gcc-7 CXX=gcc-7 ./build.sh clean build --64 --with-debug --with-tracelog
 
-
+(On newer systems it should build with clang so you can ommit the CC and CXX env vars)
 
 On OS X, you may get this error with wxWidgets 3.1.x:
 /usr/local/wx3.1.2-cocoa-x64-macOS-10.11/include/wx-3.1/wx/strvararg.h:27:18: fatal error: 'tr1/type_traits' file not found
