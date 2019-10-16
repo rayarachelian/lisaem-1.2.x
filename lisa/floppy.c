@@ -1714,7 +1714,7 @@ int floppy_insert(char *Image)     // emulator should call this when user decide
        {
           floppy_return(F,0,FLOP_STAT_NOCLMP);  // return failed clamp status
           FloppyIRQ(1);
-          ALERT_LOG(0,"could not open: %s because:%s",Image );
+          ALERT_LOG(0,"could not open: %s because %s",Image,F->errormsg );
           messagebox(F->errormsg, "Could not open this Floppy! Sorry!");
           append_floppy_log("Could not open floppy");
           perror("error");
