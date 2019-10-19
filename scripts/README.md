@@ -1,6 +1,6 @@
 Some sample scripts as to how to build wxWidgets 3.x for LisaEm
 
-NOTE: there are issues building LisaEm on modern OS X using clang/llvm/Xcode.
+NOTE: there are issues building LisaEm on older OS X using clang/llvm/Xcode.
 To fix this, you should install the GNU C Compiler Suite using homebrew from
 brew.sh using the command brew install gcc@7.
 
@@ -14,9 +14,9 @@ and LisaEm with gcc-5).
 Then invoke the build script like so; ommit --with-debug --with-tracelog if you don't
 need them.
 
-             v- change this to match your system
-export PATH=/usr/local/wx3.1.2-cocoa-x64-macOS-10.11/bin:$PATH
-CC=gcc-7 CXX=gcc-7 ./build.sh clean build --64 --with-debug --with-tracelog
+                 v- change this to match your system
+    export PATH=/usr/local/wx3.1.2-cocoa-x64-macOS-10.11/bin:$PATH
+    CC=gcc-7 CXX=gcc-7 ./build.sh clean build --64 --with-debug --with-tracelog
 
 (On newer systems it should build with clang so you can ommit the CC and CXX env vars)
 
@@ -32,58 +32,58 @@ Slightly modified the code above, to avoid compiler complaints:
 
 Paste the following into strvararg.h just before #ifdefined (HAVE_TYPE_TRAITS)
 
-#include <ciso646>  // detect std::lib
-#ifdef _LIBCPP_VERSION
-// using libc++
-#ifndef HAVE_TYPE_TRAITS
-#define HAVE_TYPE_TRAITS 1
-#endif
-#else
-// using libstdc++
-#ifndef HAVE_TR1_TYPE_TRAITS
-#define HAVE_TR1_TYPE_TRAITS 1
-#endif
-#endif
+    #include <ciso646>  // detect std::lib
+    #ifdef _LIBCPP_VERSION
+    // using libc++
+    #ifndef HAVE_TYPE_TRAITS
+    #define HAVE_TYPE_TRAITS 1
+    #endif
+    #else
+    // using libstdc++
+    #ifndef HAVE_TR1_TYPE_TRAITS
+    #define HAVE_TR1_TYPE_TRAITS 1
+    #endif
+    #endif
 
 
 Like so:
 
-  10 #ifndef _WX_STRVARARG_H_
-  11 #define _WX_STRVARARG_H_
-  12 
-  13 #include "wx/platform.h"
-  14 
-  15 #include "wx/cpp.h"
-  16 #include "wx/chartype.h"
-  17 #include "wx/strconv.h"
-  18 #include "wx/buffer.h"
-  19 #include "wx/unichar.h"
-  20 
-  21 // >8 -------- insert here -------- 8<
-  22 #include <ciso646>  // detect std::lib
-  23 #ifdef _LIBCPP_VERSION
-  24 // using libc++
-  25 #ifndef HAVE_TYPE_TRAITS
-  26 #define HAVE_TYPE_TRAITS 1
-  27 #endif
-  28 #else
-  29 // using libstdc++
-  30 #ifndef HAVE_TR1_TYPE_TRAITS
-  31 #define HAVE_TR1_TYPE_TRAITS 1
-  32 #endif
-  33 #endif
-  34 // >8 -------- insert here -------- 8<
-  35 
-  36 
-  37 
-  38 #if defined(HAVE_TYPE_TRAITS)
-  39     #include <type_traits>
-  40 #elif defined(HAVE_TR1_TYPE_TRAITS)
-  41     #ifdef __VISUALC__
-  42         #include <type_traits>
-  43     #else
-  44         #include <tr1/type_traits>
-  45     #endif
-  46 #endif
-  47 
+    10 #ifndef _WX_STRVARARG_H_
+    11 #define _WX_STRVARARG_H_
+    12 
+    13 #include "wx/platform.h"
+    14 
+    15 #include "wx/cpp.h"
+    16 #include "wx/chartype.h"
+    17 #include "wx/strconv.h"
+    18 #include "wx/buffer.h"
+    19 #include "wx/unichar.h"
+    20 
+    21 // >8 -------- insert here -------- 8<
+    22 #include <ciso646>  // detect std::lib
+    23 #ifdef _LIBCPP_VERSION
+    24 // using libc++
+    25 #ifndef HAVE_TYPE_TRAITS
+    26 #define HAVE_TYPE_TRAITS 1
+    27 #endif
+    28 #else
+    29 // using libstdc++
+    30 #ifndef HAVE_TR1_TYPE_TRAITS
+    31 #define HAVE_TR1_TYPE_TRAITS 1
+    32 #endif
+    33 #endif
+    34 // >8 -------- insert here -------- 8<
+    35 
+    36 
+    37 
+    38 #if defined(HAVE_TYPE_TRAITS)
+    39     #include <type_traits>
+    40 #elif defined(HAVE_TR1_TYPE_TRAITS)
+    41     #ifdef __VISUALC__
+    42         #include <type_traits>
+    43     #else
+    44         #include <tr1/type_traits>
+    45     #endif
+    46 #endif
+    47 
 
