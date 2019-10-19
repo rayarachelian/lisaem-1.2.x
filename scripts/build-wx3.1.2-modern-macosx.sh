@@ -4,13 +4,20 @@ OSVER="macOS-$( sw_vers -productVersion | cut -f1,2 -d'.' )"
 VER=3.1.2
 MIN="$OSVER"
 
+if [[ ! -d wxWidgets-${VER} ]]; then
+   curl -L https://github.com/wxWidgets/wxWidgets/releases/download/v${VER}/wxWidgets-${VER}.tar.bz2 \
+        -o wxWidgets-${VER}.tar.bz2|| \
+   wget https://github.com/wxWidgets/wxWidgets/releases/download/v${VER}/wxWidgets-${VER}.tar.bz2 || exit 2
+   tar xjvf wxWidgets-${VER}.tar.bz2 || exit 3
+fi
+
 # use clang here
 export CC=gcc CXX=gcc
 
 CC --version
 sleep 2
 
-pushd wxWidgets-3.1.2
+pushd wxWidgets-${VER}
 TYPE=cocoa-x64-${OSVER}-cpp
 set arch_flags="-m64 -arch x86_64"
 rm -rf build-${TYPE}
@@ -26,7 +33,7 @@ cd     build-${TYPE}
 popd
 
     
-pushd wxWidgets-3.1.2
+pushd wxWidgets-${VER}
 TYPE=cocoa-i386-${OSVER}-cpp
 set arch_flags="-m32 -arch i386"
 rm -rf build-${TYPE}
