@@ -15,9 +15,11 @@ WITHUNICODE="--unicode=yes"
 
 #WXDEV=""
 
-
 ########################################################################
- VERSION="1.2.7-ALPHA_2019.10.13"
+ VERSION="1.2.7-ALPHA_2019.11.11"
+#VERSION="1.2.7-ALPHA_2019.10.20"
+#VERSION="1.2.7-ALPHA_2019.10.15"
+#VERSION="1.2.7-ALPHA_2019.10.13"
 #VERSION="1.2.7-ALPHA_2019.09.29"
 #VERSION="1.2.6.1-RELEASE_2012.12.12"
 #VERSION="1.2.6-RELEASE_2007.12.12"
@@ -258,7 +260,7 @@ if [[ -n "$ERROR" ]]; then
   exit 1
 fi
 
-export UPX="$(which upx 2>/dev/null)"
+export UPXCMD="$(which upx 2>/dev/null)"
 
 # Parse command line options if any, overriding defaults.
 RUN=${RUN:-"run "}
@@ -343,12 +345,13 @@ for i in $@; do
 
  --with-unicode)           WITHUNICODE="--unicode=yes"           ;;
  --without-unicode)        WITHUNICODE="--unicode=no"            ;;
- --without-upx)            WITHOUTUPX="noupx"; UPX=""            ;;
+ --without-upx)            WITHOUTUPX="noupx"; UPXCMD=""         ;;
 
 # no longer used.
 # --with-direct-blits)      WITHBLITS="-DDIRECT_BLITS"           ;;
 # --without-direct-blits)   WITHBLITS="-DNO_DIRECT_BLITS"        ;;
- --with-rawbitmap)         WITHBLITS="-DUSE_RAW_BITMAP_ACCESS"   ;;
+ --with-rawbitmap)         #WITHBLITS="-DUSE_RAW_BITMAP_ACCESS"   ;;
+                           echo "rawbitmap is deprecated due to scaling" 1>&2 ;;
  --without-rawbitmap)      WITHBLITS="-DNO_RAW_BITMAP_ACCESS"    ;;
  --with-wxui)              WITHWXUI="wxui"                       ;;
  --without-wxui)           WITHWXUI=""                           ;;
@@ -388,10 +391,6 @@ Options:
 --without-optimize     Disables optimizations
 --without-upx          Disables UPX compression (no upx on OS X)
 
---with-rawbitmap       Raw bitmap access - high video performance
-                       (OS X only, doesn't work properly elsewhere)
---without-rawbitmap    Disables Raw bitmap access, uses wxImage::SetRGB instead
-					   (default for non-OS X)
 --with-unicode         Ask wx-config for a unicode build (might not yet work)
 --without-unicode      Ask wx-config for a non-unicode build (default)
 
@@ -719,7 +718,7 @@ then
   if [[ -z "$WITHDEBUG" ]]
   then
     strip ../bin/lisadiskinfo${EXT}
-    [[ -n "$UPX" ]] && time "${UPX}" --best ../bin/lisadiskinfo${EXT} 
+    [[ -n "$UPXCMD" ]] && time "${UPXCMD}" --best ../bin/lisadiskinfo${EXT} 
 
    fi
 fi
@@ -736,7 +735,7 @@ then
   if [[ -z "$WITHDEBUG" ]]
   then
     strip ../bin/lisafsh-tool${EXT}
-    [[ -n "$UPX" ]] && time "${UPX}" --best ../bin/lisadiskinfo${EXT} 
+    [[ -n "$UPXCMD" ]] && time "${UPXCMD}" --best ../bin/lisadiskinfo${EXT} 
    fi
 fi
 
@@ -817,14 +816,6 @@ if [[ -d lz4/lib ]]; then
     cd ../..
 fi
 
-### if [[ ! -f ../../lisa/hq3x.o ]]; then
-###   cd ../wxui/hqx
-###   echo "  Compiling hqx..."
-###   $CC $CFLAGS -c hq3x.c -o ../../lisa/hq3x.o || exit 1
-###   LIST="$LIST hq3x.o"
-###   cd ../..
-### fi
-
 cd ../bin
 rm -f lisaem lisaem.exe
 
@@ -865,11 +856,27 @@ cd ../wxui
 echo
 echo "* wxWidgets User Interface     (./wxui)"
 
-# Compile C++
 
+if [[ -d hqx ]]; then
+  cd hqx
+  DEPS=0
+
+  NEEDED hq3x.cpp  ../../lisa/hq3x.o && DEPS=1
+  NEEDED hqx.h     ../../lisa/hq3x.o && DEPS=1
+  NEEDED common.h  ../../lisa/hq3x.o && DEPS=1
+
+  if [[ $DEPS -eq 1 ]]; then
+    echo "  Compiling hq3x..."
+    $CXX $CFLAGS -c hq3x.cpp -o ../../lisa/hq3x.o || exit 1
+  fi
+  LIST="$LIST hq3x.o"
+  cd ..
+fi
+
+# Compile C++ UI code
 CFLAGS="$CFLAGS -DVERSION=\"${VERSION}\" "
 
-for i in  lisaem_wx imagewriter-wx
+for i in  lisaem_wx imagewriter-wx 
 do
   if [[ -z "$CYGWIN" ]]; then LIST="$LIST ../wxui/${i}.o"
   else                      LIST="$LIST ..\\wxui\\${i}.o"
@@ -966,7 +973,7 @@ fi
 
 if [[ -n "$DARWIN" ]]
 then
-  [[ -n "$UPX" ]] && time "${UPX}" --best lisaem && echo "upxed $(du -sm lisaem) MB"
+  [[ -n "$UPXCMD" ]] && time "${UPXCMD}" --best lisaem && echo "upxed $(du -sm lisaem) MB"
 
   ## Install ###################################################
     mkdir -pm775 LisaEm.app/Contents/MacOS
@@ -1067,7 +1074,7 @@ then
   echo "Stripped $(du -sh lisaem)"
 
   # On second thought let's not compress in debug mode, tis' a silly place!
-  [[ -n "$UPX" ]] && time "${UPX}" --best lisaem && echo "upxed $(du -sm lisaem)"
+  [[ -n "$UPXCMD" ]] && time "${UPXCMD}" --best lisaem && echo "upxed $(du -sm lisaem)"
 
   ## Install ###################################################
   if [[ -n "$INSTALL" ]]

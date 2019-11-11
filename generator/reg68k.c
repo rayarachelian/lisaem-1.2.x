@@ -313,7 +313,6 @@ static inline uint8 get_pending_vector(void)
            floppy_FDIR,
            via[2].via[IFR],
            via[1].via[IFR]);
-
    if (highest==1 && floppy_FDIR && (!((regs.sr.sr_int>>8)&7))) append_floppy_log("get_pending_vector:Floppy FDIR IRQ1 is about to be taken if called\n");
 
    DEBUG_LOG(0,"Next pending vector is:%d, map is:%s%s%s%s%s%s%s",highest,
@@ -681,7 +680,7 @@ void extprintregs(FILE *buglog,char *tag)
 
 void dumpram(char *reason)
 {
-  FILE *ramdump;
+  FILE *ramdump, *ramdumpM0, *ramdumpM1, *ramdumpM2, *ramdumpM3;
   char filename[256];
   uint32 i,j; //,k;
   uint16 slr, sor; //, mfn;
@@ -697,9 +696,6 @@ void dumpram(char *reason)
     ALERT_LOG(0,"Could not dump ram because could not create file %s",filename);
     return;
   }
-
-  fprintf(ramdump,"context:%ld segment1:%ld, segment2:%ld, start:%ld pc24:%08lx\n\n",(long)context,(long)segment1,(long)segment2,(long)start,(long)pc24);
-
 
   fprintf(ramdump,"ramsize:%08lx, lastcx:%ld, cx:%ld seg1:%ld, seg2:%ld, start:%ld, mmudirty:%08lx,%08lx,%08lx,%08lx,%08lx\n",
           (long)maxlisaram,
@@ -778,6 +774,66 @@ void dumpram(char *reason)
 
   fflush(ramdump);
   fclose(ramdump);
+
+  snprintf(filename,256,"lisaem-output-physical-ramdump-%s-%08lx.%016llx.%fMB.bin",reason,(long)pc24,(long long)cpu68k_clocks,(float)(maxlisaram/1024.0));
+  ramdump=fopen(filename,"wb");
+  if (!ramdump) return;
+  fwrite(lisaram,maxlisaram,1,ramdump);
+  fflush(ramdump);
+  fclose(ramdump);
+
+
+  snprintf(filename,256,"lisaem-output-mmu0-ramdump-%s-%08lx.%016llx.%fMB.bin",reason,(long)pc24,(long long)cpu68k_clocks,(float)(maxlisaram/1024.0));
+  ramdumpM0=fopen(filename,"wb"); if (!ramdumpM0) {fclose(ramdump); return;}
+
+  snprintf(filename,256,"lisaem-output-mmu1-ramdump-%s-%08lx.%016llx.%fMB.bin",reason,(long)pc24,(long long)cpu68k_clocks,(float)(maxlisaram/1024.0));
+
+  ramdumpM1=fopen(filename,"wb"); if (!ramdumpM1) {fclose(ramdump); fclose(ramdumpM0); return;}
+  snprintf(filename,256,"lisaem-output-mmu2-ramdump-%s-%08lx.%016llx.%fMB.bin",reason,(long)pc24,(long long)cpu68k_clocks,(float)(maxlisaram/1024.0));
+
+  ramdumpM2=fopen(filename,"wb"); if (!ramdumpM2) {fclose(ramdump); fclose(ramdumpM0); fclose(ramdumpM1); return;}
+
+  snprintf(filename,256,"lisaem-output-mmu3-ramdump-%s-%08lx.%016llx.%fMB.bin",reason,(long)pc24,(long long)cpu68k_clocks,(float)(maxlisaram/1024.0));
+  ramdumpM3=fopen(filename,"wb");if (!ramdumpM3) {fclose(ramdump); fclose(ramdumpM0); fclose(ramdumpM3); return;}
+
+  fprintf(ramdump,"context:%ld segment1:%ld, segment2:%ld, start:%ld pc24:%08lx\n\n",(long)context,(long)segment1,(long)segment2,(long)start,(long)pc24);
+
+  // each context=16M, so this will be slow - could make this go faster by using custom MMU translation code and doing one segment at a time, but, meh,
+  // this is only used for debugging, so, why bother.
+  for (i=0; i<0x01000000; i+=16*4)
+  {
+      int z; 
+      uint32 buf[16];
+      buf[ 0]=lisa_ram_safe_getlong(0,(i+ 0)); buf[ 1]=lisa_ram_safe_getlong(0,(i+ 1)); buf[ 2]=lisa_ram_safe_getlong(0,(i+ 2)); buf[ 3]=lisa_ram_safe_getlong(0,(i+ 3));
+      buf[ 4]=lisa_ram_safe_getlong(0,(i+ 4)); buf[ 5]=lisa_ram_safe_getlong(0,(i+ 5)); buf[ 6]=lisa_ram_safe_getlong(0,(i+ 6)); buf[ 7]=lisa_ram_safe_getlong(0,(i+ 7));
+      buf[ 8]=lisa_ram_safe_getlong(0,(i+ 8)); buf[ 9]=lisa_ram_safe_getlong(0,(i+ 9)); buf[10]=lisa_ram_safe_getlong(0,(i+10)); buf[11]=lisa_ram_safe_getlong(0,(i+11));
+      buf[12]=lisa_ram_safe_getlong(0,(i+12)); buf[13]=lisa_ram_safe_getlong(0,(i+13)); buf[14]=lisa_ram_safe_getlong(0,(i+14)); buf[15]=lisa_ram_safe_getlong(0,(i+15));
+      z=fwrite(buf,16*4,1,ramdumpM0);
+
+      buf[ 0]=lisa_ram_safe_getlong(1,(i+ 0)); buf[ 1]=lisa_ram_safe_getlong(1,(i+ 1)); buf[ 2]=lisa_ram_safe_getlong(1,(i+ 2)); buf[ 3]=lisa_ram_safe_getlong(1,(i+ 3));
+      buf[ 4]=lisa_ram_safe_getlong(1,(i+ 4)); buf[ 5]=lisa_ram_safe_getlong(1,(i+ 5)); buf[ 6]=lisa_ram_safe_getlong(1,(i+ 6)); buf[ 7]=lisa_ram_safe_getlong(1,(i+ 7));
+      buf[ 8]=lisa_ram_safe_getlong(1,(i+ 8)); buf[ 9]=lisa_ram_safe_getlong(1,(i+ 9)); buf[10]=lisa_ram_safe_getlong(1,(i+10)); buf[11]=lisa_ram_safe_getlong(1,(i+11));
+      buf[12]=lisa_ram_safe_getlong(1,(i+12)); buf[13]=lisa_ram_safe_getlong(1,(i+13)); buf[14]=lisa_ram_safe_getlong(1,(i+14)); buf[15]=lisa_ram_safe_getlong(1,(i+15));
+      z=fwrite(buf,16*4,1,ramdumpM1);
+
+      buf[ 0]=lisa_ram_safe_getlong(2,(i+ 0)); buf[ 1]=lisa_ram_safe_getlong(2,(i+ 1)); buf[ 2]=lisa_ram_safe_getlong(2,(i+ 2)); buf[ 3]=lisa_ram_safe_getlong(2,(i+ 3));
+      buf[ 4]=lisa_ram_safe_getlong(2,(i+ 4)); buf[ 5]=lisa_ram_safe_getlong(2,(i+ 5)); buf[ 6]=lisa_ram_safe_getlong(2,(i+ 6)); buf[ 7]=lisa_ram_safe_getlong(2,(i+ 7));
+      buf[ 8]=lisa_ram_safe_getlong(2,(i+ 8)); buf[ 9]=lisa_ram_safe_getlong(2,(i+ 9)); buf[10]=lisa_ram_safe_getlong(2,(i+10)); buf[11]=lisa_ram_safe_getlong(2,(i+11));
+      buf[12]=lisa_ram_safe_getlong(2,(i+12)); buf[13]=lisa_ram_safe_getlong(2,(i+13)); buf[14]=lisa_ram_safe_getlong(2,(i+14)); buf[15]=lisa_ram_safe_getlong(2,(i+15));
+      z=fwrite(buf,16*4,1,ramdumpM2);
+
+      buf[ 0]=lisa_ram_safe_getlong(3,(i+ 0)); buf[ 1]=lisa_ram_safe_getlong(3,(i+ 1)); buf[ 2]=lisa_ram_safe_getlong(3,(i+ 2)); buf[ 3]=lisa_ram_safe_getlong(3,(i+ 3));
+      buf[ 4]=lisa_ram_safe_getlong(3,(i+ 4)); buf[ 5]=lisa_ram_safe_getlong(3,(i+ 5)); buf[ 6]=lisa_ram_safe_getlong(3,(i+ 6)); buf[ 7]=lisa_ram_safe_getlong(3,(i+ 7));
+      buf[ 8]=lisa_ram_safe_getlong(3,(i+ 8)); buf[ 9]=lisa_ram_safe_getlong(3,(i+ 9)); buf[10]=lisa_ram_safe_getlong(3,(i+10)); buf[11]=lisa_ram_safe_getlong(3,(i+11));
+      buf[12]=lisa_ram_safe_getlong(3,(i+12)); buf[13]=lisa_ram_safe_getlong(3,(i+13)); buf[14]=lisa_ram_safe_getlong(3,(i+14)); buf[15]=lisa_ram_safe_getlong(3,(i+15));
+      z=fwrite(buf,16*4,1,ramdumpM3);
+  }
+
+  fflush(ramdumpM0); fclose(ramdumpM0);
+  fflush(ramdumpM1); fclose(ramdumpM1);
+  fflush(ramdumpM2); fclose(ramdumpM2);
+  fflush(ramdumpM3); fclose(ramdumpM3);
+
 }
 
 
@@ -1343,7 +1399,7 @@ static uint32 last_pc;
                 #endif
                 {
                     if (abort_opcode==1) break;
-                    if (!mt->table) {abort_opcode=2; mt->table=get_ipct();}  //we can skip free_ipct
+                    if (!mt->table) {abort_opcode=2; mt->table=get_ipct(pc24);}  //we can skip free_ipct
                     abort_opcode=2; cpu68k_makeipclist(pc24 & 0x00ffffff); if (abort_opcode==1) break; //==24726== Conditional jump or move depends on uninitialised value(s)
                     ipc=&(mt->table->ipc[(pc24 & 0x1ff)>>1]);
                 }
@@ -1359,7 +1415,7 @@ static uint32 last_pc;
             else // need to make this IPC table
             {
                 //if ( !mt)  { fprintf(buglog,"Doh! mt is null! bye!"); EXIT(4);  }
-                abort_opcode=2; mt->table=get_ipct();  if (abort_opcode==1) break;
+                abort_opcode=2; mt->table=get_ipct(pc24);  if (abort_opcode==1) break;
                 //abort_opcode=0;
 
                 abort_opcode=2; cpu68k_makeipclist(pc24);

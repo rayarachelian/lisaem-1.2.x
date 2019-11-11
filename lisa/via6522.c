@@ -539,7 +539,7 @@ int check_contrast_set(void)
     if ((via[2].via[DDRB] & 0x84)==0x84 && (via[2].via[ORBB] & 0x4)==4 && via[2].via[DDRA]!=0) // this is OK (DDRA used with port B!)
     {
         contrast=via[2].via[DDRA] & via[2].via[ORAA]; videoramdirty|=9;
-//        DEBUG_LOG(0,"Setting Contrast:%02x",contrast);
+        DEBUG_LOG(0,"Setting Contrast:%02x",contrast);
         if ( contrast==0xff) disable_vidram(); else enable_vidram();
 
         contrastchange();  // force UI to adjust display
