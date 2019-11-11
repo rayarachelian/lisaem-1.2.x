@@ -46,17 +46,18 @@ static uint32 mmu0_checksum=0;
 #ifdef DEBUG
  void validate_mmu_segments(char *from);
 
- #define CONTEXTSELECTOR() { context=CXSASEL; mmudirty=mmudirty_all[CXASEL];                                                    \
-                             mmu_trans=mmu_trans_all[context];  mmu=mmu_all[context];                                           \
-                                                                                                                                \
-                     if (debug_log_enabled) DEBUG_LOG(10,"--->switched to context:%d s1/s2/start:%d/%d/%d<----\n",context,segment1,segment2,start);  \
-                     if ( (segment1>1)||(segment2==1 || segment2>2))                                                            \
-                     {EXIT(366,0,"%s:%s%d:Error! seg1=%d, seg2=%d, start=%d",__FILE__,__FUNCTION__,__LINE__,                    \
-                      segment1,segment2,start); } }                                               
+#define CONTEXTSELECTOR() \
+{                                                                                                                                  \
+    context=CXSASEL; mmudirty=mmudirty_all[CXASEL];                                                                                \
+    mmu_trans=mmu_trans_all[context];  mmu=mmu_all[context];                                                                       \
+    if (debug_log_enabled) DEBUG_LOG(10,"--->switched to context:%d s1/s2/start:%d/%d/%d<----\n",context,segment1,segment2,start); \
+    if ( (segment1>1)||(segment2==1 || segment2>2))                                                                                \
+        {EXIT(366,0,"%s:%s%d:Error! seg1=%d, seg2=%d, start=%d",__FILE__,__FUNCTION__,__LINE__,segment1,segment2,start); }         \
+}                                               
 #else
 
- #define CONTEXTSELECTOR() { context=CXSASEL; mmudirty=mmudirty_all[CXASEL];                                                    \
-                             mmu_trans=mmu_trans_all[context];  mmu=mmu_all[context]; }
+    #define CONTEXTSELECTOR() {context=CXSASEL; mmudirty=mmudirty_all[context]; mmu_trans=mmu_trans_all[context]; mmu=mmu_all[context];}
+
 #endif
 
 void mmuflush(uint16 opts);
@@ -77,10 +78,10 @@ mmu_trans_t mt;  // mmu translation - temporary var
 
 int is_valid_slr(uint16 q)
 {
-  q=q & SLR_MASK;
+    q=q & SLR_MASK;
 
-  return ((q==SLR_RO_STK)     || (q==SLR_RO_MEM)      || (q==SLR_RW_STK)    || (q==SLR_RW_MEM) ||
-         ( q==SLR_IO_SPACE)   || (q==SLR_UNUSED_PAGE) || (q==SLR_SIO_SPACE)                     );
+    return  ((q==SLR_RO_STK)     || (q==SLR_RO_MEM)      || (q==SLR_RW_STK)    || (q==SLR_RW_MEM) ||
+            ( q==SLR_IO_SPACE)   || (q==SLR_UNUSED_PAGE) || (q==SLR_SIO_SPACE)                     );
 }
 
 // This is a very slow time consumer, but it makes sure that our MMU translation table has sane values.
@@ -287,9 +288,9 @@ void init_start_mode_segment(uint16 i)
         #ifdef DEBUG
         if (pc24)
         {
-          if (mmu_trans_all[0][i].address!=adr) DEBUG_LOG(10,"*** mmu_t[0][%d].adr!=adr invalid/changed, good to reset it\n",i);
-          if (mmu_trans_all[0][i].readfn !=rfn) DEBUG_LOG(10,"*** mmu_t[0][%d].rfn!=rfn invalid/changed, good to reset it\n",i);
-          if (mmu_trans_all[0][i].writefn!=wfn) DEBUG_LOG(10,"*** mmu_t[0][%d].wfn!=wfn invalid/changed, good to reset it\n",i);
+            if (mmu_trans_all[0][i].address!=adr) DEBUG_LOG(10,"*** mmu_t[0][%d].adr!=adr invalid/changed, good to reset it\n",i);
+            if (mmu_trans_all[0][i].readfn !=rfn) DEBUG_LOG(10,"*** mmu_t[0][%d].rfn!=rfn invalid/changed, good to reset it\n",i);
+            if (mmu_trans_all[0][i].writefn!=wfn) DEBUG_LOG(10,"*** mmu_t[0][%d].wfn!=wfn invalid/changed, good to reset it\n",i);
         }
         #endif
 
@@ -332,7 +333,6 @@ DECLARE(mmu_t,mmu_all[5][128]);
 DECLARE(mmu_trans_t,mmu_trans_all[5][32768]);
 
 
-
     DEBUG_LOG(0,"Initializing... mmu_trans_all: %p mmu_all: %p",mmu_trans_all,mmu_all);
 
     for (i=0; i<32768; i++) // Initialize START mode (setup in hwg81) translation table
@@ -340,6 +340,7 @@ DECLARE(mmu_trans_t,mmu_trans_all[5][32768]);
      // First, zap all MMU contexts to bad pages.  This is to make sure that
      // we don't accidentally hit unused pages.  Alternatively, for debugging
      // purposes, we could uncomment this block and see if anything breaks.
+        mmu_trans_all[0][i].table=NULL;
 
         mmu_trans_all[1][i].address= 0;
         mmu_trans_all[1][i].readfn = bad_page;
@@ -705,56 +706,60 @@ void fill_mmu_segment(uint8 segment, int32 ea, lisa_mem_t rfn, lisa_mem_t wfn, i
          }
         }
     else if (wfn==ram)                 // wfn to ram is special because writes could be to video ram which I need to trap
-         {
+          {
            for (i=0; i<256; i++)       // there are 256 words for every mmu page.
-           {
-           //uint16 sor=mmu_all[cx][segment].sor & 0xfff;
-           uint32 epage=segment8+i;
-           uint32 epage9=epage<<9;
-           mt=&mmu_trans_all[cx][epage];
+            {
+                //uint16 sor=mmu_all[cx][segment].sor & 0xfff;
+                uint32 epage=segment8+i;
+                uint32 epage9=epage<<9;
+                mt=&mmu_trans_all[cx][epage];
 
-           if (i>=pagestart && i<=pageend)
-                { if ((videolatchaddress+32768)>(epage9) && videolatchaddress<=(epage9))
-                       {mt->readfn=ram; mt->writefn=vidram       ; mt->address=ea; lastvideo_mt=mt;}
-                  else {mt->readfn=ram; mt->writefn=ram          ; mt->address=ea;                 }
-                }
-           else        {mt->readfn=bad_page; mt->writefn=bad_page; mt->address=0;                  }
+                if (i>=pagestart && i<=pageend)
+                    {
+                        if  ((videolatchaddress+32768)>(epage9) && videolatchaddress<=(epage9))
+                                {mt->readfn=ram; mt->writefn=vidram       ; mt->address=ea; lastvideo_mt=mt;}
+                        else    {mt->readfn=ram; mt->writefn=ram          ; mt->address=ea;                 }
+                    }
+                else 
+                    {
+                        mt->readfn=bad_page; mt->writefn=bad_page; mt->address=0;
+                    }
 
-            #ifdef DEBUG
-              in  = (segment<<17) + (i<<9);
-              out = (mmu_all[cx][segment].sor<<9) + (i<<9);
-              if (in+ea != out)
-              {DEBUG_LOG(10,"*** 1 MMU Additon is incorrect in+ea!=out %08x+%08x!=%08x in+ea=%08x  ea should be:%08x",
-              in,ea,out,in+ea,out-in); }
-            #endif
+                #ifdef DEBUG
+                in  = (segment<<17) + (i<<9);
+                out = (mmu_all[cx][segment].sor<<9) + (i<<9);
+                if (in+ea != out)
+                {DEBUG_LOG(10,"*** 1 MMU Additon is incorrect in+ea!=out %08x+%08x!=%08x in+ea=%08x  ea should be:%08x",
+                in,ea,out,in+ea,out-in); }
+                #endif
 
-           if (mt->table) free_ipct(mt->table);                             //   invalidate ipct's
-           mt->table=NULL;                                                  //   and wipe pointer to be sure it won't be followed
-           }
-         }
+                if (mt->table) free_ipct(mt->table);                             //   invalidate ipct's
+                mt->table=NULL;                                                  //   and wipe pointer to be sure it won't be followed
+            }
+        }
     else
-         {
+        {
            for (i=0; i<256; i++)                                             // All others handled here
-           {
-             //uint16 sor=mmu_all[cx][segment].sor & 0xfff;
-             mt=&mmu_trans_all[cx][segment8+i];
-             if (!mt) {EXIT(339,0,"mt is null %s:%s:%d cx:%d segment:%d page:%d\n\n",__FILE__,__FUNCTION__,__LINE__,cx,segment,i);}
+            {
+               //uint16 sor=mmu_all[cx][segment].sor & 0xfff;
+                mt=&mmu_trans_all[cx][segment8+i];
+                if (!mt) {EXIT(339,0,"mt is null %s:%s:%d cx:%d segment:%d page:%d\n\n",__FILE__,__FUNCTION__,__LINE__,cx,segment,i);}
 
-             if (i>=pagestart && i<=pageend)  {mt->readfn=rfn     ; mt->writefn=wfn     ; mt->address=ea;}
-             else                             {mt->readfn=bad_page; mt->writefn=bad_page; mt->address=0 ;}
+                if (i>=pagestart && i<=pageend)  {mt->readfn=rfn     ; mt->writefn=wfn     ; mt->address=ea;}
+                else                             {mt->readfn=bad_page; mt->writefn=bad_page; mt->address=0 ;}
 
-             if (mt->table) free_ipct(mt->table);                             //   invalidate ipct's
-             mt->table=NULL;                                                  //   and wipe pointer to be sure it won't be followed
+                if (mt->table) free_ipct(mt->table);                             //   invalidate ipct's
+                mt->table=NULL;                                                  //   and wipe pointer to be sure it won't be followed
 
-             #ifdef DEBUG
-              in  = (segment<<17) + (i<<9);
-              out = (mmu[segment].sor<<9) + (i<<9);
-              if (in+ea != out) {EXIT(340,0,"*** 2 MMU Additon is incorrect in+ea!=out %08x+%08x!=%08x in+ea=%08x  ea should be:%08x",
-                                 in,ea,out,in+ea,out-in);}
-             #endif
+                #ifdef DEBUG
+                in  = (segment<<17) + (i<<9);
+                out = (mmu[segment].sor<<9) + (i<<9);
+                if (in+ea != out) {EXIT(340,0,"*** 2 MMU Additon is incorrect in+ea!=out %08x+%08x!=%08x in+ea=%08x  ea should be:%08x",
+                                    in,ea,out,in+ea,out-in);}
+                #endif
 
-           }
-         }
+            }
+        }
 
 } //////// end of fill_segment /////////////////////////////////////////////////////////////////////////////////////////////////
 

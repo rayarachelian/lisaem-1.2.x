@@ -445,8 +445,6 @@ ACGLOBAL(uint8,highest_bit_val_inv[],
 
 
 
-
-
 /////////////////////////////////////  Macro Constants ////////////////////////////////////////////////////////////////////////
 
 
@@ -1038,7 +1036,9 @@ typedef struct _t_ipc_table
     t_ipc ipc[256];                            // only need this, the rest I think is junk
     struct _t_ipc_table *next;
 //    } t;
-
+    int used;
+    int context;
+    uint32 address;
 
 #ifdef PROCESSOR_ARM
     void (*compiled)(struct _t_ipc *ipc);
@@ -1184,7 +1184,7 @@ ACGLOBAL(char,*hex,"0123456789abcdef");
 
 /****************** COPS.C definitions/vars visible to outside world... ************************************/
 
-#define MAXCOPSQUEUE 512
+#define MAXCOPSQUEUE 8192
 #define MAXMOUSEQUEUE 16
 
 GLOBAL(int16,copsqueuelen,0);
@@ -1415,18 +1415,18 @@ GLOBAL(int,microsleep_tix,0);
 #else
  #define EXTERNX ;
 #endif
-EXTERNX int fliflo_buff_is_full(FLIFLO_QUEUE_t *b);
-EXTERNX int fliflo_buff_has_data(FLIFLO_QUEUE_t *b);
-EXTERNX int fliflo_buff_is_empty(FLIFLO_QUEUE_t *b);
+EXTERNX int    fliflo_buff_is_full(FLIFLO_QUEUE_t *b);
+EXTERNX int    fliflo_buff_has_data(FLIFLO_QUEUE_t *b);
+EXTERNX int    fliflo_buff_is_empty(FLIFLO_QUEUE_t *b);
 EXTERNX uint32 fliflo_buff_size(FLIFLO_QUEUE_t *b);
 EXTERNX uint32 fliflo_buff_percent_full(FLIFLO_QUEUE_t *b);
-EXTERNX int fliflo_buff_add(FLIFLO_QUEUE_t *b,uint8 data);
-EXTERNX uint8 fliflo_buff_pop(FLIFLO_QUEUE_t *b);
-EXTERNX uint8 fliflo_buff_get(FLIFLO_QUEUE_t *b);
-EXTERNX uint8 fliflo_buff_peek(FLIFLO_QUEUE_t *b);
-EXTERNX uint8 fliflo_buff_peek_end(FLIFLO_QUEUE_t *b);
-EXTERNX int fliflo_buff_create(FLIFLO_QUEUE_t *b, uint32 size);
-EXTERNX void fliflo_buff_destroy(FLIFLO_QUEUE_t *b);
+EXTERNX int    fliflo_buff_add(FLIFLO_QUEUE_t *b,uint8 data);
+EXTERNX uint8  fliflo_buff_pop(FLIFLO_QUEUE_t *b);
+EXTERNX uint8  fliflo_buff_get(FLIFLO_QUEUE_t *b);
+EXTERNX uint8  fliflo_buff_peek(FLIFLO_QUEUE_t *b);
+EXTERNX uint8  fliflo_buff_peek_end(FLIFLO_QUEUE_t *b);
+EXTERNX int    fliflo_buff_create(FLIFLO_QUEUE_t *b, uint32 size);
+EXTERNX void   fliflo_buff_destroy(FLIFLO_QUEUE_t *b);
 
 //extern void alertlog(char *alert);
 
@@ -1505,6 +1505,10 @@ fprintf(buglog,"context:%d videoram @ %08x\n",context,videolatchaddress); fflush
   #define MEMDEBUG_LOG( level, fmt, args... )  {}}
 #endif
 
+#ifndef __IN_LISAEM_WX__
+extern void on_lisa_exit(void);
+#endif
+
 // this is needed because gdb doesn't tell you where your program quit from, just gives you the octal version of the exit
 // parameter which is chopped to 9 bits for some oddball reason.
 #define EXIT(x,cmd,fmt,args...) \
@@ -1516,7 +1520,8 @@ fprintf(buglog,"context:%d videoram @ %08x\n",context,videolatchaddress); fflush
                       if (!cmd) strncat(msg,"\nLisaEM will now quit.",1024);                                               \
                       fprintf(buglog,"%s:%s:%d: exit with code :%d\n%s\n",__FILE__,__FUNCTION__,__LINE__,x,msg2);          \
                       messagebox(msg,"Emulation aborted!");                                                                \
-                      fflush(buglog); if (!cmd) exit(x); else return;                                                      \
+                      fflush(buglog); if (!cmd) on_lisa_exit();                                                            \
+                      return;                                                                                              \
                     }
 
 #define EXITR(x,cmd,fmt,args...)                                                                                                                  \
@@ -1528,7 +1533,8 @@ fprintf(buglog,"context:%d videoram @ %08x\n",context,videolatchaddress); fflush
                       if (!cmd) strncat(msg,"\nLisaEM will now quit.",1024);                                                                      \
                       fprintf(buglog,"%s:%s:%d: exit with code :%d\n%s\n",__FILE__,__FUNCTION__,__LINE__,x,msg2);                                 \
                       messagebox(msg,"Emulation aborted!");                                                                                       \
-                      fflush(buglog); if (!cmd) exit(x); else return cmd-1;                                                                       \
+                      fflush(buglog); if (!cmd) on_lisa_exit();                                                                                   \
+                      return cmd-1;                                                                                                               \
                     }
 
 
@@ -1602,10 +1608,7 @@ GLOBAL(uint32,TWOMEGMLIM,0x001fffff);
 
 
 
-
-
-
-
+// :TODO: is this still valid? 20191017?
 #ifndef IN_REG68K_C  /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // __CYGWIN__ wrapper added by Ray Arachelian for LisaEm to prevent crashes in reg68k_ext exec
 #ifdef __CYGWIN__
@@ -1699,7 +1702,7 @@ extern void add_mouse_event(int16 x, int16 y, int8 button);
 
 extern void mmuflush(uint16 opts);
 extern lisa_mem_t rmmuslr2fn(uint16 slr, uint32 a9);
-extern t_ipc_table *get_ipct(void);
+extern t_ipc_table *get_ipct(uint32 address);
 extern void checkcontext(uint8 c, char *text);
 extern void cpu68k_printipc(t_ipc * ipc);
 #ifdef DEBUG
@@ -1834,7 +1837,10 @@ extern void floppy_go6504(void);
 extern void ProfileLoop(ProFileType *P, int event);
 extern void ProfileReset(ProFileType *P);
 extern void ProfileResetOff(ProFileType *P);
-extern void get_structure_identity_table(ProFileType *P);
+
+// commenting out widget code for now
+extern void get_profile_spare_table(ProFileType *P);
+//extern void get_structure_identity_table(ProFileType *P);
 
 #endif
 
@@ -2080,7 +2086,7 @@ ACGLOBAL(lisa_mem_t,io_map[],
 ACGLOBAL(lisa_mem_t,sio_map[], // danger! this is for use on pre-MMU addresses - lop off the top 17 bits of the address
                       // as well as the low 9 bits ( address & 01fe00)
 {
-/*               000       200       400       600       800       a00        c00       e00 */
+/*              000      200      400      600      800      a00      c00     e00 */
 /*000000:*/ sio_rom, sio_rom, sio_rom, sio_rom, sio_rom, sio_rom, sio_rom, sio_rom, // 8/line
 /*001000:*/ sio_rom, sio_rom, sio_rom, sio_rom, sio_rom, sio_rom, sio_rom, sio_rom,
 /*002000:*/ sio_rom, sio_rom, sio_rom, sio_rom, sio_rom, sio_rom, sio_rom, sio_rom,

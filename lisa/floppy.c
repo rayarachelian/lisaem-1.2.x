@@ -341,7 +341,7 @@ void flop_cmd_text(FILE *buglog)
   }
 }
 
-#ifdef DEBUG
+#ifdef DEBUGXXX
 void append_floppy_log(char *s)
 {
   FILE *f;
@@ -359,7 +359,7 @@ void append_floppy_log(char *s)
          }
 }
 #else
-  #define append_floppy_log(s) {;}
+    void append_floppy_log(char *s) {s=NULL;}
 #endif
 
 
@@ -1016,21 +1016,21 @@ void floppy_go6504(void)
 
                        //do_floppy_read(F);  here here here here here here
 
-                       #ifdef DEBUG
-                         snprintf(templine,1024,"queing read from sector %ld (hd/trk/sec: %d/%d/%d)",
-                                                 sectornumber,floppy_ram[SIDE],floppy_ram[TRACK],floppy_ram[SECTOR]);
-                         append_floppy_log(templine);
-
-                         if ( sectornumber==turn_logging_on_sector)
-                               {
-                                   debug_log_enabled=1;  // turn on debug log on sector read
-                                   debug_on("sector read");
-                                   fprintf(buglog,"***DEBUGGING TURNED ON READ FROM SECTOR %d *****\n",turn_logging_on_sector);
-                                   DEBUG_LOG(0,"LisaEm Debugging turned on - sector read");
-                               }
-                         if (turn_logging_on_sector==-666) {debug_log_enabled=1; debug_on("auto-all-sector");}
-                       #endif
-
+//                       #ifdef DEBUG
+//                         snprintf(templine,1024,"queing read from sector %ld (hd/trk/sec: %d/%d/%d)",
+//                                                 sectornumber,floppy_ram[SIDE],floppy_ram[TRACK],floppy_ram[SECTOR]);
+//                         append_floppy_log(templine);
+//
+//                         if ( sectornumber==turn_logging_on_sector)
+//                               {
+//                                   debug_log_enabled=1;  // turn on debug log on sector read
+//                                   debug_on("sector read");
+//                                   fprintf(buglog,"***DEBUGGING TURNED ON READ FROM SECTOR %d *****\n",turn_logging_on_sector);
+//                                   DEBUG_LOG(0,"LisaEm Debugging turned on - sector read");
+//                               }
+//                         if (turn_logging_on_sector==-666) {debug_log_enabled=1; debug_on("auto-all-sector");}
+//                       #endif
+//
 //                       #ifdef DEBUG
 //                       snprintf(lastfloppyrwts,1023,"read sec #%3ld NOW(side:%d:trk:%d:sec:%d)",
 //                               sectornumber,floppy_ram[SIDE], floppy_ram[TRACK], floppy_ram[SECTOR]);
@@ -1084,16 +1084,16 @@ void floppy_go6504(void)
                        #endif
 
 
-                       #ifdef DEBUG
-                         if ( sectornumber==turn_logging_on_write)
-                               {
-                                   debug_log_enabled=1;  // turn on debug log on sector read
-                                   debug_on("sector read");
-                                   fprintf(buglog,"***DEBUGGING TURNED ON READ FROM SECTOR %d *****\n",turn_logging_on_sector);
-                                   DEBUG_LOG(0,"LisaEm Debugging turned on - sector read");
-                               }
-                         if (turn_logging_on_sector==-666) {debug_log_enabled=1; debug_on("auto-all-sector");}
-                       #endif
+//                       #ifdef DEBUG
+//                         if ( sectornumber==turn_logging_on_write)
+//                               {
+//                                   debug_log_enabled=1;  // turn on debug log on sector read
+//                                   debug_on("sector read");
+//                                   fprintf(buglog,"***DEBUGGING TURNED ON READ FROM SECTOR %d *****\n",turn_logging_on_sector);
+//                                   DEBUG_LOG(0,"LisaEm Debugging turned on - sector read");
+//                               }
+//                         if (turn_logging_on_sector==-666) {debug_log_enabled=1; debug_on("auto-all-sector");}
+//                       #endif
 
 
                     // do_floppy_write(F);
@@ -1112,10 +1112,10 @@ void floppy_go6504(void)
 
 
 
-                    #ifdef DEBUG
-                     if (turn_logging_on_sector==-666) {debug_log_enabled=1; debug_on("eject-always-on");}
-                     else {debug_off(); debug_log_enabled=0;}
-                    #endif
+//                    #ifdef DEBUG
+//                     if (turn_logging_on_sector==-666) {debug_log_enabled=1; debug_on("eject-always-on");}
+//                     else {debug_off(); debug_log_enabled=0;}
+//                    #endif
 
                     //fprintf(buglog,"SRC:floppy Unclamp/Eject\n");
                     //DEBUG_LOG(0,"Lisa Ejected floppy");
@@ -1709,7 +1709,7 @@ int floppy_insert(char *Image)     // emulator should call this when user decide
     errno=0;
 
     dc42_close_image(F);                        // close any previously opened disk image
-    err=dc42_auto_open(F,Image,"wb");           // for testing the emulator, open images as private  *CODEKARMA* *CODE DEBT * FIXME BUGBUG*
+    err=dc42_auto_open(F,Image,"wb");           // for testing the emulator, open images as private "p"  w=writeable, b=best
     if (err)
        {
           floppy_return(F,0,FLOP_STAT_NOCLMP);  // return failed clamp status
@@ -1725,11 +1725,11 @@ int floppy_insert(char *Image)     // emulator should call this when user decide
     err=dc42_check_checksums(F);    // 0 if they match, 1 if tags, 2 if data, 3 if both don't match
     switch (err)
     {
-     case 1 : messagebox("The Tag checksum failed for this disk.  It may be corrupted.","Danger!"); break;
-     case 2 : messagebox("The Data checksum failed for this disk.  It may be corrupted.","Danger!"); break;
-     case 3 : messagebox("Both the Data and Tag checksums failed for this disk!  It's very likely corrupted, you should restore it from a backup instead!","Danger!"); break;
-     default:
-     case 0 : ;
+      case 1 : messagebox("The Tag checksum failed for this disk.  It may be corrupted.","Danger!"); break;
+      case 2 : messagebox("The Data checksum failed for this disk.  It may be corrupted.","Danger!"); break;
+      case 3 : messagebox("Both the Data and Tag checksums failed for this disk!","Danger!"); break;
+      default:
+      case 0 : ;
     }
 
     if (F->numblocks==1440 || F->numblocks==2880 || F->numblocks==5760)

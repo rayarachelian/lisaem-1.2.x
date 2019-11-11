@@ -696,6 +696,7 @@ int getsnbit(void)
 
     serialnumshiftcount=(serialnumshiftcount + 1) & 127;
 
+    ALERT_LOG(0,"Possible read of serial number from %d/%08x",context,pc24);
     return (bit ? 32768:0);
 }
 
@@ -1382,7 +1383,7 @@ char *get_tag_name(uint8 n)
 void getflopramaddr(uint32 a)
 {
 
-  #ifdef DEBUG
+  #ifdef DEBUGXXXX
   // extra logging to floppy sector log wanted
    if (a==0xfcc401 || a==0xfcc601 || a==0xfcc7ff)   // log 1st, middle and last floppy buffer reads so we'll know where data
    {                                                // is copied to in RAM based on the registers.

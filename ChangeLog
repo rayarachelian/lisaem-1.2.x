@@ -8,6 +8,41 @@ Lisa Emulator Change History                         http://lisaem.sunder.net/
 ------------------------------------------------------------------------------
 --- 1.2.7    Released on (TBA) (Major release for all platforms)
 
+2019.11.11 - fixed some more IPCT issues caused by lack of initialization,
+             added some debug guard routines to catch more if they happen.
+
+2019.11.09 - issue with multiple IPCT free caused by LOS doing memory writes,
+             this added the same IPCT to the free list, which then was reused
+             causing crashes. Added ipct->used flag to prevent this.
+             
+2019.11.07 - reverted cops.c and profile.c due to widget code preventing disk
+             from working; mouse issues caused by warning removal introducing
+             bugs.
+
+2019.11.06 - fixed some screenshot bugs around hq3x
+           - fixed pause checkbox menu item incorrectly showing paused
+           
+2019.11.05 - fixed a bunch of crashy bugs around skinless modes 
+           - mouse location is still incorrect
+
+2019.11.04 - fixed 2Y mode rendering issues
+
+2019.11.03 - got rid of the extraneous clipboard wspaste_clipboard stuff
+           - increased clipboard paste from 8k to 32K, don't think there's
+             much need for larger pastes in terms of being able to paste
+             code into LPW Edit, but maybe will allow larger pastes with a 
+             progress bar dialog that has a stop button in the future.
+
+2019.10.31 - Drag and Drop starting to work.
+
+2018.10.27 - work on Drag and Drop files - allows dropping a floppy on top
+             of the emulator, or a text file (which will be typed into the
+             virtual keyboard the same as clipboard text pastes.)
+           - HQX upscaler works nicely now
+             
+2019.10.15 - 2019.10.27 more HQX upscaler work, much nicer than the other
+             modes including AAG
+
 2019.10.13 - got it working on macos X with some work, had to compile wxWidgets
              and LisaEm with -stdlib=libc++, and LisaEm with -lstdc++.6 to get
              it working. There's still quite a lot of bugs left to fix but it's

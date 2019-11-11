@@ -739,9 +739,8 @@ void romless_proread(void)
 
   if (sectornumber>0x00fffff0)  
     {
-       if (sectornumber==0x00ffffff)  get_structure_identity_table(P);
-
-
+       if (sectornumber==0x00ffffff)  // get_structure_identity_table(P); // 20191107 - disabling until widget code works
+                                      get_profile_spare_table(P);
   //    ALERT_LOG(0,"Slot 1 ID:%04x, Slot 2 ID:%04x, Slot 3 ID:%04x",
   //           lisa_ram_safe_getword(1,0x298), lisa_ram_safe_getword(1,0x29a), lisa_ram_safe_getword(1,0x29c) ) 
 
