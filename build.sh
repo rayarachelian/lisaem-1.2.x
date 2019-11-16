@@ -833,7 +833,7 @@ then
     # and https://apple.stackexchange.com/questions/350627/how-can-i-specify-the-c-version-to-use-with-xcode
     # wxWidgets will also need patching, see: https://stackoverflow.com/a/37632111
     if [[ "$(CC --version  2>&1 | grep -i clang)" ]]; then
-        export SYSLIBS="-lstdc++.6"
+        export SYSLIBS="-lstdc++"
         #export SYSLIBS="-lc++"
     fi
 
