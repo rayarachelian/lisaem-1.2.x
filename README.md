@@ -2,6 +2,18 @@
 Lisa Emulator Source Build README                    http://lisaem.sunder.net/
 ------------------------------------------------------------------------------
 
+# Deprecation Warning
+
+*Note* this code has now moved to: https://github.com/rayarachelian/lisaem
+it will remain here incase someone needs older stable (but deprecated)
+versions of 1.2.6.
+
+Versions 1.2.7 and above will continue at the new location, and once
+a stable version of 1.2.7 is released, the master branch there will only
+point to stable releases as is customary, rather than to development
+releases.
+
+# old status
 2019.10.13 Finally got it working on macos X 10.11+ but had to recompile
 both wxWidgets and LisaEm with -stdlib=libc++, and LisaEm with -lstdc++.6,
 there are still lots of bugs, there are stubs for HQX but this feature is
