@@ -5,13 +5,13 @@ Lisa Emulator Source Build README                    http://lisaem.sunder.net/
 # Deprecation Warning
 
 *Note* this code has now moved to: https://github.com/rayarachelian/lisaem
-it will remain here incase someone needs older stable (but deprecated)
+This repo will continue remain here incase someone needs older stable (but deprecated)
 versions of 1.2.6.
 
-Versions 1.2.7 and above will continue at the new location, and once
-a stable version of 1.2.7 is released, the master branch there will only
-point to stable releases as is customary, rather than to development
-releases.
+Versions 1.2.7 and above will continue to accumulate updates at the new location, and once a stable version of 1.2.7 is released, the master branch there will only point to stable releases as is customary, rather than to development releases.
+
+The reason for this change is that the proper lisaem repo was reserved for this change, whose time has now arrived, in order to provide a better code organization, and also to switch to the newer build system.
+The source code is effectively the same as in the new repo as of today, but over time, will of course be updated only in the https://github.com/rayarachelian/lisaem repo and not here.
 
 # old status
 2019.10.13 Finally got it working on macos X 10.11+ but had to recompile
